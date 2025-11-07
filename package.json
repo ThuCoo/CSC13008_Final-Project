@@ -1,0 +1,24 @@
+{
+  "name": "project",
+  "version": "1.0.0",
+  "description": "This is HCMUS' class 23KTPM1's Web Application Development's Final Project: Online Auction.\r Project's details: [PTUDW - Final Project - Online Auction](https://hackmd.io/@nndkhoa9/S1QJaF3Axx#PTUDW---Final-Project---Online-Auction)",
+  "homepage": "https://github.com/ThuCoo/CSC13008_Final-Project#readme",
+  "bugs": {
+    "url": "https://github.com/ThuCoo/CSC13008_Final-Project/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ThuCoo/CSC13008_Final-Project.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^5.1.0"
+  }
+}
