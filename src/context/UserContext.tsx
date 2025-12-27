@@ -1,6 +1,16 @@
-import React, { useState } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { User } from "./user";
-import { UserContext } from "./UserContext";
+
+export interface UserContextType {
+  user: Omit<User, "password"> | null;
+  login: (email: string, password: string) => boolean;
+  signup: (data: { email: string; name: string; password?: string }) => void;
+  logout: () => void;
+  updateProfile: (id: string, data: Partial<User>) => void;
+  changePassword: (id: string, current: string, newPass: string) => void;
+}
+
+export const UserContext = createContext<UserContextType | undefined>(undefined);
 
 // Mock Data
 const MOCK_BUYER: User & { password: string } = {
@@ -12,7 +22,7 @@ const MOCK_BUYER: User & { password: string } = {
   sellerApproved: false,
   address: "227 Nguyen Van Cu, Cho Quan Ward, HCM City",
   birthday: "1995-08-15",
-  password: "password123",
+  password: "password123", // Plain text for mock
 };
 
 const MOCK_SELLER: User & { password: string } = {
@@ -39,7 +49,7 @@ const MOCK_ADMIN: User & { password: string } = {
   password: "password123",
 };
 
-const MOCK_USERS = [MOCK_BUYER, MOCK_SELLER, MOCK_ADMIN];
+export const MOCK_USERS = [MOCK_BUYER, MOCK_SELLER, MOCK_ADMIN];
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Omit<User, "password"> | null>(() => {
@@ -52,26 +62,28 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return null;
   });
 
-  const login = async (email: string, passwordInput: string) => {
+  const login = (email: string, passwordInput: string): boolean => {
     const foundUser = MOCK_USERS.find((u) => u.email === email);
 
     if (!foundUser || foundUser.password !== passwordInput) {
-      throw new Error("Invalid credentials");
+       // Ideally use toast here but context shouldn't depend on components if possible
+       // Return false to let caller handle it
+       return false;
     }
 
     const { password, ...userToStore } = foundUser;
-    void password;
-
+    
     setUser(userToStore);
     localStorage.setItem("auctionhub_user", JSON.stringify(userToStore));
+    return true;
   };
 
-  const signup = async (email: string, name: string) => {
+  const signup = (data: { email: string; name: string; password?: string }) => {
     const newUser: User = {
       id: String(Date.now()),
-      email,
-      name,
-      avatar: name.slice(0, 2).toUpperCase(),
+      email: data.email,
+      name: data.name,
+      avatar: data.name.slice(0, 2).toUpperCase(),
       type: "buyer",
       sellerApproved: false,
       createdAt: Date.now(),
@@ -87,18 +99,31 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("auctionhub_user");
   };
 
-  const updateProfile = (data: Partial<User>) => {
-    if (!user) return;
+  const updateProfile = (id: string, data: Partial<User>) => {
+    if (!user || user.id !== id) return;
     const updatedUser = { ...user, ...data } as Omit<User, "password">;
     setUser(updatedUser);
     localStorage.setItem("auctionhub_user", JSON.stringify(updatedUser));
   };
 
+  const changePassword = (id: string, current: string, newPass: string) => {
+    // Mock implementation
+    console.log(`Password changed for user ${id} from ${current} to ${newPass}`);
+  };
+
   return (
     <UserContext.Provider
-      value={{ user, login, signup, logout, updateProfile }}
+      value={{ user, login, signup, logout, updateProfile, changePassword }}
     >
       {children}
     </UserContext.Provider>
   );
+}
+
+export function useUser() {
+  const context = useContext(UserContext);
+  if (context === undefined) {
+    throw new Error("useUser must be used within a UserProvider");
+  }
+  return context;
 }

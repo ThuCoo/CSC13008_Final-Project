@@ -17,7 +17,7 @@ export default function Footer() {
           {/* Brand Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 font-bold text-xl text-white">
-              <Gavel className="w-6 h-6 text-blue-500" />
+              <Gavel className="w-6 h-6 text-rose-500" />
               <span>AuctionHub</span>
             </div>
             <p className="text-sm leading-relaxed text-slate-400">
@@ -25,13 +25,13 @@ export default function Footer() {
               electronics, and fashion. Bid securely and sell with confidence.
             </p>
             <div className="flex gap-4 pt-2">
-              <a href="#" className="hover:text-white transition">
+              <a href="#" className="hover:text-rose-500 transition">
                 <Facebook className="w-5 h-5" />
               </a>
-              <a href="#" className="hover:text-white transition">
+              <a href="#" className="hover:text-rose-500 transition">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a href="#" className="hover:text-white transition">
+              <a href="#" className="hover:text-rose-500 transition">
                 <Instagram className="w-5 h-5" />
               </a>
             </div>
@@ -42,27 +42,27 @@ export default function Footer() {
             <h3 className="font-semibold text-white mb-4">Marketplace</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/browse" className="hover:text-blue-400 transition">
+                <Link to="/browse" className="hover:text-rose-400 transition">
                   Browse Auctions
                 </Link>
               </li>
               <li>
                 <Link
                   to="/categories"
-                  className="hover:text-blue-400 transition"
+                  className="hover:text-rose-400 transition"
                 >
                   All Categories
                 </Link>
               </li>
               <li>
-                <Link to="/selling" className="hover:text-blue-400 transition">
+                <Link to="/selling" className="hover:text-rose-400 transition">
                   Start Selling
                 </Link>
               </li>
               <li>
                 <Link
                   to="/watchlist"
-                  className="hover:text-blue-400 transition"
+                  className="hover:text-rose-400 transition"
                 >
                   My Watchlist
                 </Link>
@@ -75,14 +75,14 @@ export default function Footer() {
             <h3 className="font-semibold text-white mb-4">Support</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/support" className="hover:text-blue-400 transition">
+                <Link to="/support" className="hover:text-rose-400 transition">
                   Help Center
                 </Link>
               </li>
               <li>
                 <Link
                   to="/account-settings"
-                  className="hover:text-blue-400 transition"
+                  className="hover:text-rose-400 transition"
                 >
                   My Account
                 </Link>
@@ -90,13 +90,13 @@ export default function Footer() {
               <li>
                 <Link
                   to="/become-seller"
-                  className="hover:text-blue-400 transition"
+                  className="hover:text-rose-400 transition"
                 >
                   Seller Guidelines
                 </Link>
               </li>
               <li>
-                <span className="cursor-pointer hover:text-blue-400 transition">
+                <span className="cursor-pointer hover:text-rose-400 transition">
                   Terms of Service
                 </span>
               </li>
@@ -108,7 +108,7 @@ export default function Footer() {
             <h3 className="font-semibold text-white mb-4">Contact Us</h3>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-blue-500 shrink-0" />
+                <MapPin className="w-5 h-5 text-rose-500 shrink-0" />
                 <span>
                   123 Auction Street,
                   <br />
@@ -116,11 +116,11 @@ export default function Footer() {
                 </span>
               </li>
               <li className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-blue-500 shrink-0" />
+                <Phone className="w-5 h-5 text-rose-500 shrink-0" />
                 <span>+1 (555) 123-4567</span>
               </li>
               <li className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-blue-500 shrink-0" />
+                <Mail className="w-5 h-5 text-rose-500 shrink-0" />
                 <span>support@auctionhub.com</span>
               </li>
             </ul>

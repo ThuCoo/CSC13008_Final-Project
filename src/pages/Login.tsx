@@ -1,51 +1,24 @@
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Mail, Lock } from "lucide-react";
-import { useState } from "react";
-import { useUser } from "@/context/useUser";
-import { useToast } from "@/components/ui/use-toast";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema, LoginFormValues } from "@/schemas/auth";
 
-export default function Login() {
-  const navigate = useNavigate();
-  const { login } = useUser();
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+interface LoginPageProps {
+  formData: any;
+  isLoading: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onDemoLogin: (email: string, pass: string) => void;
+}
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  const onSubmit = async (data: LoginFormValues) => {
-    setIsLoading(true);
-    try {
-      await login(data.email, data.password);
-      toast({ title: "Success", description: "Logged in successfully!" });
-      navigate("/");
-    } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to log in",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+export default function LoginPage({
+  formData,
+  isLoading,
+  onChange,
+  onSubmit,
+  onDemoLogin,
+}: LoginPageProps) {
   return (
     <div className="min-h-screen bg-slate-50">
       <Header />
@@ -56,7 +29,7 @@ export default function Login() {
             Sign in to your AuctionHub account
           </p>
 
-          <form className="space-y-4 mb-6" onSubmit={handleSubmit(onSubmit)}>
+          <form className="space-y-4 mb-6" onSubmit={onSubmit}>
             <div>
               <label className="block text-sm font-medium mb-2">
                 Email Address
@@ -66,16 +39,13 @@ export default function Login() {
                 <Input
                   type="email"
                   placeholder="you@example.com"
-                  className={`pl-10 ${errors.email ? "border-red-500" : ""}`}
+                  className="pl-10"
+                  name="email"
+                  value={formData.email}
+                  onChange={onChange}
                   disabled={isLoading}
-                  {...register("email")}
                 />
               </div>
-              {errors.email && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors.email.message}
-                </p>
-              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Password</label>
@@ -84,16 +54,13 @@ export default function Login() {
                 <Input
                   type="password"
                   placeholder="Enter your password"
-                  className={`pl-10 ${errors.password ? "border-red-500" : ""}`}
+                  className="pl-10"
+                  name="password"
+                  value={formData.password}
+                  onChange={onChange}
                   disabled={isLoading}
-                  {...register("password")}
                 />
               </div>
-              {errors.password && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors.password.message}
-                </p>
-              )}
             </div>
             <Button className="w-full" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}
@@ -113,6 +80,38 @@ export default function Login() {
             >
               Create Account
             </Link>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-8">
+          <p className="text-sm text-blue-900 mb-3">
+            <strong>Demo Accounts:</strong>
+          </p>
+          <div className="space-y-2">
+            <button
+              onClick={() =>
+                onDemoLogin("buyer@example.com", "password123")
+              }
+              className="w-full text-left text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded transition"
+            >
+            Buyer
+            </button>
+            <button
+              onClick={() =>
+                onDemoLogin("seller@example.com", "password123")
+              }
+              className="w-full text-left text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded transition"
+            >
+            Seller
+            </button>
+            <button
+              onClick={() =>
+                onDemoLogin("admin@example.com", "password123")
+              }
+              className="w-full text-left text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded transition"
+            >
+            Admin
+            </button>
           </div>
         </div>
       </div>

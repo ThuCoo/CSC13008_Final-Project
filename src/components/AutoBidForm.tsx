@@ -1,0 +1,68 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+
+interface AutoBidFormProps {
+  listingId: string;
+  userId: string;
+  currentBid: number;
+  minBid: number;
+}
+
+export default function AutoBidForm({
+  listingId,
+  userId,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  currentBid: _currentBid,
+  minBid,
+}: AutoBidFormProps) {
+  const [maxBid, setMaxBid] = useState("");
+  const [enabled, setEnabled] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // In a real app, this would call an API/Context to set auto-bid
+    console.log("Set auto-bid:", { listingId, userId, maxBid, enabled });
+    alert(`Auto-bid set to max $${maxBid}`);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label htmlFor="auto-bid-toggle" className="font-medium text-slate-700">
+          Enable Auto-Bid
+        </Label>
+        <Switch
+          id="auto-bid-toggle"
+          checked={enabled}
+          onCheckedChange={setEnabled}
+        />
+      </div>
+
+      {enabled && (
+        <div className="space-y-2">
+          <Label htmlFor="max-bid">Maximum Bid Limit</Label>
+          <div className="flex gap-2">
+            <Input
+              id="max-bid"
+              type="number"
+              placeholder={`Max Limit > $${minBid}`}
+              value={maxBid}
+              onChange={(e) => setMaxBid(e.target.value)}
+              min={minBid}
+              required={enabled}
+            />
+            <Button type="submit" variant="secondary">
+              Set
+            </Button>
+          </div>
+          <p className="text-xs text-slate-500">
+            System will bid for you up to this amount.
+          </p>
+        </div>
+      )}
+    </form>
+  );
+}

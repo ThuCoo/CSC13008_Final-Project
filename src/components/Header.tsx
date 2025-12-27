@@ -13,7 +13,7 @@ import {
   SquareMousePointer,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useUser } from "@/context/useUser";
+import { useUser } from "@/context/UserContext";
 import { useToast } from "@/components/ui/use-toast";
 import { useState } from "react";
 
