@@ -20,12 +20,12 @@ import ForgotPasswordPage from "./pages/ForgotPassword";
 import ContactSellerPage from "./pages/ContactSeller";
 import SalesHistoryPage from "./pages/SalesHistory";
 import BecomeSellerPage from "./pages/BecomeSeller";
-import { UserProvider, useUser, MOCK_USERS } from "@/context/UserContext";
-import { ListingsProvider, useListings, Listing } from "@/context/ListingsContext";
-import { SellerRequestsProvider, useSellerRequests } from "@/context/SellerRequestsContext";
-import { CategoriesProvider, useCategories } from "@/context/CategoriesContext";
-import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/components/ui/use-toast";
+import { UserProvider, useUser, MOCK_USERS } from "./context/UserContext";
+import { ListingsProvider, useListings, Listing } from "./context/ListingsContext";
+import { SellerRequestsProvider, useSellerRequests } from "./context/SellerRequestsContext";
+import { CategoriesProvider, useCategories } from "./context/CategoriesContext";
+import { Toaster } from "./components/ui/toaster";
+import { useToast } from "./components/ui/use-toast";
 
 // --- Route Components ---
 

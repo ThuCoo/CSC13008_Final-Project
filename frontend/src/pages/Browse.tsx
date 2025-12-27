@@ -1,13 +1,13 @@
-import Header from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Header from "../components/Header";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "../components/ui/select";
 import { Link } from "react-router-dom";
 import { Clock, Zap, ChevronRight, ChevronLeft } from "lucide-react";
 // import { useState } from "react";

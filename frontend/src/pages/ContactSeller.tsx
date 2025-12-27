@@ -1,8 +1,8 @@
-import Header from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import Header from "../components/Header";
+import { Button } from "../components/ui/button";
+import { Textarea } from "../components/ui/textarea";
 import { Mail } from "lucide-react";
-import { Listing } from "@/context/ListingsContext";
+import { Listing } from "../context/ListingsContext";
 
 interface ContactSellerPageProps {
   listing: Listing | undefined;

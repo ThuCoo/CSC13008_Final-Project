@@ -1,4 +1,4 @@
-import Header from "@/components/Header";
+import Header from "../components/Header";
 import { Link } from "react-router-dom";
 import { Folder } from "lucide-react";
 

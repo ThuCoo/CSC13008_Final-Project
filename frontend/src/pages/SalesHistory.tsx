@@ -1,9 +1,9 @@
-import Header from "@/components/Header";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import Header from "../components/Header";
+import { Card, CardContent, CardHeader } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
 import { TrendingUp } from "lucide-react";
-import { Listing } from "@/context/ListingsContext";
+import { Listing } from "../context/ListingsContext";
 
 interface SalesHistoryPageProps {
   user: any;

@@ -1,5 +1,5 @@
-import Header from "@/components/Header";
-import { Button } from "@/components/ui/button";
+import Header from "../components/Header";
+import { Button } from "../components/ui/button";
 import { Link } from "react-router-dom";
 import { Upload, Zap, TrendingUp, Users } from "lucide-react";
 

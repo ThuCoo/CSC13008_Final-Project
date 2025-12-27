@@ -1,6 +1,6 @@
-import Header from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Header from "../components/Header";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { Link } from "react-router-dom";
 import { Mail, Lock, User, Chrome } from "lucide-react";
 

@@ -1,10 +1,10 @@
-import Header from "@/components/Header";
+import Header from "../components/Header";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
+} from "../components/ui/accordion";
 
 export default function SupportPage() {
   return (

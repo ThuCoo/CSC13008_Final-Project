@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "./ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import {
   Gavel,
   Search,
@@ -12,9 +12,9 @@ import {
   LayoutDashboard,
   SquareMousePointer,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { useUser } from "@/context/UserContext";
-import { useToast } from "@/components/ui/use-toast";
+import { Input } from "./ui/input";
+import { useUser } from "../context/UserContext";
+import { useToast } from "./ui/use-toast";
 import { useState } from "react";
 
 export default function Header() {

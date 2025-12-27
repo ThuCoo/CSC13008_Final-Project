@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 
 interface AutoBidFormProps {
   listingId: string;
@@ -50,7 +50,7 @@ export default function AutoBidForm({
               type="number"
               placeholder={`Max Limit > $${minBid}`}
               value={maxBid}
-              onChange={(e) => setMaxBid(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMaxBid(e.target.value)}
               min={minBid}
               required={enabled}
             />

@@ -1,25 +1,25 @@
 import { useState } from "react";
-import Header from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Header from "../components/Header";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
+} from "../components/ui/dialog";
+import { Textarea } from "../components/ui/textarea";
+import { useToast } from "../components/ui/use-toast";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@/components/ui/card";
+} from "../components/ui/card";
 import {
   User as UserIcon,
   Lock,
@@ -312,7 +312,7 @@ export default function AccountSettingsPage({
                             <Textarea
                               placeholder="Write your review here (Required)..."
                               value={reviewComment}
-                              onChange={(e) => setReviewComment(e.target.value)}
+                               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReviewComment(e.target.value)}
                             />
                             <div className="flex gap-2 justify-end">
                               <Button

@@ -7,10 +7,10 @@ import {
   Zap,
   Shield,
 } from "lucide-react";
-import { Listing } from "@/context/ListingsContext";
-import { formatAuctionTime, maskBidderName } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import Header from "@/components/Header";
+import { Listing } from "../context/ListingsContext";
+import { formatAuctionTime, maskBidderName } from "../lib/utils";
+import { Button } from "../components/ui/button";
+import Header from "../components/Header";
 
 const features = [
   {

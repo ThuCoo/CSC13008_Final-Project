@@ -1,8 +1,8 @@
 import { useState } from "react";
-import Header from "@/components/Header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Header from "../components/Header";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import {
   Check,
   X,
@@ -218,7 +218,7 @@ export default function AdminDashboardPage({
                 <Input
                   placeholder="New Category Name"
                   value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCatName(e.target.value)}
                 />
                 <Button
                   onClick={() => {

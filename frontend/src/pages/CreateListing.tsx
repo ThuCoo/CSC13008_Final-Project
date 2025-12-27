@@ -1,18 +1,18 @@
-import Header from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import Header from "../components/Header";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
+import { Label } from "../components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+} from "../components/ui/select";
+import { Checkbox } from "../components/ui/checkbox";
 import { Upload, DollarSign, Image as ImageIcon, Type } from "lucide-react";
-import { Category } from "@/context/CategoriesContext";
+import { Category } from "../context/CategoriesContext";
 
 interface CreateListingPageProps {
   formData: {
@@ -89,7 +89,7 @@ export default function CreateListingPage({
             <div className="space-y-2">
               <Label>Category</Label>
               <Select
-                onValueChange={(v) => setFormData({ ...formData, category: v })}
+                onValueChange={(v: string) => setFormData({ ...formData, category: v })}
                 required
               >
                 <SelectTrigger>
@@ -187,7 +187,7 @@ export default function CreateListingPage({
                 placeholder="Detailed product description..."
                 required
                 value={formData.description}
-                onChange={(e) =>
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
               />

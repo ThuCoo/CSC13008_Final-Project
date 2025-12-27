@@ -1,7 +1,7 @@
 // import { useState } from "react";
-import Header from "@/components/Header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Header from "../components/Header";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +9,11 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+} from "../components/ui/dialog";
+import { Textarea } from "../components/ui/textarea";
 import { Gavel, DollarSign, Plus, Eye, Edit } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { Button } from "../components/ui/button";
 import { Listing } from "../context/ListingsContext";
 import { User } from "../context/user";
 
@@ -155,7 +155,7 @@ export default function SellerDashboardPage({
                       </p>
                       <Textarea
                         value={appendDesc}
-                        onChange={(e) => setAppendDesc(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setAppendDesc(e.target.value)}
                         placeholder="Enter new details..."
                       />
                       <DialogFooter>

@@ -1,8 +1,8 @@
-import Header from "@/components/Header";
+import Header from "../components/Header";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { Button } from "../components/ui/button";
 import { Heart, Trash2 } from "lucide-react";
-import { Listing } from "@/context/ListingsContext";
+import { Listing } from "../context/ListingsContext";
 
 interface WatchlistPageProps {
   user: any;

@@ -1,6 +1,6 @@
-import Header from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Header from "../components/Header";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import {
   Clock,
   Ban,
@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Listing, Question, Bid } from "../context/ListingsContext";
 import { formatAuctionTime, maskBidderName } from "../lib/utils";
-import AutoBidForm from "@/components/AutoBidForm";
+import AutoBidForm from "../components/AutoBidForm";
 
 // Define props for the Pure UI component
 interface AuctionDetailPageProps {
