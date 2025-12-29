@@ -1,17 +1,17 @@
-import Header from "../components/Header";
+
 import { Button } from "../components/ui/button";
 import { Link } from "react-router-dom";
 import { AlertCircle } from "lucide-react";
 
-interface PlaceholderPageProps {
+interface PlaceholderProps {
   title: string;
   description: string;
 }
 
-export default function PlaceholderPage({ title, description }: PlaceholderPageProps) {
+export default function Placeholder({ title, description }: PlaceholderProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <Header />
+
 
       <div className="max-w-2xl mx-auto px-4 py-16">
         <div className="bg-white rounded-xl border border-border p-12 text-center">

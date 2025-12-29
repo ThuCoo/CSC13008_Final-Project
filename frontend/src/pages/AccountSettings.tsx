@@ -1,5 +1,6 @@
 import { useState } from "react";
-import Header from "../components/Header";
+import { useUser } from "../context/UserContext";
+import { useListings } from "../context/ListingsContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -12,7 +13,7 @@ import {
   DialogTrigger,
 } from "../components/ui/dialog";
 import { Textarea } from "../components/ui/textarea";
-import { useToast } from "../components/ui/use-toast";
+import { useToast } from "../hooks/use-toast";
 import {
   Card,
   CardContent,
@@ -21,7 +22,7 @@ import {
   CardDescription,
 } from "../components/ui/card";
 import {
-  User as UserIcon,
+  User,
   Lock,
   Calendar,
   MapPin,
@@ -29,7 +30,6 @@ import {
   ThumbsUp,
   ThumbsDown,
 } from "lucide-react";
-import { Listing } from "../context/ListingsContext";
 
 export interface User {
   id: string;
@@ -41,32 +41,9 @@ export interface User {
   totalReviews: number;
 }
 
-interface AccountSettingsPageProps {
-  user: User | null;
-  activeBids: Listing[];
-  wonItems: Listing[];
-  onUpdateProfile: (data: {
-    name: string;
-    email: string;
-    birthday: string;
-    address: string;
-  }) => void;
-  onChangePassword: (
-    currentPass: string,
-    newPass: string,
-    confirmPass: string
-  ) => void;
-  onRateSeller: (listingId: string, rating: 1 | -1, comment: string) => void;
-}
-
-export default function AccountSettingsPage({
-  user,
-  activeBids,
-  wonItems,
-  onUpdateProfile,
-  onChangePassword,
-  onRateSeller,
-}: AccountSettingsPageProps) {
+export default function AccountSettings() {
+  const { user, updateProfile } = useUser();
+  const { listings, getActiveBiddingListings } = useListings();
   const { toast } = useToast();
 
   // Profile State
@@ -85,20 +62,46 @@ export default function AccountSettingsPage({
 
   if (!user) return null;
 
+  // Get items user is currently bidding on
+  const myActiveBids = getActiveBiddingListings(user?.id || "").filter(
+    (l) => l.status === "active",
+  );
+
+  const wonItems = listings.filter(
+    (l) =>
+      l.status === "sold" &&
+      l.bids.length > 0 &&
+      l.bids[0].bidderId === user.id,
+  );
+
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdateProfile({ name, email, birthday, address });
+    if (user?.id) {
+      updateProfile(user.id, { name, email, birthday, address });
+    }
+    toast({ title: "Profile Updated", description: "Information saved." });
   };
 
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
-    onChangePassword(currentPass, newPass, confirmPass);
+    if (!currentPass || newPass.length < 6 || newPass !== confirmPass) {
+      toast({
+        title: "Error",
+        description: "Check password fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({
+      title: "Password Changed",
+      description: "Using bcrypt encryption (simulated).",
+    });
     setCurrentPass("");
     setNewPass("");
     setConfirmPass("");
   };
 
-  const handleRateSellerSubmit = (listingId: string, rating: 1 | -1) => {
+  const handleRateSeller = (listingId: string, rating: 1 | -1) => {
     if (!reviewComment) {
       toast({
         title: "Comment Required",
@@ -107,13 +110,16 @@ export default function AccountSettingsPage({
       });
       return;
     }
-    onRateSeller(listingId, rating, reviewComment);
+    // Submit review
+    toast({
+      title: rating === 1 ? "Rated Positive (+1)" : "Rated Negative (-1)",
+      description: `Review for listing ${listingId} submitted.`,
+    });
     setReviewComment("");
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
       <div className="max-w-5xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Account Management</h1>
 
@@ -130,7 +136,7 @@ export default function AccountSettingsPage({
             <Card>
               <CardHeader>
                 <CardTitle className="flex gap-2">
-                  <UserIcon className="w-5 h-5" /> Personal Info
+                  <User className="w-5 h-5" /> Personal Info
                 </CardTitle>
                 <CardDescription>Update your personal details.</CardDescription>
               </CardHeader>
@@ -238,12 +244,12 @@ export default function AccountSettingsPage({
           <TabsContent value="bidding">
             <div className="space-y-4">
               <h2 className="text-xl font-bold mb-4">Active Biddings</h2>
-              {activeBids.length === 0 ? (
+              {myActiveBids.length === 0 ? (
                 <p className="text-muted-foreground">
                   You are not bidding on any active items.
                 </p>
               ) : (
-                activeBids.map((l) => (
+                myActiveBids.map((l) => (
                   <Card key={l.id}>
                     <CardContent className="p-4 flex justify-between items-center">
                       <div>
@@ -254,8 +260,8 @@ export default function AccountSettingsPage({
                       </div>
                       <div className="text-right">
                         <p className="text-sm">Current Price</p>
-                        <p className="text-xl font-bold text-blue-600">
-                          ${l.currentBid}
+                        <p className="text-xl font-bold text-rose-600">
+                          {l.currentBid.toLocaleString()}₫
                         </p>
                         {l.bids[0]?.bidderId === user?.id ? (
                           <span className="text-xs text-green-600 font-bold bg-green-100 px-2 py-1 rounded">
@@ -287,7 +293,7 @@ export default function AccountSettingsPage({
                       <div>
                         <h3 className="font-bold text-lg">{l.title}</h3>
                         <p className="text-green-600 font-bold">
-                          Won at ${l.currentBid}
+                          Won at {l.currentBid.toLocaleString()}₫
                         </p>
                         <p className="text-sm text-slate-500">
                           Seller: {l.sellerName}
@@ -312,23 +318,19 @@ export default function AccountSettingsPage({
                             <Textarea
                               placeholder="Write your review here (Required)..."
                               value={reviewComment}
-                               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReviewComment(e.target.value)}
+                              onChange={(e) => setReviewComment(e.target.value)}
                             />
                             <div className="flex gap-2 justify-end">
                               <Button
                                 variant="destructive"
-                                onClick={() =>
-                                  handleRateSellerSubmit(l.id, -1)
-                                }
+                                onClick={() => handleRateSeller(l.id, -1)}
                               >
                                 <ThumbsDown className="w-4 h-4 mr-2" /> -1
                                 Negative
                               </Button>
                               <Button
                                 className="bg-green-600 hover:bg-green-700"
-                                onClick={() =>
-                                  handleRateSellerSubmit(l.id, 1)
-                                }
+                                onClick={() => handleRateSeller(l.id, 1)}
                               >
                                 <ThumbsUp className="w-4 h-4 mr-2" /> +1
                                 Positive

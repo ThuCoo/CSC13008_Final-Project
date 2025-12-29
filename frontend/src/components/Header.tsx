@@ -67,7 +67,7 @@ export default function Header() {
             </Link>
 
             <Link
-              to="/selling"
+              to="/become-seller"
               className="text-gray-600 hover:text-rose-700 font-medium text-sm flex items-center gap-1 hover:font-bold transition"
             >
               <ShoppingBag className="w-4 h-4" /> Sell
@@ -89,7 +89,7 @@ export default function Header() {
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full hover:bg-gray-200 transition"
                 >
-                  <div className="w-6 h-6 bg-blue-600 rounded-full text-white flex items-center justify-center text-xs font-bold">
+                  <div className="w-6 h-6 bg-rose-600 rounded-full text-white flex items-center justify-center text-xs font-bold">
                     {user.avatar}
                   </div>
                   <span className="text-sm font-medium text-gray-700">
@@ -186,7 +186,7 @@ export default function Header() {
                     <SquareMousePointer className="w-5 h-5" /> Browse
                   </Link>
                   <Link
-                    to="/selling"
+                    to="/become-seller"
                     className="text-gray-600 hover:text-rose-700 font-medium text-lg flex items-center gap-2 hover:font-bold transition"
                   >
                     <ShoppingBag className="w-5 h-5" /> Sell
@@ -203,7 +203,7 @@ export default function Header() {
                     {user ? (
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-blue-600 rounded-full text-white flex items-center justify-center text-sm font-bold">
+                          <div className="w-8 h-8 bg-rose-600 rounded-full text-white flex items-center justify-center text-sm font-bold">
                             {user.avatar}
                           </div>
                           <div>

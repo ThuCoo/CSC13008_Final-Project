@@ -1,25 +1,24 @@
-import Header from "../components/Header";
+
+import { useUser } from "../context/UserContext";
+import { useWatchlist } from "../context/WatchlistContext";
+import { useListings } from "../context/ListingsContext";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Heart, Trash2 } from "lucide-react";
-import { Listing } from "../context/ListingsContext";
 
-interface WatchlistPageProps {
-  user: any;
-  watchlistItems: Listing[];
-  onRemove: (itemId: string) => void;
-}
+export default function Watchlist() {
+  const { user } = useUser();
+  const { getUserWatchlist, removeFromWatchlist } = useWatchlist();
+  const { getListingById } = useListings();
 
-export default function WatchlistPage({
-  user,
-  watchlistItems,
-  onRemove,
-}: WatchlistPageProps) {
   if (!user) return null;
+
+  const watchlistItems = getUserWatchlist(user.id)
+    .map((id) => getListingById(id))
+    .filter(Boolean);
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
       <div className="max-w-4xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">
           <Heart className="text-red-500 fill-current" /> My Watchlist
@@ -45,13 +44,13 @@ export default function WatchlistPage({
                         {item.title}
                       </Link>
                       <p className="text-primary font-bold">
-                        ${item.currentBid}
+                        {item.currentBid.toLocaleString()}₫
                       </p>
                     </div>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => onRemove(item.id)}
+                      onClick={() => removeFromWatchlist(item.id, user.id)}
                     >
                       <Trash2 className="w-5 h-5" />
                     </Button>

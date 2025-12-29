@@ -18,7 +18,7 @@ export default function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 font-bold text-xl text-white">
               <Gavel className="w-6 h-6 text-rose-500" />
-              <span>AuctionHub</span>
+              <span>eBid</span>
             </div>
             <p className="text-sm leading-relaxed text-slate-400">
               The premier online destination for unique collectibles,
@@ -110,18 +110,18 @@ export default function Footer() {
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-rose-500 shrink-0" />
                 <span>
-                  123 Auction Street,
+                  227 Nguyen Van Cu
                   <br />
-                  Tech City, TC 90210
+                  Ho Chi Minh City
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-5 h-5 text-rose-500 shrink-0" />
-                <span>+1 (555) 123-4567</span>
+                <span>23127119</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-rose-500 shrink-0" />
-                <span>support@auctionhub.com</span>
+                <span>support@eBid.com</span>
               </li>
             </ul>
           </div>
@@ -132,7 +132,7 @@ export default function Footer() {
       <div className="border-t border-slate-800 bg-slate-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
           <p>
-            &copy; {new Date().getFullYear()} AuctionHub. All rights reserved.
+            &copy; {new Date().getFullYear()} eBid. All rights reserved.
           </p>
           <div className="flex gap-6">
             <a href="#" className="hover:text-white transition">

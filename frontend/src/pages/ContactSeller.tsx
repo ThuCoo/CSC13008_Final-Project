@@ -1,27 +1,37 @@
-import Header from "../components/Header";
+import { useState } from "react";
+
+import { useParams, useNavigate } from "react-router-dom";
+import { useListings } from "../context/ListingsContext";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
+import { useToast } from "../hooks/use-toast";
 import { Mail } from "lucide-react";
-import { Listing } from "../context/ListingsContext";
 
-interface ContactSellerPageProps {
-  listing: Listing | undefined;
-  message: string;
-  setMessage: (val: string) => void;
-  onSend: () => void;
-}
+export default function ContactSeller() {
+  const { id } = useParams();
+  const { getListingById } = useListings();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [message, setMessage] = useState("");
 
-export default function ContactSellerPage({
-  listing,
-  message,
-  setMessage,
-  onSend,
-}: ContactSellerPageProps) {
+  const listing = getListingById(id || "");
+
+  const handleSend = () => {
+    if (!message) return;
+    // Simulate email with link
+    toast({
+      title: "Question Sent",
+      description: `Email sent to ${listing?.sellerName} with a link to reply.`,
+    });
+    setMessage("");
+    setTimeout(() => navigate(-1), 1500);
+  };
+
   if (!listing) return <div className="p-8">Listing not found</div>;
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="bg-white p-8 rounded-xl border shadow-sm">
           <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">
@@ -36,7 +46,7 @@ export default function ContactSellerPage({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />
-          <Button onClick={onSend} className="w-full">
+          <Button onClick={handleSend} className="w-full">
             Send Question
           </Button>
         </div>

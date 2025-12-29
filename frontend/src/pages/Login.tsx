@@ -1,35 +1,86 @@
-import Header from "../components/Header";
+
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock } from "lucide-react";
+import { useState } from "react";
+import { useUser } from "../context/UserContext";
+import { useToast } from "../hooks/use-toast";
 
-interface LoginPageProps {
-  formData: any;
-  isLoading: boolean;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSubmit: (e: React.FormEvent) => void;
-  onDemoLogin: (email: string, pass: string) => void;
-}
+export default function Login() {
+  const navigate = useNavigate();
+  const { login } = useUser();
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
-export default function LoginPage({
-  formData,
-  isLoading,
-  onChange,
-  onSubmit,
-  onDemoLogin,
-}: LoginPageProps) {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.email || !formData.password) {
+      toast({
+        title: "Error",
+        description: "Please enter your email and password",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const success = await login(formData.email, formData.password);
+      if (!success) throw new Error("Invalid credentials");
+      toast({ title: "Success", description: "Logged in successfully!" });
+      navigate("/");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to log in",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const success = await login(email, password);
+      if (!success) throw new Error("Demo login failed");
+      toast({ title: "Success", description: `Logged in as ${email}` });
+      navigate("/");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log in",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+
       <div className="max-w-md mx-auto px-4 py-16 sm:py-24">
         <div className="bg-white rounded-xl border border-border p-8 shadow-sm">
           <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
           <p className="text-muted-foreground mb-8">
-            Sign in to your AuctionHub account
+            Sign in to your eBid account
           </p>
 
-          <form className="space-y-4 mb-6" onSubmit={onSubmit}>
+          <form className="space-y-4 mb-6" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium mb-2">
                 Email Address
@@ -38,11 +89,11 @@ export default function LoginPage({
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="you..example.com"
                   className="pl-10"
                   name="email"
                   value={formData.email}
-                  onChange={onChange}
+                  onChange={handleChange}
                   disabled={isLoading}
                 />
               </div>
@@ -57,7 +108,7 @@ export default function LoginPage({
                   className="pl-10"
                   name="password"
                   value={formData.password}
-                  onChange={onChange}
+                  onChange={handleChange}
                   disabled={isLoading}
                 />
               </div>
@@ -83,34 +134,34 @@ export default function LoginPage({
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-8">
-          <p className="text-sm text-blue-900 mb-3">
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 mt-8">
+          <p className="text-sm text-rose-900 mb-3">
             <strong>Demo Accounts:</strong>
           </p>
           <div className="space-y-2">
             <button
               onClick={() =>
-                onDemoLogin("buyer@example.com", "password123")
+                handleDemoLogin("buyer@example.com", "password123")
               }
-              className="w-full text-left text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded transition"
+              className="w-full text-left text-xs px-2 py-1 bg-rose-100 hover:bg-rose-200 rounded transition"
             >
-            Buyer
+              Buyer
             </button>
             <button
               onClick={() =>
-                onDemoLogin("seller@example.com", "password123")
+                handleDemoLogin("seller@example.com", "password123")
               }
-              className="w-full text-left text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded transition"
+              className="w-full text-left text-xs px-2 py-1 bg-rose-100 hover:bg-rose-200 rounded transition"
             >
-            Seller
+              Seller
             </button>
             <button
               onClick={() =>
-                onDemoLogin("admin@example.com", "password123")
+                handleDemoLogin("admin@example.com", "password123")
               }
-              className="w-full text-left text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded transition"
+              className="w-full text-left text-xs px-2 py-1 bg-rose-100 hover:bg-rose-200 rounded transition"
             >
-            Admin
+              Admin
             </button>
           </div>
         </div>

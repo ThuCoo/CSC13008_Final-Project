@@ -1,30 +1,57 @@
-import Header from "../components/Header";
+import { useState } from "react";
+
+import { useUser } from "../context/UserContext";
+import { useListings } from "../context/ListingsContext";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { TrendingUp } from "lucide-react";
-import { Listing } from "../context/ListingsContext";
+import { useToast } from "../hooks/use-toast";
 
-interface SalesHistoryPageProps {
-  user: any;
-  sales: Listing[];
-  orderSteps: Record<string, number>;
-  onAdvanceOrderStep: (id: string, currentStep: number) => void;
-  onCancelTransaction: (id: string) => void;
-}
+export default function SalesHistory() {
+  const { user } = useUser();
+  const { getSellerListings } = useListings();
+  const { toast } = useToast();
 
-export default function SalesHistoryPage({
-  user,
-  sales,
-  orderSteps,
-  onAdvanceOrderStep,
-  onCancelTransaction,
-}: SalesHistoryPageProps) {
+  // Mock State for Order Workflow (1: Pending, 2: Shipped, 3: Rated, -1: Cancelled)
+  const [orderSteps, setOrderSteps] = useState<Record<string, number>>({});
+
   if (!user || user.type !== "seller") return null;
+
+  const sales = getSellerListings(user.id).filter((l) => l.status === "sold");
+
+  const handleCancelTransaction = (id: string) => {
+    setOrderSteps((prev) => ({ ...prev, [id]: -1 }));
+    toast({
+      title: "Transaction Cancelled",
+      description: "Buyer has been automatically rated -1. ",
+      variant: "destructive",
+    });
+  };
+
+  const advanceOrderStep = (id: string, currentStep: number) => {
+    setOrderSteps((prev) => ({ ...prev, [id]: currentStep + 1 }));
+
+    if (currentStep === 0)
+      toast({
+        title: "Payment Confirmed",
+        description: "Invoice sent to buyer.",
+      });
+    if (currentStep === 1)
+      toast({
+        title: "Item Shipped",
+        description: "Waiting for buyer receipt.",
+      });
+    if (currentStep === 2)
+      toast({
+        title: "Delivery Confirmed",
+        description: "Buyer received item.",
+      });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+
       <div className="max-w-5xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">
           <TrendingUp className="text-green-600" /> Sales History & Fulfillment
@@ -61,7 +88,7 @@ export default function SalesHistoryPage({
                           Winning Bid
                         </p>
                         <p className="text-2xl font-bold text-green-600">
-                          ${sale.currentBid}
+                          {sale.currentBid.toLocaleString()}₫
                         </p>
                       </div>
                       <div>
@@ -70,7 +97,6 @@ export default function SalesHistoryPage({
                       </div>
                     </div>
 
-                    {/* Updated Workflow UI */}
                     <div className="mt-4 border-t pt-4">
                       <div className="flex items-center gap-2 mb-4 text-sm font-medium">
                         <span
@@ -116,16 +142,17 @@ export default function SalesHistoryPage({
 
                       {currentStep !== -1 && currentStep < 4 && (
                         <div className="flex gap-3">
+                          {/* Only show buttons relevant to Seller actions */}
                           {currentStep === 0 && (
                             <Button
-                              onClick={() => onAdvanceOrderStep(sale.id, 0)}
+                              onClick={() => advanceOrderStep(sale.id, 0)}
                             >
                               Confirm Payment
                             </Button>
                           )}
                           {currentStep === 1 && (
                             <Button
-                              onClick={() => onAdvanceOrderStep(sale.id, 1)}
+                              onClick={() => advanceOrderStep(sale.id, 1)}
                             >
                               Mark Shipped
                             </Button>
@@ -139,9 +166,9 @@ export default function SalesHistoryPage({
                           <Button
                             variant="destructive"
                             className="ml-auto"
-                            onClick={() => onCancelTransaction(sale.id)}
+                            onClick={() => handleCancelTransaction(sale.id)}
                           >
-                            Cancel & Rate -1 [cite: 243]
+                            Cancel & Rate -1
                           </Button>
                         </div>
                       )}

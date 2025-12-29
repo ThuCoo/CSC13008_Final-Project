@@ -1,4 +1,8 @@
-import Header from "../components/Header";
+import { useState } from "react";
+
+import { useUser } from "../context/UserContext";
+import { useListings } from "../context/ListingsContext";
+import { useCategories } from "../context/CategoriesContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
@@ -11,70 +15,123 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Checkbox } from "../components/ui/checkbox";
+import { useToast } from "../hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import { Upload, DollarSign, Image as ImageIcon, Type } from "lucide-react";
-import { Category } from "../context/CategoriesContext";
 
-interface CreateListingPageProps {
-  formData: {
-    title: string;
-    description: string;
-    category: string;
-    startingPrice: string;
-    stepPrice: string;
-    buyNowPrice: string;
-    shippingCost: string;
-    autoExtend: boolean;
-  };
-  setFormData: (data: CreateListingPageProps["formData"]) => void;
-  images: string[];
-  setImages: (images: string[]) => void;
-  categories: Category[];
-  onSubmit: (e: React.FormEvent) => void;
-  onAddMockImage: () => void;
-  onNavigateBecomeSeller: () => void;
-  isSellerApproved: boolean;
-}
+export default function CreateListing() {
+  const { user } = useUser();
+  const { createListing } = useListings();
+  const { categories } = useCategories();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-export default function CreateListingPage({
-  formData,
-  setFormData,
-  images,
-  setImages,
-  categories,
-  onSubmit,
-  onAddMockImage,
-  onNavigateBecomeSeller,
-  isSellerApproved,
-}: CreateListingPageProps) {
-  if (!isSellerApproved) {
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "",
+    startingPrice: "",
+    stepPrice: "50",
+    buyNowPrice: "",
+    shippingCost: "0",
+    autoExtend: true,
+  });
+
+  const [images, setImages] = useState<string[]>([]);
+
+  const hasAccess = user && user.type === "seller" && user.sellerApproved;
+
+  if (!hasAccess) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header />
-        <div className="max-w-md mx-auto mt-20 p-8 bg-white rounded-xl text-center shadow-sm">
-          <h2 className="text-2xl font-bold mb-4">Seller Access Required</h2>
-          <p className="text-muted-foreground mb-6">
-            You must be an approved seller to create listings.
-          </p>
-          <Button onClick={onNavigateBecomeSeller}>
-            Become a Seller
-          </Button>
-        </div>
+         {/* Dialog for Seller Access */}
+         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 text-center space-y-4">
+              <h2 className="text-2xl font-bold">Seller Access Required</h2>
+              <p className="text-muted-foreground">
+                You must be an approved seller to create listings.
+              </p>
+              <div className="flex justify-center gap-4">
+                 <Button variant="outline" onClick={() => navigate("/")}>
+                   Back to Home
+                 </Button>
+                 <Button onClick={() => navigate("/become-seller")}>
+                   Become a Seller
+                 </Button>
+              </div>
+            </div>
+         </div>
       </div>
     );
   }
 
+  const handleAddMockImage = () => {
+    const colors = ["red", "blue", "green", "purple", "orange"];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const newImage = `https://placehold.co/600x400/${randomColor}/white?text=Item+Image+${images.length + 1}`;
+    setImages([...images, newImage]);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (images.length < 3) {
+      toast({
+        title: "Validation Error",
+        description: "Please upload at least 3 images for your product.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      createListing({
+        sellerId: user.id,
+        sellerName: user.name,
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        categories: [formData.category],
+        startingPrice: parseFloat(formData.startingPrice),
+        shippingCost: parseFloat(formData.shippingCost),
+        returns: "No Returns",
+        images: images,
+        condition: "New",
+        imageColor: "from-rose-400 to-rose-600",
+        endsAt: Date.now() + 3 * 24 * 60 * 60 * 1000,
+        stepPrice: parseFloat(formData.stepPrice),
+        buyNowPrice: formData.buyNowPrice
+          ? parseFloat(formData.buyNowPrice)
+          : undefined,
+
+      });
+
+      toast({
+        title: "Success",
+        description: "Auction listing published successfully!",
+      });
+      navigate("/seller-dashboard");
+    } catch (e) {
+      toast({
+        title: "Error",
+        description: "Failed to create listing",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+
       <div className="max-w-3xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Create New Listing</h1>
 
         <form
-          onSubmit={onSubmit}
+          onSubmit={handleSubmit}
           className="bg-white p-8 rounded-xl border shadow-sm space-y-6"
         >
           <div className="space-y-2">
-            <Label>Product Name [cite: 230]</Label>
+            <Label>Product Name</Label>
             <Input
               required
               placeholder="e.g. Vintage Camera Lens"
@@ -89,7 +146,7 @@ export default function CreateListingPage({
             <div className="space-y-2">
               <Label>Category</Label>
               <Select
-                onValueChange={(v: string) => setFormData({ ...formData, category: v })}
+                onValueChange={(v) => setFormData({ ...formData, category: v })}
                 required
               >
                 <SelectTrigger>
@@ -105,7 +162,7 @@ export default function CreateListingPage({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Starting Price ($) [cite: 232]</Label>
+              <Label>Starting Price ($)</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <Input
@@ -125,7 +182,7 @@ export default function CreateListingPage({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label>Step Price ($) [cite: 233]</Label>
+              <Label>Step Price ($)</Label>
               <Input
                 type="number"
                 required
@@ -137,7 +194,7 @@ export default function CreateListingPage({
               />
             </div>
             <div className="space-y-2">
-              <Label>Buy Now Price ($) (Optional) [cite: 234]</Label>
+              <Label>Buy Now Price ($) (Optional)</Label>
               <Input
                 type="number"
                 min="0"
@@ -153,7 +210,7 @@ export default function CreateListingPage({
             <Checkbox
               id="autoExtend"
               checked={formData.autoExtend}
-              onCheckedChange={(c: boolean | "indeterminate") =>
+              onCheckedChange={(c) =>
                 setFormData({ ...formData, autoExtend: c as boolean })
               }
             />
@@ -187,7 +244,7 @@ export default function CreateListingPage({
                 placeholder="Detailed product description..."
                 required
                 value={formData.description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
               />
@@ -201,7 +258,7 @@ export default function CreateListingPage({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={onAddMockImage}
+                onClick={handleAddMockImage}
               >
                 <Upload className="w-4 h-4 mr-2" /> Add Image
               </Button>

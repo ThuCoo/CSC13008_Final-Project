@@ -14,7 +14,6 @@ interface AutoBidFormProps {
 export default function AutoBidForm({
   listingId,
   userId,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   currentBid: _currentBid,
   minBid,
 }: AutoBidFormProps) {
@@ -23,9 +22,9 @@ export default function AutoBidForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would call an API/Context to set auto-bid
+    // Future: call an API/Context to set auto-bid
     console.log("Set auto-bid:", { listingId, userId, maxBid, enabled });
-    alert(`Auto-bid set to max $${maxBid}`);
+    alert(`Auto-bid set to max ${maxBid.toLocaleString()}₫`);
   };
 
   return (
@@ -48,7 +47,7 @@ export default function AutoBidForm({
             <Input
               id="max-bid"
               type="number"
-              placeholder={`Max Limit > $${minBid}`}
+              placeholder={`Max Limit > ${minBid.toLocaleString()}₫`}
               value={maxBid}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMaxBid(e.target.value)}
               min={minBid}

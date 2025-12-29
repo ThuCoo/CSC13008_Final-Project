@@ -114,7 +114,7 @@ export function BiddingRulesProvider({ children }: { children: React.ReactNode }
     if (bidAmount < minimumBid) {
       return {
         valid: false,
-        message: `Bid must be at least $${minimumBid.toFixed(2)}`,
+        message: `Bid must be at least ${minimumBid.toLocaleString()}₫`,
       };
     }
 

@@ -1,30 +1,54 @@
-// import { useState } from "react";
-import Header from "../components/Header";
+import { useState } from "react";
+import { useUser } from "../context/UserContext";
+import { useSellerRequests } from "../context/SellerRequestsContext";
+
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { ShieldCheck, AlertCircle } from "lucide-react";
+import { useToast } from "../hooks/use-toast";
 
-interface BecomeSellerPageProps {
-  user: any;
-  existingRequest: any;
-  formData: { businessName: string; businessDescription: string };
-  setFormData: (val: any) => void;
-  onSubmit: (e: React.FormEvent) => void;
-}
+export default function BecomeSeller() {
+  const { user } = useUser();
+  const { createSellerRequest, getRequestByUserId } = useSellerRequests();
+  const { toast } = useToast();
 
-export default function BecomeSellerPage({
-  user,
-  existingRequest,
-  formData,
-  setFormData,
-  onSubmit,
-}: BecomeSellerPageProps) {
-  if (!user) return null;
+  const [formData, setFormData] = useState({
+    businessName: "",
+    businessDescription: "",
+  });
+
+  if (!user) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <div className="text-center p-8 bg-white rounded-xl border shadow-sm max-w-md">
+                <h2 className="text-2xl font-bold mb-4">Sign in Required</h2>
+                <p className="mb-6 text-muted-foreground">You need to log in to apply as a seller.</p>
+                <Button asChild>
+                    <a href="/login">Go to Login</a>
+                </Button>
+            </div>
+        </div>
+    );
+  }
+
+  const existingRequest = getRequestByUserId(user.id);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createSellerRequest({
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+      businessName: formData.businessName,
+      businessDescription: formData.businessDescription,
+    });
+    toast({ title: "Request Submitted" });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+
       <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="bg-white border rounded-xl p-8 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
@@ -42,7 +66,7 @@ export default function BecomeSellerPage({
               </p>
             </div>
           ) : (
-            <form onSubmit={onSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="bg-blue-50 p-4 rounded-md flex gap-3 text-sm text-blue-800">
                 <AlertCircle className="w-5 h-5" />
                 <p>

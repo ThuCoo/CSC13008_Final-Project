@@ -1,9 +1,10 @@
-import Header from "../components/Header";
+
 import { Button } from "../components/ui/button";
 import { Link } from "react-router-dom";
 import { Upload, Zap, TrendingUp, Users } from "lucide-react";
+import { useUser } from "../context/UserContext";
 
-export const sellingSteps = [
+const sellingSteps = [
   {
     icon: Upload,
     title: "Create Listing",
@@ -26,20 +27,18 @@ export const sellingSteps = [
   },
 ];
 
-interface SellingPageProps {
-  user: any;
-}
+export default function Selling() {
+  const { user } = useUser();
 
-export default function SellingPage({ user }: SellingPageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <Header />
+
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div>
             <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
-              Start Selling on <span className="text-primary">AuctionHub</span>
+              Start Selling on <span className="text-primary">eBid</span>
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
               Reach millions of buyers and get the best prices for your items. Our auction format ensures competitive bidding that maximizes your value.
@@ -88,7 +87,7 @@ export default function SellingPage({ user }: SellingPageProps) {
       </section>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <h2 className="text-4xl font-bold mb-12">Why Sellers Choose AuctionHub</h2>
+        <h2 className="text-4xl font-bold mb-12">Why Sellers Choose eBid</h2>
         <div className="grid md:grid-cols-3 gap-8">
           {[
             { title: "Higher Prices", desc: "Auctions typically get 20-30% more than fixed pricing" },
@@ -107,11 +106,11 @@ export default function SellingPage({ user }: SellingPageProps) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-bold text-white mb-4">Start Your First Auction Today</h2>
           <p className="text-xl text-white/90 mb-8">
-            Join thousands of successful sellers earning more on AuctionHub
+            Join thousands of successful sellers earning more on eBid
           </p>
           <Button asChild size="lg" className="text-base" variant="secondary">
             <Link to={user ? "/create-listing" : "/login"}>
-               {user ? "Create Listing" : "Create Seller Account"}
+              {user ? "Create Listing" : "Create Seller Account"}
             </Link>
           </Button>
         </div>

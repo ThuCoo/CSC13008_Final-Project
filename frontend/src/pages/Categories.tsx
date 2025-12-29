@@ -1,8 +1,8 @@
-import Header from "../components/Header";
+
 import { Link } from "react-router-dom";
 import { Folder } from "lucide-react";
 
-export const CATEGORY_TREE = [
+const CATEGORY_TREE = [
   {
     name: "Electronics",
     icon: "📱",
@@ -25,10 +25,10 @@ export const CATEGORY_TREE = [
   },
 ];
 
-export default function CategoriesPage() {
+export default function Categories() {
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+
       <div className="max-w-7xl mx-auto px-4 py-12">
         <h1 className="text-3xl font-bold mb-8 text-center text-slate-900">
           All Categories
@@ -45,7 +45,7 @@ export default function CategoriesPage() {
                 <h2 className="text-xl font-bold text-slate-800">
                   <Link
                     to={`/browse?cat=${cat.name}`}
-                    className="hover:text-blue-600"
+                    className="hover:text-rose-600"
                   >
                     {cat.name}
                   </Link>
@@ -56,7 +56,7 @@ export default function CategoriesPage() {
                   <li key={sub}>
                     <Link
                       to={`/browse?cat=${cat.name}&sub=${sub}`}
-                      className="text-slate-600 hover:text-blue-600 flex items-center gap-2"
+                      className="text-slate-600 hover:text-rose-600 flex items-center gap-2"
                     >
                       <Folder className="w-4 h-4 text-slate-400" /> {sub}
                     </Link>

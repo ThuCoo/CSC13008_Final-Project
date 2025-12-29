@@ -1,5 +1,9 @@
 import { useState } from "react";
-import Header from "../components/Header";
+
+import { useSellerRequests } from "../context/SellerRequestsContext";
+import { useUser } from "../context/UserContext";
+import { useListings } from "../context/ListingsContext";
+import { useCategories } from "../context/CategoriesContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -11,69 +15,94 @@ import {
   Plus,
   ArrowLeft,
   User as UserIcon,
-} from "lucide-react";
-import { Listing } from "../context/ListingsContext";
-import { SellerRequest } from "../context/SellerRequestsContext";
-import { Category } from "../context/CategoriesContext";
+} from "lucide-react"; // Added ArrowLeft, UserIcon
+import { useToast } from "../hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  type: string;
-  status?: string;
-}
+// Mock Users for Admin Management (Since UserContext doesn't hold all users)
+const MOCK_ALL_USERS = [
+  {
+    id: "1",
+    name: "John Buyer",
+    email: "buyer..example.com",
+    type: "buyer",
+    status: "active",
+  },
+  {
+    id: "2",
+    name: "Jane Seller",
+    email: "seller..example.com",
+    type: "seller",
+    status: "active",
+  },
+  {
+    id: "3",
+    name: "Bad Actor",
+    email: "bad..example.com",
+    type: "buyer",
+    status: "banned",
+  },
+];
 
-interface AdminDashboardPageProps {
-  user: { type: string; id: string } | null;
-  requests: SellerRequest[];
-  listings: Listing[];
-  categories: Category[];
-  users: User[];
-  onApproveRequest: (id: string) => void;
-  onRejectRequest: (id: string) => void;
-  onDeleteListing: (id: string) => void;
-  onAddCategory: (name: string) => void;
-  onDeleteCategory: (id: string, name: string) => void;
-  onBanUser: (id: string) => void;
-  onDeleteUser: (id: string) => void;
-  onNavigateHome: () => void;
-  onNavigateBack: () => void;
-}
+export default function AdminDashboard() {
+  const { user } = useUser();
+  const { requests, approveRequest, rejectRequest } = useSellerRequests();
+  const { listings, deleteListing } = useListings();
+  const { categories, addCategory, deleteCategory } = useCategories();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-export default function AdminDashboardPage({
-  user,
-  requests,
-  listings,
-  categories,
-  users,
-  onApproveRequest,
-  onRejectRequest,
-  onDeleteListing,
-  onAddCategory,
-  onDeleteCategory,
-  onBanUser,
-  onDeleteUser,
-  onNavigateHome,
-  onNavigateBack,
-}: AdminDashboardPageProps) {
   const [newCatName, setNewCatName] = useState("");
+  const [users, setUsers] = useState(MOCK_ALL_USERS); // Local state for demo
 
   if (!user || user.type !== "admin") {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center h-screen">
         <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-        <Button onClick={onNavigateHome}>Return Home</Button>
+        <Button onClick={() => navigate("/")}>Return Home</Button>
       </div>
     );
   }
 
+  const handleDeleteCategory = (id: string, name: string) => {
+    const hasProducts = listings.some(
+      (l) => l.category === name || l.categories.includes(name),
+    );
+    if (hasProducts) {
+      toast({
+        title: "Deletion Blocked",
+        description: "Cannot delete category containing active products",
+        variant: "destructive",
+      });
+      return;
+    }
+    deleteCategory(id);
+    toast({ title: "Category Deleted" });
+  };
+
+  const handleBanUser = (userId: string) => {
+    // Future: call API to ban the user
+    setUsers(
+      users.map((u) => (u.id === userId ? { ...u, status: "banned" } : u)),
+    );
+    toast({ title: "User Banned", description: "User access restricted" });
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    // Future: Remove user
+    setUsers(users.filter((u) => u.id !== userId));
+    toast({
+      title: "User Deleted",
+      description: "Account removed permanently",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="icon" onClick={onNavigateBack}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -116,14 +145,22 @@ export default function AdminDashboardPage({
                         <Button
                           size="sm"
                           className="bg-green-600"
-                          onClick={() => onApproveRequest(req.id)}
+                          onClick={() => {
+                            approveRequest(req.id, user.id);
+                            toast({
+                              title: "Approved",
+                              description: "User is now a seller",
+                            });
+                          }}
                         >
                           <Check className="w-4 h-4 mr-1" /> Approve
                         </Button>
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => onRejectRequest(req.id)}
+                          onClick={() =>
+                            rejectRequest(req.id, user.id, "Admin Rejected")
+                          }
                         >
                           <X className="w-4 h-4 mr-1" /> Reject
                         </Button>
@@ -170,7 +207,7 @@ export default function AdminDashboardPage({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onBanUser(u.id)}
+                        onClick={() => handleBanUser(u.id)}
                       >
                         Ban
                       </Button>
@@ -179,7 +216,7 @@ export default function AdminDashboardPage({
                       variant="ghost"
                       size="icon"
                       className="text-red-500 hover:bg-red-50"
-                      onClick={() => onDeleteUser(u.id)}
+                      onClick={() => handleDeleteUser(u.id)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -203,7 +240,10 @@ export default function AdminDashboardPage({
                     variant="outline"
                     size="sm"
                     className="text-red-600"
-                    onClick={() => onDeleteListing(l.id)}
+                    onClick={() => {
+                      deleteListing(l.id);
+                      toast({ title: "Listing Removed" });
+                    }}
                   >
                     <Trash2 className="w-4 h-4 mr-2" /> Remove
                   </Button>
@@ -218,12 +258,13 @@ export default function AdminDashboardPage({
                 <Input
                   placeholder="New Category Name"
                   value={newCatName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCatName(e.target.value)}
+                  onChange={(e) => setNewCatName(e.target.value)}
                 />
                 <Button
                   onClick={() => {
-                    onAddCategory(newCatName);
+                    addCategory(newCatName, "Desc", "📦");
                     setNewCatName("");
+                    toast({ title: "Category Added" });
                   }}
                 >
                   <Plus className="w-4 h-4 mr-2" /> Add
@@ -239,7 +280,7 @@ export default function AdminDashboardPage({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => onDeleteCategory(cat.id, cat.name)}
+                      onClick={() => handleDeleteCategory(cat.id, cat.name)}
                     >
                       <Trash2 className="w-4 h-4 text-slate-400" />
                     </Button>

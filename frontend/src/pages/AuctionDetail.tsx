@@ -1,64 +1,83 @@
-import Header from "../components/Header";
+import { useState } from "react";
+
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import {
-  Clock,
-  Ban,
-  MessageCircle,
-  ArrowLeft,
-} from "lucide-react";
-import { Listing, Question, Bid } from "../context/ListingsContext";
-import { formatAuctionTime, maskBidderName } from "../lib/utils";
+import { useNavigate, Link, useParams } from "react-router-dom";
+import { Clock, Ban, MessageCircle, ArrowLeft } from "lucide-react";
+import { maskBidderName, formatAuctionTime } from "../lib/utils";
 import AutoBidForm from "../components/AutoBidForm";
+import { useListings } from "../context/ListingsContext";
+import { useUser } from "../context/UserContext";
+import { useToast } from "../hooks/use-toast";
+import NotFound from "./NotFound";
 
-// Define props for the Pure UI component
-interface AuctionDetailPageProps {
-  listing: Listing | undefined;
-  user: { id: string; name: string } | null;
-  relatedProducts: Listing[];
-  isSeller: boolean;
-  bidAmount: string;
-  setBidAmount: (val: string) => void;
-  questionText: string;
-  setQuestionText: (val: string) => void;
-  answerText: string;
-  setAnswerText: (val: string) => void;
-  onRejectBidder: (bidderId: string) => void;
-  onPlaceBid: (e: React.FormEvent) => void;
-  onAskQuestion: (e: React.FormEvent) => void;
-  onAnswerQuestion: (qId: string) => void;
-  onNavigateBack: () => void;
-  onNavigateLogin: () => void;
-}
+export default function AuctionDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { getListingById, placeBid, getListingsByCategory, addQuestion, answerQuestion, rejectBidder } = useListings();
+  const { user } = useUser();
 
-export default function AuctionDetailPage({
-  listing,
-  user,
-  relatedProducts,
-  isSeller,
-  bidAmount,
-  setBidAmount,
-  questionText,
-  setQuestionText,
-  answerText,
-  setAnswerText,
-  onRejectBidder,
-  onPlaceBid,
-  onAskQuestion,
-  onAnswerQuestion,
-  onNavigateBack,
-  // onNavigateLogin,
-}: AuctionDetailPageProps) {
-  if (!listing) return <div>Not Found</div>;
+  const [bidAmount, setBidAmount] = useState("");
+  const [questionText, setQuestionText] = useState("");
+  const [answerText, setAnswerText] = useState("");
+
+  const listing = getListingById(id || "");
+
+  if (!listing) return <NotFound />;
+
+  const isSeller = user?.id === listing.sellerId;
+  const relatedProducts = listing ? getListingsByCategory(listing.category).filter(l => l.id !== listing.id).slice(0, 5) : [];
+
+  const handlePlaceBid = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    try {
+      placeBid(listing.id, user.id, user.name, Number(bidAmount));
+      toast({ title: "Bid placed successfully!" });
+      setBidAmount("");
+    } catch (error: any) {
+      toast({ title: "Failed to place bid", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleAskQuestion = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return navigate("/login");
+    addQuestion(listing.id, user.id, user.name, questionText);
+    setQuestionText("");
+    toast({ title: "Question posted" });
+  };
+
+  const handleAnswerQuestion = (qId: string) => {
+    answerQuestion(listing.id, qId, answerText);
+    setAnswerText("");
+    toast({ title: "Answer posted" });
+  };
+
+  const onNavigateBack = () => navigate(-1);
+
+  const handleRejectBidder = (bidderId: string) => {
+    if (
+      confirm(
+        "Kick this bidder? Their bids will be removed and they will be banned from this item.",
+      )
+    ) {
+      rejectBidder(listing.id, bidderId);
+      toast({ title: "Bidder rejected" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Go Back Button */}
         <Button
           variant="ghost"
-          className="mb-4 pl-0 hover:bg-transparent hover:text-blue-600"
+          className="mb-4 pl-0 hover:bg-transparent hover:text-rose-600"
           onClick={onNavigateBack}
         >
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to listings
@@ -89,7 +108,7 @@ export default function AuctionDetailPage({
               </h2>
 
               {!isSeller && (
-                <form onSubmit={onAskQuestion} className="flex gap-2 mb-6">
+                <form onSubmit={handleAskQuestion} className="flex gap-2 mb-6">
                   <Input
                     value={questionText}
                     onChange={(e) => setQuestionText(e.target.value)}
@@ -101,7 +120,7 @@ export default function AuctionDetailPage({
               )}
 
               <div className="space-y-4">
-                {(listing.questions || []).map((q: Question) => (
+                {(listing.questions || []).map((q) => (
                   <div key={q.id} className="bg-slate-50 p-4 rounded-lg">
                     <p className="font-semibold text-sm mb-1">
                       {maskBidderName(q.userName)} asked:
@@ -109,8 +128,8 @@ export default function AuctionDetailPage({
                     <p className="text-slate-700 mb-2">{q.question}</p>
 
                     {q.answer ? (
-                      <div className="ml-4 pl-4 border-l-2 border-blue-200">
-                        <p className="font-semibold text-sm text-blue-700">
+                      <div className="ml-4 pl-4 border-l-2 border-rose-200">
+                        <p className="font-semibold text-sm text-rose-700">
                           Seller answered:
                         </p>
                         <p className="text-slate-600">{q.answer}</p>
@@ -124,7 +143,7 @@ export default function AuctionDetailPage({
                         />
                         <Button
                           size="sm"
-                          onClick={() => onAnswerQuestion(q.id)}
+                          onClick={() => handleAnswerQuestion(q.id)}
                         >
                           Reply
                         </Button>
@@ -144,18 +163,18 @@ export default function AuctionDetailPage({
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-xl border p-6 sticky top-24">
               <p className="text-sm text-slate-500">Current Bid</p>
-              <p className="text-4xl font-bold text-blue-600 mb-4">
-                ${listing.currentBid.toLocaleString()}
+              <p className="text-4xl font-bold text-rose-600 mb-4">
+                {listing.currentBid.toLocaleString()}₫
               </p>
 
-              {/* Logic: Only show bid forms if user is not the seller */}
               {!isSeller && (
                 <div className="space-y-6">
-                  <form onSubmit={onPlaceBid}>
+                  {/* Standard Bid */}
+                  <form onSubmit={handlePlaceBid}>
                     <div className="flex gap-2 mb-2">
                       <Input
                         type="number"
-                        placeholder={`Min $${listing.currentBid + listing.stepPrice}`}
+                        placeholder={`Min ${(listing.currentBid + listing.stepPrice).toLocaleString()}₫`}
                         value={bidAmount}
                         onChange={(e) => setBidAmount(e.target.value)}
                       />
@@ -165,7 +184,7 @@ export default function AuctionDetailPage({
                     </Button>
                   </form>
 
-                  {/* Auto Bid System (Preserved) */}
+                  {/* Auto Bid System */}
                   <div className="border-t pt-6">
                     <p className="font-bold mb-2 text-sm">Auto-Bidding</p>
                     {user && (
@@ -184,7 +203,7 @@ export default function AuctionDetailPage({
               <div className="mt-8 border-t pt-4">
                 <h3 className="font-bold mb-4">Bid History</h3>
                 <div className="space-y-3">
-                  {listing.bids.map((bid: Bid) => (
+                  {listing.bids.map((bid) => (
                     <div
                       key={bid.id}
                       className="flex justify-between items-center text-sm"
@@ -199,14 +218,14 @@ export default function AuctionDetailPage({
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold">
-                          ${bid.amount.toLocaleString()}
+                          {bid.amount.toLocaleString()}₫
                         </span>
                         {isSeller && (
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6 text-red-500 hover:bg-red-50"
-                            onClick={() => onRejectBidder(bid.bidderId)}
+                            onClick={() => handleRejectBidder(bid.bidderId)}
                             title="Ban Bidder"
                           >
                             <Ban className="w-3 h-3" />
@@ -223,26 +242,24 @@ export default function AuctionDetailPage({
             <h3 className="text-2xl font-bold mb-6">Related Products </h3>
             {relatedProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {relatedProducts.map((rel: Listing) => (
-                  <div
+                {relatedProducts.map((rel) => (
+                  <Link
                     key={rel.id}
-                    onClick={() => { }}
-                    className="cursor-pointer block"
+                    to={`/auction/${rel.id}`}
+                    className="bg-white border rounded-lg overflow-hidden hover:shadow-md transition"
                   >
-                    <div className="bg-white border rounded-lg overflow-hidden hover:shadow-md transition">
-                        <div
-                          className={`h-32 bg-gradient-to-br ${rel.imageColor}`}
-                        />
-                        <div className="p-3">
-                          <h4 className="font-bold truncate text-sm">
-                            {rel.title}
-                          </h4>
-                          <p className="text-blue-600 font-bold text-sm">
-                            ${rel.currentBid.toLocaleString()}
-                          </p>
-                        </div>
+                    <div
+                      className={`h-32 bg-gradient-to-br ${rel.imageColor}`}
+                    />
+                    <div className="p-3">
+                      <h4 className="font-bold truncate text-sm">
+                        {rel.title}
+                      </h4>
+                      <p className="text-rose-600 font-bold text-sm">
+                        {rel.currentBid.toLocaleString()}₫
+                      </p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             ) : (

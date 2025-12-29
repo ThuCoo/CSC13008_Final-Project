@@ -1,38 +1,61 @@
-import Header from "../components/Header";
+
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { useState } from "react";
+import { useToast } from "../hooks/use-toast";
 import { Mail, KeyRound } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-interface ForgotPasswordPageProps {
-  step: number;
-  email: string;
-  setEmail: (val: string) => void;
-  otp: string;
-  setOtp: (val: string) => void;
-  onSendOTP: (e: React.FormEvent) => void;
-  onVerifyOTP: (e: React.FormEvent) => void;
-  onResetPassword: (e: React.FormEvent) => void;
-}
+export default function ForgotPassword() {
+  const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Pass
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-export default function ForgotPasswordPage({
-  step,
-  email,
-  setEmail,
-  otp,
-  setOtp,
-  onSendOTP,
-  onVerifyOTP,
-  onResetPassword,
-}: ForgotPasswordPageProps) {
+  const handleSendOTP = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    // Simulate sending email
+    toast({
+      title: "OTP Sent",
+      description: `An OTP code has been sent to ${email}`,
+    });
+    setStep(2);
+  };
+
+  const handleVerifyOTP = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otp !== "123456") {
+      // Mock OTP
+      toast({
+        title: "Invalid OTP",
+        description: "Try 123456",
+        variant: "destructive",
+      });
+      return;
+    }
+    setStep(3);
+  };
+
+  const handleResetPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast({
+      title: "Success",
+      description: "Password updated successfully. Please login.",
+    });
+    navigate("/login");
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+
       <div className="max-w-md mx-auto px-4 py-20">
         <div className="bg-white p-8 rounded-xl border shadow-sm">
           <h1 className="text-2xl font-bold mb-2">Reset Password</h1>
 
           {step === 1 && (
-            <form onSubmit={onSendOTP} className="space-y-4">
+            <form onSubmit={handleSendOTP} className="space-y-4">
               <p className="text-slate-500 text-sm mb-4">
                 Enter your email to receive a verification code.
               </p>
@@ -56,7 +79,7 @@ export default function ForgotPasswordPage({
           )}
 
           {step === 2 && (
-            <form onSubmit={onVerifyOTP} className="space-y-4">
+            <form onSubmit={handleVerifyOTP} className="space-y-4">
               <p className="text-slate-500 text-sm mb-4">
                 Enter the 6-digit code sent to your email.
               </p>
@@ -76,7 +99,7 @@ export default function ForgotPasswordPage({
           )}
 
           {step === 3 && (
-            <form onSubmit={onResetPassword} className="space-y-4">
+            <form onSubmit={handleResetPassword} className="space-y-4">
               <p className="text-slate-500 text-sm mb-4">
                 Create a new secure password.
               </p>
