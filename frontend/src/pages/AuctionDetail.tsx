@@ -3,10 +3,11 @@ import { useState } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { useNavigate, Link, useParams } from "react-router-dom";
-import { Clock, Ban, MessageCircle, ArrowLeft } from "lucide-react";
+import { Clock, Ban, MessageCircle, ArrowLeft, Heart } from "lucide-react";
 import { maskBidderName, formatAuctionTime } from "../lib/utils";
 import AutoBidForm from "../components/AutoBidForm";
 import { useListings } from "../context/ListingsContext";
+import { useWatchlist } from "../context/WatchlistContext";
 import { useUser } from "../context/UserContext";
 import { useToast } from "../hooks/use-toast";
 import NotFound from "./NotFound";
@@ -16,18 +17,31 @@ export default function AuctionDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { getListingById, placeBid, getListingsByCategory, addQuestion, answerQuestion, rejectBidder } = useListings();
+  const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
   const { user } = useUser();
 
-  const [bidAmount, setBidAmount] = useState("");
+  const listing = getListingById(id || "");
+  const [bidAmount, setBidAmount] = useState(listing ? (listing.currentBid + listing.stepPrice).toString() : "");
   const [questionText, setQuestionText] = useState("");
   const [answerText, setAnswerText] = useState("");
-
-  const listing = getListingById(id || "");
 
   if (!listing) return <NotFound />;
 
   const isSeller = user?.id === listing.sellerId;
   const relatedProducts = listing ? getListingsByCategory(listing.category).filter(l => l.id !== listing.id).slice(0, 5) : [];
+
+  const handleToggleWatchlist = () => {
+    if (!user) return navigate("/login");
+    if (isInWatchlist(listing.id, user.id)) {
+      removeFromWatchlist(listing.id, user.id);
+      toast({ title: "Removed from watchlist" });
+    } else {
+      addToWatchlist(listing.id, user.id);
+      toast({ title: "Added to watchlist" });
+    }
+  };
+
+  const isInWatchlistState = user ? isInWatchlist(listing.id, user.id) : false;
 
   const handlePlaceBid = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,10 +101,25 @@ export default function AuctionDetail() {
           <div className="lg:col-span-2 space-y-8">
             {/* Main Info */}
             <div className="bg-white rounded-xl border p-6">
-              <div
-                className={`h-96 rounded-xl bg-gradient-to-br ${listing.imageColor} mb-6`}
-              ></div>
-              <h1 className="text-3xl font-bold mb-2">{listing.title}</h1>
+              <div className="h-96 rounded-xl bg-gray-200 mb-6 overflow-hidden">
+                <img
+                   src={listing.images && listing.images.length > 0 ? listing.images[0] : "https://placehold.co/800x600?text=No+Image"}
+                   alt={listing.title}
+                   className="w-full h-full object-contain bg-slate-100"
+                />
+              </div>
+              <div className="flex justify-between items-start mb-2">
+                <h1 className="text-3xl font-bold">{listing.title}</h1>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-full shrink-0"
+                  onClick={handleToggleWatchlist}
+                  title={isInWatchlistState ? "Remove from watchlist" : "Add to watchlist"}
+                >
+                  <Heart className={`w-5 h-5 ${isInWatchlistState ? "fill-current text-red-500" : "text-slate-400"}`} />
+                </Button>
+              </div>
               <p className="text-slate-500 flex gap-2 items-center mb-6">
                 <Clock className="w-4 h-4" />{" "}
                 {formatAuctionTime(listing.endsAt)}
@@ -248,9 +277,13 @@ export default function AuctionDetail() {
                     to={`/auction/${rel.id}`}
                     className="bg-white border rounded-lg overflow-hidden hover:shadow-md transition"
                   >
-                    <div
-                      className={`h-32 bg-gradient-to-br ${rel.imageColor}`}
-                    />
+                    <div className="h-32 bg-gray-200 relative">
+                       <img
+                         src={rel.images && rel.images.length > 0 ? rel.images[0] : "https://placehold.co/400x300?text=No+Image"}
+                         alt={rel.title}
+                         className="w-full h-full object-cover"
+                       />
+                    </div>
                     <div className="p-3">
                       <h4 className="font-bold truncate text-sm">
                         {rel.title}

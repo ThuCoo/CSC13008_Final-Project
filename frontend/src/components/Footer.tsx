@@ -25,13 +25,13 @@ export default function Footer() {
               electronics, and fashion. Bid securely and sell with confidence.
             </p>
             <div className="flex gap-4 pt-2">
-              <a href="#" className="hover:text-rose-500 transition">
+              <a className="hover:text-rose-500 transition">
                 <Facebook className="w-5 h-5" />
               </a>
-              <a href="#" className="hover:text-rose-500 transition">
+              <a className="hover:text-rose-500 transition">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a href="#" className="hover:text-rose-500 transition">
+              <a className="hover:text-rose-500 transition">
                 <Instagram className="w-5 h-5" />
               </a>
             </div>
@@ -96,9 +96,9 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <span className="cursor-pointer hover:text-rose-400 transition">
+                <Link to="/terms" className="cursor-pointer hover:text-rose-400 transition">
                   Terms of Service
-                </span>
+                </Link>
               </li>
             </ul>
           </div>
@@ -135,12 +135,12 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} eBid. All rights reserved.
           </p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-white transition">
+            <Link to="/privacy" className="hover:text-white transition">
               Privacy Policy
-            </a>
-            <a href="#" className="hover:text-white transition">
+            </Link>
+            <Link to="/cookie-policy" className="hover:text-white transition">
               Cookie Policy
-            </a>
+            </Link>
           </div>
         </div>
       </div>

@@ -30,7 +30,8 @@ export default function CreateListing() {
     title: "",
     description: "",
     category: "",
-    startingPrice: "",
+    subCategory: "",
+    startingPrice: "0",
     stepPrice: "50",
     buyNowPrice: "",
     shippingCost: "0",
@@ -65,11 +66,22 @@ export default function CreateListing() {
     );
   }
 
-  const handleAddMockImage = () => {
-    const colors = ["red", "blue", "green", "purple", "orange"];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    const newImage = `https://placehold.co/600x400/${randomColor}/white?text=Item+Image+${images.length + 1}`;
-    setImages([...images, newImage]);
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      const promises = files.map(file => {
+          return new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+          });
+      });
+
+      Promise.all(promises).then(base64Images => {
+          setImages([...images, ...base64Images]);
+      }).catch(() => toast({ title: "Error uploading images", description: "Could not process files", variant: "destructive" }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -91,13 +103,13 @@ export default function CreateListing() {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        categories: [formData.category],
+        subCategory: formData.subCategory,
+        categories: [formData.category, formData.subCategory].filter(Boolean) as string[],
         startingPrice: parseFloat(formData.startingPrice),
         shippingCost: parseFloat(formData.shippingCost),
         returns: "No Returns",
         images: images,
         condition: "New",
-        imageColor: "from-rose-400 to-rose-600",
         endsAt: Date.now() + 3 * 24 * 60 * 60 * 1000,
         stepPrice: parseFloat(formData.stepPrice),
         buyNowPrice: formData.buyNowPrice
@@ -158,6 +170,29 @@ export default function CreateListing() {
                       {c.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Subcategory (Optional)</Label>
+              <Select
+                disabled={!formData.category} // Disable if no main cat selected
+                value={formData.subCategory}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, subCategory: v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={formData.category ? "Select Subcategory" : "Select Category First"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories
+                    .find((c) => c.name === formData.category)
+                    ?.subcategories?.map((sub) => (
+                      <SelectItem key={sub} value={sub}>
+                        {sub}
+                      </SelectItem>
+                    )) || <SelectItem value="none" disabled>No subcategories</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
@@ -254,14 +289,24 @@ export default function CreateListing() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <Label>Product Images (Min. 3) </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAddMockImage}
-              >
-                <Upload className="w-4 h-4 mr-2" /> Add Image
-              </Button>
+              <div className="flex gap-2">
+                 <Input
+                   type="file"
+                   id="image-upload"
+                   multiple
+                   accept="image/*"
+                   className="hidden"
+                   onChange={handleImageUpload}
+                 />
+                 <Button
+                   type="button"
+                   variant="outline"
+                   size="sm"
+                   onClick={() => document.getElementById('image-upload')?.click()}
+                 >
+                   <Upload className="w-4 h-4 mr-2" /> Upload Images
+                 </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4 p-4 border-2 border-dashed rounded-lg bg-slate-50 min-h-[120px]">

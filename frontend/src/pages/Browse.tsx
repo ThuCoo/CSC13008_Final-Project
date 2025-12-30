@@ -189,9 +189,12 @@ export default function Browse() {
                     to={`/auction/${l.id}`}
                     className={`bg-white border rounded-xl overflow-hidden hover:shadow-lg transition group ${isNew ? "ring-2 ring-rose-400" : ""}`}
                   >
-                    <div
-                      className={`h-48 bg-gradient-to-br ${l.imageColor} relative`}
-                    >
+                    <div className="h-48 relative bg-gray-200">
+                      <img
+                         src={l.images && l.images.length > 0 ? l.images[0] : "https://placehold.co/400x300?text=No+Image"}
+                         alt={l.title}
+                         className="w-full h-full object-cover"
+                      />
                       {isNew && (
                         <span className="absolute top-2 left-2 bg-rose-600 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
                           <Zap className="w-3 h-3" /> NEW

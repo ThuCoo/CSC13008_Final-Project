@@ -5,11 +5,13 @@ import { useListings } from "../context/ListingsContext";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Heart, Trash2 } from "lucide-react";
+import { useToast } from "../hooks/use-toast";
 
 export default function Watchlist() {
   const { user } = useUser();
   const { getUserWatchlist, removeFromWatchlist } = useWatchlist();
   const { getListingById } = useListings();
+  const { toast } = useToast();
 
   if (!user) return null;
 
@@ -33,9 +35,13 @@ export default function Watchlist() {
                     key={item.id}
                     className="bg-white p-4 rounded-lg border flex gap-4 items-center"
                   >
-                    <div
-                      className={`w-24 h-24 rounded-md bg-gradient-to-br ${item.imageColor}`}
-                    />
+                    <div className="w-24 h-24 rounded-md bg-gray-200 overflow-hidden shrink-0">
+                       <img 
+                          src={item.images && item.images.length > 0 ? item.images[0] : "https://placehold.co/200?text=No+Image"} 
+                          alt={item.title}
+                          className="w-full h-full object-cover"
+                       />
+                    </div>
                     <div className="flex-1">
                       <Link
                         to={`/auction/${item.id}`}
@@ -50,7 +56,10 @@ export default function Watchlist() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeFromWatchlist(item.id, user.id)}
+                      onClick={() => {
+                        removeFromWatchlist(item.id, user.id);
+                        toast({ title: "Removed from watchlist" });
+                      }}
                     >
                       <Trash2 className="w-5 h-5" />
                     </Button>

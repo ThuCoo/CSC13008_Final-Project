@@ -36,6 +36,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import BecomeSeller from "./pages/BecomeSeller";
 import Watchlist from "./pages/Watchlist";
 import NotFound from "./pages/NotFound";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import CookiePolicy from "./pages/CookiePolicy";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +73,9 @@ function App() {
                               />
                               <Route path="/selling" element={<Selling />} />
                               <Route path="/support" element={<Support />} />
+                              <Route path="/terms" element={<Terms />} />
+                              <Route path="/privacy" element={<Privacy />} />
+                              <Route path="/cookie-policy" element={<CookiePolicy />} />
 
                               {/* Auth Routes */}
                               <Route path="/login" element={<Login />} />

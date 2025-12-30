@@ -3,6 +3,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
+import { useToast } from "../hooks/use-toast";
 
 interface AutoBidFormProps {
   listingId: string;
@@ -17,14 +18,18 @@ export default function AutoBidForm({
   currentBid: _currentBid,
   minBid,
 }: AutoBidFormProps) {
-  const [maxBid, setMaxBid] = useState("");
+  const [maxBid, setMaxBid] = useState(minBid.toString());
   const [enabled, setEnabled] = useState(false);
+  const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Future: call an API/Context to set auto-bid
     console.log("Set auto-bid:", { listingId, userId, maxBid, enabled });
-    alert(`Auto-bid set to max ${maxBid.toLocaleString()}₫`);
+    toast({
+        title: enabled ? "Auto-Bid Enabled" : "Auto-Bid Disabled",
+        description: enabled ? `Max limit set to ${Number(maxBid).toLocaleString()}₫` : "Auto-bidding turned off.",
+    });
   };
 
   return (

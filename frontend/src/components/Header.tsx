@@ -22,9 +22,25 @@ export default function Header() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleSearch = () => {
+    if (searchTerm.trim()) {
+      navigate(`/browse?q=${encodeURIComponent(searchTerm)}`);
+    } else {
+      navigate("/browse");
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
 
   const handleLogout = () => {
     logout();
+    setShowUserMenu(false);
     toast({ title: "Logged out" });
     navigate("/");
   };
@@ -45,8 +61,17 @@ export default function Header() {
           {/* Search Bar */}
           <div className="hidden md:flex flex-1 mx-8 max-w-md">
             <div className="relative w-full">
-              <Input placeholder="Search items..." className="pr-10" />
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-400 font-bold" />
+              <Input
+                placeholder="Search items..."
+                className="pr-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+              <Search
+                 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-400 font-bold cursor-pointer hover:text-rose-600"
+                 onClick={handleSearch}
+              />
             </div>
           </div>
 

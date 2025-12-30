@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { useListings } from "../context/ListingsContext";
 import { Button } from "../components/ui/button";
@@ -253,7 +254,9 @@ export default function AccountSettings() {
                   <Card key={l.id}>
                     <CardContent className="p-4 flex justify-between items-center">
                       <div>
-                        <h3 className="font-bold">{l.title}</h3>
+                        <h3 className="font-bold hover:text-rose-600 transition">
+                          <Link to={`/auction/${l.id}`}>{l.title}</Link>
+                        </h3>
                         <p className="text-sm text-slate-500">
                           Ends: {new Date(l.endsAt).toLocaleString()}
                         </p>
@@ -291,7 +294,9 @@ export default function AccountSettings() {
                   <Card key={l.id}>
                     <CardContent className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                       <div>
-                        <h3 className="font-bold text-lg">{l.title}</h3>
+                        <h3 className="font-bold text-lg hover:text-rose-600 transition">
+                          <Link to={`/auction/${l.id}`}>{l.title}</Link>
+                        </h3>
                         <p className="text-green-600 font-bold">
                           Won at {l.currentBid.toLocaleString()}₫
                         </p>

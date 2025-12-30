@@ -5,12 +5,13 @@ export interface Category {
   name: string;
   description: string;
   icon: string;
+  subcategories?: string[];
   createdAt: number;
 }
 
 interface CategoriesContextType {
   categories: Category[];
-  addCategory: (name: string, description: string, icon: string) => Category;
+  addCategory: (name: string, description: string, icon: string, subcategories?: string[]) => Category;
   updateCategory: (id: string, data: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
   getCategoryById: (id: string) => Category | undefined;
@@ -25,6 +26,7 @@ const INITIAL_CATEGORIES: Category[] = [
     name: "Electronics",
     description: "Phones, computers, tablets, and more",
     icon: "📱",
+    subcategories: ["Mobile Phones", "Laptops", "Tablets", "Accessories"],
     createdAt: Date.now() - 90 * 24 * 60 * 60 * 1000,
   },
   {
@@ -46,6 +48,7 @@ const INITIAL_CATEGORIES: Category[] = [
     name: "Home & Garden",
     description: "Furniture, decor, and garden items",
     icon: "🏡",
+    subcategories: ["Furniture", "Decor", "Garden", "Kitchen"],
     createdAt: Date.now() - 90 * 24 * 60 * 60 * 1000,
   },
   {
@@ -79,7 +82,8 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
   const addCategory = (
     name: string,
     description: string,
-    icon: string
+    icon: string,
+    subcategories: string[] = []
   ): Category => {
     if (getCategoryByName(name)) {
       throw new Error("Category already exists");
@@ -90,6 +94,7 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
       name,
       description,
       icon,
+      subcategories,
       createdAt: Date.now(),
     };
 
