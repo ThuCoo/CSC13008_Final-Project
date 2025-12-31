@@ -4,94 +4,106 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE TYPE user_role AS ENUM ('buyer', 'seller', 'admin');
 
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    full_name VARCHAR(255) NOT NULL,
-    avatar_url TEXT,
+    name VARCHAR(255) NOT NULL,
+    avatar_url TEXT NOT NULL,
     role user_role NOT NULL DEFAULT 'buyer',
-    is_seller_approved BOOLEAN DEFAULT FALSE,
-    address TEXT,
-    phone_number VARCHAR(50),
-    birthday DATE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    seller_approved BOOLEAN DEFAULT FALSE,
+    address TEXT NOT NULL,
+    birthday DATE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- Categories
 CREATE TABLE categories (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
+    category_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
-    icon_url TEXT,
-    parent_id UUID REFERENCES categories(id)
+    icon VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE subcategories (
+    subcategory_id SERIAL PRIMARY KEY,
+    category_id INTEGER NOT NULL REFERENCES categories(category_id),
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- Listings
 CREATE TYPE listing_status AS ENUM ('active', 'ended', 'sold');
 
 CREATE TABLE listings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    seller_id UUID NOT NULL REFERENCES users(id),
-    category_id UUID NOT NULL REFERENCES categories(id),
+    listing_id SERIAL PRIMARY KEY,
+    seller_id INTEGER NOT NULL REFERENCES users(user_id),
+    category_id INTEGER NOT NULL REFERENCES categories(category_id),
+    subcategory_id INTEGER NOT NULL REFERENCES subcategories(subcategory_id),
     title VARCHAR(255) NOT NULL,
-    description TEXT,
+    description TEXT NOT NULL,
     starting_price DECIMAL(10, 2) NOT NULL,
-    current_price DECIMAL(10, 2),
-    step_price DECIMAL(10, 2),
+    current_bid DECIMAL(10, 2) NOT NULL,
+    step_price DECIMAL(10, 2) NOT NULL,
     buy_now_price DECIMAL(10, 2),
-    status listing_status DEFAULT 'active',
-    condition VARCHAR(50), -- e.g. New, Used
-    shipping_cost DECIMAL(10, 2),
-    returns_policy TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    ends_at TIMESTAMP WITH TIME ZONE
+    status VARCHAR(50) NOT NULL,
+    item_condition VARCHAR(50) NOT NULL,
+    shipping_cost DECIMAL(10, 2) NOT NULL,
+    return_policy TEXT NOT NULL,
+    images JSONB NOT NULL,
+    auto_extended_dates JSONB NOT NULL,
+    rejected_bidders JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    ends_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
--- ListingImages
-CREATE TABLE listing_images (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
-    image_url TEXT NOT NULL,
-    display_order INTEGER NOT NULL DEFAULT 0
+-- Full-text search index for listings (title + category + subcategory)
+CREATE INDEX IF NOT EXISTS listings_search_idx ON listings USING GIN (
+  to_tsvector('english',
+    title || ' ' ||
+    coalesce((SELECT name FROM categories WHERE categories.category_id = listings.category_id), '') || ' ' ||
+    coalesce((SELECT name FROM subcategories WHERE subcategories.subcategory_id = listings.subcategory_id), '')
+  )
 );
 
 -- Bids
 CREATE TABLE bids (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID NOT NULL REFERENCES listings(id),
-    bidder_id UUID NOT NULL REFERENCES users(id),
+    bid_id SERIAL PRIMARY KEY,
+    listing_id INTEGER NOT NULL REFERENCES listings(listing_id),
+    bidder_id INTEGER NOT NULL REFERENCES users(user_id),
     amount DECIMAL(10, 2) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- AutoBids
 CREATE TABLE auto_bids (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID NOT NULL REFERENCES listings(id),
-    user_id UUID NOT NULL REFERENCES users(id),
+    id SERIAL PRIMARY KEY,
+    listing_id INTEGER NOT NULL REFERENCES listings(listing_id),
+    user_id INTEGER NOT NULL REFERENCES users(user_id),
     max_limit DECIMAL(10, 2) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- Orders
 CREATE TYPE order_status AS ENUM ('pending_payment', 'paid', 'shipped', 'delivered', 'cancelled');
 
 CREATE TABLE orders (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID NOT NULL REFERENCES listings(id),
-    buyer_id UUID NOT NULL REFERENCES users(id),
-    seller_id UUID NOT NULL REFERENCES users(id),
+    id SERIAL PRIMARY KEY,
+    listing_id INTEGER NOT NULL REFERENCES listings(listing_id),
+    buyer_id INTEGER NOT NULL REFERENCES users(user_id),
+    seller_id INTEGER NOT NULL REFERENCES users(user_id),
     final_price DECIMAL(10, 2) NOT NULL,
     status order_status DEFAULT 'pending_payment',
     shipping_address TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
--- Watchlist
-CREATE TABLE watchlist (
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    listing_id UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+-- Watchlists
+CREATE TABLE watchlists (
+    user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    listing_id INTEGER NOT NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
+    added_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     PRIMARY KEY (user_id, listing_id)
 );
 
@@ -99,22 +111,23 @@ CREATE TABLE watchlist (
 CREATE TYPE request_status AS ENUM ('pending', 'approved', 'rejected');
 
 CREATE TABLE seller_requests (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    business_name VARCHAR(255),
-    description TEXT,
+    request_id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(user_id),
+    business_name VARCHAR(255) NOT NULL,
+    business_description TEXT,
     status request_status DEFAULT 'pending',
-    reviewed_by UUID REFERENCES users(id),
+    reviewed_by INTEGER REFERENCES users(user_id),
+    reviewed_at TIMESTAMP WITH TIME ZONE,
     rejection_reason TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- ListingQuestions
 CREATE TABLE listing_questions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID NOT NULL REFERENCES listings(id),
-    user_id UUID NOT NULL REFERENCES users(id),
+    question_id SERIAL PRIMARY KEY,
+    listing_id INTEGER NOT NULL REFERENCES listings(listing_id),
+    user_id INTEGER NOT NULL REFERENCES users(user_id),
     question_text TEXT NOT NULL,
     answer_text TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

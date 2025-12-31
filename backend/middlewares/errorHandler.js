@@ -1,11 +1,10 @@
-import { ZodError } from 'zod';
+import { ZodError } from "zod";
 
 export default function (error, req, res, next) {
   console.error(error);
   if (error instanceof ZodError) {
-    res.status(500).json({
-      message: 'Validation failed',
-      stack: error.stack,
+    res.status(400).json({
+      message: "Validation failed",
       issues: error.issues,
     });
   } else {

@@ -1,0 +1,118 @@
+import {
+  pgTable,
+  integer,
+  varchar,
+  text,
+  boolean,
+  date,
+  decimal,
+  json,
+  timestamp,
+  serial,
+} from "drizzle-orm/pg-core";
+
+export const users = pgTable("users", {
+  userId: serial("user_id").primaryKey(),
+  email: varchar("email").unique().notNull(),
+  passwordHash: varchar("password_hash").notNull(),
+  name: varchar("name").notNull(),
+  avatarUrl: text("avatar_url").notNull(),
+  role: varchar("role").notNull(),
+  seller_approved: boolean("seller_approved").notNull(),
+  address: text("address").notNull(),
+  birthday: date("birthday").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const categories = pgTable("categories", {
+  categoryId: serial("category_id").primaryKey(),
+  name: varchar("name").notNull().unique(),
+  description: text("description"),
+  icon: varchar("icon"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const subcategories = pgTable("subcategories", {
+  subcategoryId: serial("subcategory_id").primaryKey(),
+  categoryId: integer("category_id")
+    .notNull()
+    .references(() => categories.categoryId),
+  name: varchar("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const listings = pgTable("listings", {
+  listingId: serial("listing_id").primaryKey(),
+  sellerId: integer("user_id")
+    .notNull()
+    .references(() => users.userId),
+  title: varchar("title").notNull(),
+  description: text("description").notNull(),
+  categoryId: integer("category_id")
+    .notNull()
+    .references(() => categories.categoryId),
+  subcategoryId: integer("subcategory_id")
+    .notNull()
+    .references(() => subcategories.subcategoryId),
+  startingPrice: decimal("starting_price").notNull(),
+  currentBid: decimal("current_bid").notNull(),
+  stepPrice: decimal("step_price").notNull(),
+  buyNowPrice: decimal("buy_now_price"),
+  status: varchar("status").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  endsAt: timestamp("ends_at").notNull(),
+  itemCondition: varchar("item_condition").notNull(),
+  shippingCost: decimal("shipping_cost").notNull(),
+  returnPolicy: text("return_policy").notNull(),
+  images: json("images").notNull(),
+  autoExtendDates: json("auto_extended_dates").notNull(),
+  rejectedBidders: json("rejected_bidders"),
+});
+
+export const bids = pgTable("bids", {
+  bidId: serial("bid_id").primaryKey(),
+  listingId: integer("listing_id")
+    .notNull()
+    .references(() => listings.listingId),
+  bidderId: integer("bidder_id")
+    .notNull()
+    .references(() => users.userId),
+  amount: decimal("amount").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const questions = pgTable("questions", {
+  questionId: serial("question_id").primaryKey(),
+  listingId: integer("listing_id")
+    .notNull()
+    .references(() => listings.listingId),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.userId),
+  questionText: text("question_text").notNull(),
+  answerText: text("answer_text"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const watchlists = pgTable("watchlists", {
+  userId: integer("user_id")
+    .references(() => users.userId)
+    .primaryKey(),
+  listingId: integer("listing_id")
+    .notNull()
+    .references(() => listings.listingId)
+    .primaryKey(),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+});
+
+export const sellerRequests = pgTable("seller_requests", {
+  requestId: serial("request_id").primaryKey(),
+  userId: integer("user_id").references(() => users.userId),
+  businessName: varchar("business_name").notNull(),
+  businessDescription: text("business_description"),
+  status: varchar("status").notNull(),
+  reviewedBy: integer("reviewed_by").references(() => users.userId),
+  reviewedAt: timestamp("reviewed_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
