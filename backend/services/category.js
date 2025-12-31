@@ -1,0 +1,33 @@
+import { eq } from "drizzle-orm";
+import db from "../db/index.js";
+import { categories } from "../db/schema.js";
+
+const defaultSelection = {
+  categoryId: categories.categoryId,
+  name: categories.name,
+  description: categories.description,
+  icon: categories.icon,
+};
+
+const service = {
+  listAll: async function () {
+    return db.select(defaultSelection).from(categories);
+  },
+  listOne: async function (categoryId = null) {
+    let query = db.select(defaultSelection).from(categories);
+    if (categoryId != null) {
+      query = query.where(eq(categories.categoryId, categoryId));
+    }
+    const result = await query;
+    return result[0] || null;
+  },
+  create: async function (category) {
+    const result = await db.insert(categories).values(category).returning();
+    return result[0];
+  },
+  remove: async function (categoryId) {
+    await db.delete(categories).where(eq(categories.categoryId, categoryId));
+  },
+};
+
+export default service;
