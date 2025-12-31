@@ -35,6 +35,13 @@ const service = {
     const result = await db.insert(questions).values(question).returning();
     return result[0];
   },
+  update: async function (question) {
+    await db
+      .update(questions)
+      .set(question)
+      .where(eq(questions.questionId, question.questionId));
+    return this.listOne(question.questionId);
+  },
   remove: async function (questionId) {
     await db.delete(questions).where(eq(questions.questionId, questionId));
   },

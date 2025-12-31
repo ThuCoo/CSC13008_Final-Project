@@ -48,7 +48,7 @@ const service = {
 
     if (listingId != null) {
       query = query.where(eq(listings.listingId, listingId));
-    } 
+    }
     if (title != null) {
       query = query.where(eq(listings.title, title));
     }
@@ -93,6 +93,10 @@ const service = {
   create: async function (listing) {
     const result = await db.insert(listings).values(listing).returning();
     return result[0];
+  },
+  update: async function (listing) {
+    await db.update(listings).set(listing).where(eq(listings.id, listing.id));
+    return this.listById(listing.id);
   },
   remove: async function (listingId) {
     await db.delete(listings).where(eq(listings.listingId, listingId));

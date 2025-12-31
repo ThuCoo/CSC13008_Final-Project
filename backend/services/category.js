@@ -25,6 +25,13 @@ const service = {
     const result = await db.insert(categories).values(category).returning();
     return result[0];
   },
+  update: async function (category) {
+    await db
+      .update(categories)
+      .set(category)
+      .where(eq(categories.id, category.id));
+    return this.listById(category.id);
+  },
   remove: async function (categoryId) {
     await db.delete(categories).where(eq(categories.categoryId, categoryId));
   },

@@ -32,6 +32,10 @@ const service = {
     const result = await db.insert(users).values(user).returning();
     return result[0];
   },
+  update: async function (user) {
+    await db.update(users).set(user).where(eq(users.userId, user.userId));
+    return this.listOne(user.userId);
+  },
   remove: async function (userId) {
     await db.delete(users).where(eq(users.userId, userId));
   },

@@ -32,6 +32,10 @@ const service = {
       .returning();
     return result[0];
   },
+  update: async function (category) {
+    await db.update(categories).set(category).where(eq(categories.id, category.id));
+    return this.listById(category.id);
+  },
   remove: async function (subcategoryId) {
     await db
       .delete(subcategories)

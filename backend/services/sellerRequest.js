@@ -38,6 +38,13 @@ const service = {
     const result = await db.insert(sellerRequests).values(request).returning();
     return result[0];
   },
+  update: async function (request) {
+    await db
+      .update(sellerRequests)
+      .set(request)
+      .where(eq(sellerRequests.requestId, request.requestId));
+    return this.listOne(request.requestId);
+  },
   remove: async function (requestId) {
     await db
       .delete(sellerRequests)
