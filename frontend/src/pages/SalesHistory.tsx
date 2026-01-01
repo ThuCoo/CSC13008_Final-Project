@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 
 import { useUser } from "../context/UserContext";
@@ -5,16 +6,25 @@ import { useListings } from "../context/ListingsContext";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, ThumbsUp, ThumbsDown, Star } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
+import { Textarea } from "../components/ui/textarea";
 
 export default function SalesHistory() {
   const { user } = useUser();
   const { getSellerListings } = useListings();
   const { toast } = useToast();
 
-  // Mock State for Order Workflow (1: Pending, 2: Shipped, 3: Rated, -1: Cancelled)
+  // Mock State for Order Workflow
   const [orderSteps, setOrderSteps] = useState<Record<string, number>>({});
+  const [reviewComment, setReviewComment] = useState("");
 
   if (!user || user.type !== "seller") return null;
 
@@ -45,8 +55,18 @@ export default function SalesHistory() {
     if (currentStep === 2)
       toast({
         title: "Delivery Confirmed",
-        description: "Buyer received item.",
+        description: "Buyer received item. You can now leave feedback.",
       });
+  };
+
+  const handleRateBuyer = (id: string, _rating: 1 | -1) => {
+    if (!reviewComment) {
+        toast({ title: "Comment Required", description: "Please write a review", variant: "destructive" });
+        return;
+    }
+    setOrderSteps(prev => ({ ...prev, [id]: 4 })); // Move to Completed
+    toast({ title: "Buyer Rated", description: "Transaction completed." });
+    setReviewComment("");
   };
 
   return (
@@ -136,7 +156,7 @@ export default function SalesHistory() {
                               : "text-gray-400"
                           }
                         >
-                          4. Rated
+                          4. Rated (Done)
                         </span>
                       </div>
 
@@ -158,9 +178,50 @@ export default function SalesHistory() {
                             </Button>
                           )}
                           {currentStep === 2 && (
-                            <span className="text-sm text-amber-600 italic">
-                              Waiting for buyer to confirm receipt...
-                            </span>
+                            <div className="flex gap-2 items-center">
+                                <span className="text-sm text-amber-600 italic mr-2">
+                                  Waiting for buyer confirmation... 
+                                </span>
+                                {/* Mocking Buyer Confirmation for demo purposes */}
+                                <Button variant="outline" size="sm" onClick={() => advanceOrderStep(sale.id, 2)}>
+                                    (Mock) Buyer Confirms
+                                </Button>
+                            </div>
+                          )}
+                          {currentStep === 3 && (
+                              <Dialog>
+                              <DialogTrigger asChild>
+                                <Button className="bg-green-600 hover:bg-green-700">
+                                  <Star className="w-4 h-4 mr-2" /> Rate Buyer
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Rate Buyer: {winner}</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                  <Textarea
+                                    placeholder="How was the transaction?"
+                                    value={reviewComment}
+                                    onChange={(e) => setReviewComment(e.target.value)}
+                                  />
+                                  <div className="flex gap-2 justify-end">
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() => handleRateBuyer(sale.id, -1)}
+                                    >
+                                      <ThumbsDown className="w-4 h-4 mr-2" /> -1
+                                    </Button>
+                                    <Button
+                                      className="bg-green-600 hover:bg-green-700"
+                                      onClick={() => handleRateBuyer(sale.id, 1)}
+                                    >
+                                      <ThumbsUp className="w-4 h-4 mr-2" /> +1
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           )}
 
                           <Button

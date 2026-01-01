@@ -4,7 +4,7 @@ import { User } from "./user";
 export interface UserContextType {
   user: Omit<User, "password"> | null;
   login: (email: string, password: string) => boolean;
-  signup: (data: { email: string; name: string; password?: string }) => void;
+  signup: (data: { email: string; name: string; password?: string, address?: string }) => void;
   logout: () => void;
   updateProfile: (id: string, data: Partial<User>) => void;
   changePassword: (id: string, current: string, newPass: string) => void;
@@ -89,7 +89,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  const signup = (data: { email: string; name: string; password?: string }) => {
+  const signup = (data: { email: string; name: string; password?: string, address?: string }) => {
     const newUser: User = {
       id: String(Date.now()),
       email: data.email,
@@ -98,6 +98,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       type: "buyer",
       sellerApproved: false,
       createdAt: Date.now(),
+      address: data.address
     };
 
     const { ...userToStore } = newUser;

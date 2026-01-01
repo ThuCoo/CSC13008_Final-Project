@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useUser } from "../context/UserContext";
@@ -30,6 +31,7 @@ import {
   Star,
   ThumbsUp,
   ThumbsDown,
+  MessageSquare,
 } from "lucide-react";
 
 export interface User {
@@ -41,6 +43,13 @@ export interface User {
   positiveReviews: number;
   totalReviews: number;
 }
+
+// Mock Reviews Data
+const MOCK_REVIEWS = [
+  { id: 1, reviewer: "John Doe", type: "buyer", rating: 1, comment: "Fast shipping, great item!", date: "2024-10-10" },
+  { id: 2, reviewer: "Alice Smith", type: "seller", rating: 1, comment: "Excellent buyer, quick payment.", date: "2024-10-12" },
+  { id: 3, reviewer: "Bob Brown", type: "buyer", rating: -1, comment: "Item description was slightly off.", date: "2024-10-15" },
+];
 
 export default function AccountSettings() {
   const { user, updateProfile } = useUser();
@@ -125,11 +134,12 @@ export default function AccountSettings() {
         <h1 className="text-3xl font-bold mb-8">Account Management</h1>
 
         <Tabs defaultValue="profile">
-          <TabsList className="mb-6 grid w-full grid-cols-4 max-w-2xl">
+          <TabsList className="mb-6 grid w-full grid-cols-5 max-w-3xl">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="password">Password</TabsTrigger>
             <TabsTrigger value="bidding">My Bids </TabsTrigger>
-            <TabsTrigger value="won">Won & Reviews</TabsTrigger>
+            <TabsTrigger value="won">Won items</TabsTrigger>
+            <TabsTrigger value="reviews">My Reviews</TabsTrigger>
           </TabsList>
 
           {/* 1. Profile Update */}
@@ -349,6 +359,42 @@ export default function AccountSettings() {
                 ))
               )}
             </div>
+          </TabsContent>
+
+          {/* 4. My Reviews */}
+          <TabsContent value="reviews">
+              <Card>
+                  <CardHeader>
+                      <CardTitle className="flex gap-2"><MessageSquare className="w-5 h-5"/> My Reviews</CardTitle>
+                      <CardDescription>
+                          See what others have said about you.
+                      </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <div className="space-y-4">
+                          {MOCK_REVIEWS.map(rev => (
+                              <div key={rev.id} className="border-b pb-4 last:border-0 last:pb-0">
+                                  <div className="flex justify-between items-start mb-1">
+                                      <div>
+                                          <p className="font-bold text-sm">{rev.reviewer} <span className="text-xs font-normal text-slate-500">({rev.type})</span></p>
+                                          <p className="text-xs text-slate-400">{rev.date}</p>
+                                      </div>
+                                      {rev.rating === 1 ? (
+                                          <span className="flex items-center text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">
+                                              <ThumbsUp className="w-3 h-3 mr-1" /> Positive
+                                          </span>
+                                      ) : (
+                                          <span className="flex items-center text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded">
+                                              <ThumbsDown className="w-3 h-3 mr-1" /> Negative
+                                          </span>
+                                      )}
+                                  </div>
+                                  <p className="text-slate-700 text-sm">"{rev.comment}"</p>
+                              </div>
+                          ))}
+                      </div>
+                  </CardContent>
+              </Card>
           </TabsContent>
         </Tabs>
       </div>
