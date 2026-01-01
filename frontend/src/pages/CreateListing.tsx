@@ -17,7 +17,17 @@ import {
 import { Checkbox } from "../components/ui/checkbox";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { Upload, DollarSign, Image as ImageIcon, Type } from "lucide-react";
+import { Upload, DollarSign, Image as ImageIcon, Type, ArrowLeft } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 
 export default function CreateListing() {
   const { user } = useUser();
@@ -39,6 +49,7 @@ export default function CreateListing() {
   });
 
   const [images, setImages] = useState<string[]>([]);
+  const [showExitDialog, setShowExitDialog] = useState(false);
 
   const hasAccess = user && user.type === "seller" && user.sellerApproved;
 
@@ -132,11 +143,30 @@ export default function CreateListing() {
     }
   };
 
+  const handleBack = () => {
+    const isDirty = 
+      formData.title || 
+      formData.description || 
+      formData.startingPrice !== "0" || 
+      images.length > 0;
+      
+    if (isDirty) {
+      setShowExitDialog(true);
+    } else {
+      navigate(-1);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
 
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Create New Listing</h1>
+        <div className="flex items-center gap-4 mb-8">
+            <Button variant="ghost" size="icon" onClick={handleBack}>
+                <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-3xl font-bold">Create New Listing</h1>
+        </div>
 
         <form
           onSubmit={handleSubmit}
@@ -346,6 +376,23 @@ export default function CreateListing() {
           </Button>
         </form>
       </div>
+
+      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard Changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to leave?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => navigate(-1)} className="bg-rose-600 hover:bg-rose-700">
+              Discard & Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

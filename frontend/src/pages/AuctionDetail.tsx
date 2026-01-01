@@ -11,6 +11,16 @@ import { useWatchlist } from "../context/WatchlistContext";
 import { useUser } from "../context/UserContext";
 import { useToast } from "../hooks/use-toast";
 import NotFound from "./NotFound";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 
 export default function AuctionDetail() {
   const { id } = useParams();
@@ -26,7 +36,24 @@ export default function AuctionDetail() {
   const [answerText, setAnswerText] = useState("");
   
   // Image Gallery State
-  const [selectedImage, setSelectedImage] = useState(listing?.images?.[0] || "");
+  const [selectedImage, setSelectedImage] = useState("");
+  const [bidderToReject, setBidderToReject] = useState<string | null>(null);
+  
+  // Update state when listing changes
+  if (listing && listing.images.length > 0 && (!selectedImage || !listing.images.includes(selectedImage))) {
+      setSelectedImage(listing.images[0]);
+  }
+  // Reset when ID changes
+  if (listing && selectedImage && !listing.images.includes(selectedImage)) {
+      setSelectedImage(listing.images[0] || "");
+  }
+
+  // Reactive Bid Update: Update input when current bid changes
+  const [lastBidId, setLastBidId] = useState(listing?.currentBid || 0);
+  if (listing && listing.currentBid !== lastBidId) {
+      setLastBidId(listing.currentBid);
+      setBidAmount((listing.currentBid + listing.stepPrice).toString());
+  }
 
   if (!listing) return <NotFound />;
 
@@ -78,13 +105,14 @@ export default function AuctionDetail() {
   const onNavigateBack = () => navigate(-1);
 
   const handleRejectBidder = (bidderId: string) => {
-    if (
-      confirm(
-        "Kick this bidder? Their bids will be removed and they will be banned from this item.",
-      )
-    ) {
-      rejectBidder(listing.id, bidderId);
+    setBidderToReject(bidderId);
+  };
+
+  const confirmRejectBidder = () => {
+    if (bidderToReject) {
+      rejectBidder(listing.id, bidderToReject);
       toast({ title: "Bidder rejected" });
+      setBidderToReject(null);
     }
   };
 
@@ -349,9 +377,29 @@ export default function AuctionDetail() {
             ) : (
               <p className="text-slate-500">No related products found.</p>
             )}
-          </div>
+        </div>
         </div>
       </div>
+
+      <AlertDialog open={!!bidderToReject} onOpenChange={(open) => !open && setBidderToReject(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject Bidder?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove their bids and ban them from bidding on this item again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmRejectBidder}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Reject Bidder
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

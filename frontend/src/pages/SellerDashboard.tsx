@@ -13,8 +13,8 @@ import {
   DialogFooter,
 } from "../components/ui/dialog";
 import { Textarea } from "../components/ui/textarea";
-import { Gavel, DollarSign, Plus, Eye, Edit } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Gavel, DollarSign, Plus, Edit } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { useToast } from "../hooks/use-toast";
 
@@ -59,7 +59,7 @@ export default function SellerDashboard() {
       const listing = myListings.find((l) => l.id === selectedId);
       if (listing) {
         const timestamp = new Date().toLocaleString();
-        const newDescription = `${listing.description}\n\n[Update ${timestamp}]: ${appendDesc}`;
+        const newDescription = `${listing.description}<br /><br />[Update ${timestamp}]: ${appendDesc}`;
         updateListing(selectedId, { description: newDescription });
         toast({
           title: "Description Updated",
@@ -128,20 +128,23 @@ export default function SellerDashboard() {
             {activeListings.map((l) => (
               <div
                 key={l.id}
-                className="bg-white p-4 rounded-lg border flex flex-col md:flex-row justify-between items-center gap-4"
+                className="bg-white p-4 rounded-lg border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
               >
-                <div className="flex gap-4 items-center flex-1">
+                <div 
+                  className="flex gap-4 items-center flex-1 cursor-pointer group"
+                  onClick={() => navigate(`/auction/${l.id}`)}
+                >
                   <div className="w-16 h-16 bg-gray-100 rounded-md overflow-hidden">
                     {l.images[0] && (
                       <img
                         src={l.images[0]}
                         alt={l.title}
-                        className="object-cover w-full h-full"
+                        className="object-cover w-full h-full group-hover:scale-105 transition"
                       />
                     )}
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg">{l.title}</h3>
+                    <h3 className="font-bold text-lg group-hover:text-rose-600 transition">{l.title}</h3>
                     <div className="flex gap-4 text-sm text-slate-500">
                       <span>
                         Current Bid:{" "}
@@ -159,7 +162,7 @@ export default function SellerDashboard() {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => setSelectedId(l.id)}
+                        onClick={(e) => { e.stopPropagation(); setSelectedId(l.id); }}
                       >
                         <Edit className="w-4 h-4 mr-2" /> Append Desc
                       </Button>
@@ -185,12 +188,6 @@ export default function SellerDashboard() {
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to={`/auction/${l.id}`}>
-                      <Eye className="w-4 h-4 mr-2" />
-                      View
-                    </Link>
-                  </Button>
                 </div>
               </div>
             ))}

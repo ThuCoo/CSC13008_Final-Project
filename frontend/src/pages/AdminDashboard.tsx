@@ -248,7 +248,7 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="requests">
-          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+          <TabsList className="grid w-full h-full grid-cols-2 md:grid-cols-4 max-w-2xl">
             <TabsTrigger value="requests">Seller Requests</TabsTrigger>
             <TabsTrigger value="users">Manage Users</TabsTrigger>{" "}
             <TabsTrigger value="listings">Manage Listings</TabsTrigger>
@@ -493,7 +493,7 @@ export default function AdminDashboard() {
           {/* Categories Tab */}
           <TabsContent value="categories" className="mt-6">
             <div className="bg-white rounded-lg border shadow-sm p-6">
-              <div className="flex gap-4 mb-6">
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <Input
                   placeholder="New Category Name"
                   value={newCatName}
@@ -525,7 +525,7 @@ export default function AdminDashboard() {
                     onChange={(e) => setCatSearch(e.target.value)}
                   />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 {filteredCategories.map((cat) => (
                   <div
                     key={cat.id}
@@ -559,21 +559,37 @@ export default function AdminDashboard() {
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Category?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete <strong>{cat.name}</strong>?
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
+                        {listings.some(l => l.category === cat.name || l.categories.includes(cat.name)) ? (
+                            <>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Cannot Delete Category</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This category contains active products. Please remove the products first.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Close</AlertDialogCancel>
+                                </AlertDialogFooter>
+                            </>
+                        ) : (
+                            <>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Category?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Are you sure you want to delete <strong>{cat.name}</strong>?
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                                >
+                                    Delete
+                                </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </>
+                        )}
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>

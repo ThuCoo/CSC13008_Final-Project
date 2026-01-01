@@ -81,7 +81,7 @@ export default function Header() {
               to="/categories"
               className="text-gray-600 hover:text-rose-700 font-medium text-sm flex items-center gap-1 hover:font-bold transition"
             >
-              <Menu className="w-4 h-4" /> All Categories
+              <Menu className="w-4 h-4" /> Categories
             </Link>
 
             <Link
@@ -92,7 +92,7 @@ export default function Header() {
             </Link>
 
             <Link
-              to="/become-seller"
+              to={user && user.type === "seller" ? "/seller-dashboard" : "/become-seller"}
               className="text-gray-600 hover:text-rose-700 font-medium text-sm flex items-center gap-1 hover:font-bold transition"
             >
               <ShoppingBag className="w-4 h-4" /> Sell
@@ -211,7 +211,7 @@ export default function Header() {
                     <SquareMousePointer className="w-5 h-5" /> Browse
                   </Link>
                   <Link
-                    to="/become-seller"
+                    to={user && user.type === "seller" ? "/seller-dashboard" : "/become-seller"}
                     className="text-gray-600 hover:text-rose-700 font-medium text-lg flex items-center gap-2 hover:font-bold transition"
                   >
                     <ShoppingBag className="w-5 h-5" /> Sell
