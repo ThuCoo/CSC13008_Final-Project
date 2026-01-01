@@ -8,6 +8,7 @@ import {
   resetSchema,
 } from "../schemas/auth.js";
 import recaptcha from "../middlewares/recaptcha.js";
+import { loginSchema } from "../schemas/auth.js";
 
 const route = new Router();
 // registration requires reCAPTCHA verification (can be disabled with RECAPTCHA_ENABLED=false)
@@ -17,6 +18,7 @@ route.post(
   recaptcha,
   authController.register
 );
+route.post("/login", validateQuery(loginSchema, "body"), authController.login);
 route.post(
   "/verify",
   validateQuery(verifySchema, "body"),

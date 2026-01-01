@@ -1,5 +1,6 @@
 import userService from "../services/user.js";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const SALT_ROUNDS = 10;
 
@@ -22,6 +23,18 @@ const controller = {
       .catch(next);
   },
 
+  me: async function (req, res, next) {
+    try {
+      if (!req.user || !req.user.userId) return res.status(401).json({ message: "Unauthorized" });
+      const user = await userService.listOne(req.user.userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      delete user.passwordHash;
+      res.json(user);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   login: async function (req, res, next) {
     try {
       const { email, password } = req.body;
@@ -33,9 +46,16 @@ const controller = {
       const ok = await bcrypt.compare(password, user.passwordHash);
       if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
+      if (!user.isVerified) return res.status(403).json({ message: "Email not verified" });
+
+      const payload = { userId: user.userId, role: user.role };
+      const token = jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES_IN || "1h",
+      });
+
       const safe = { ...user };
       delete safe.passwordHash;
-      res.json(safe);
+      res.json({ token, user: safe });
     } catch (err) {
       next(err);
     }

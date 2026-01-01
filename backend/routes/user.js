@@ -8,9 +8,11 @@ import {
   loginSchema,
 } from "../schemas/user.js";
 import { idParams } from "../schemas/common.js";
+import jwtAuth from "../middlewares/jwtAuth.js";
 
 const route = new Router();
 route.get("/", validateQuery(listUsersQuery, "query"), userController.listAll);
+route.get("/me", jwtAuth, userController.me);
 route.get("/:id", validateQuery(idParams, "params"), userController.listOne);
 route.post("/login", validateQuery(loginSchema, "body"), userController.login);
 route.post("/", validateQuery(createUserSchema, "body"), userController.create);

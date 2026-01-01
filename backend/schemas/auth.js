@@ -16,9 +16,13 @@ export const verifySchema = z.object({
   email: z.email(),
   code: z.string().length(6),
 });
-export const forgotSchema = z.object({ email: z.string().email() });
+export const forgotSchema = z.object({ email: z.email() });
 export const resetSchema = z.object({
   email: z.email(),
   code: z.string().length(6),
   newPassword: z.string().min(8),
+});
+export const loginSchema = z.object({
+  email: z.email(),
+  password: z.string().min(8),
 });

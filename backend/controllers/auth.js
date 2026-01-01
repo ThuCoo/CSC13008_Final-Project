@@ -2,10 +2,37 @@ import userService from "../services/user.js";
 import otpService from "../services/otp.js";
 import emailLib from "../lib/email.js";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const SALT_ROUNDS = 10;
 
 const controller = {
+  login: async function (req, res, next) {
+    try {
+      const { email, password } = req.body;
+      const user = await userService.getByEmailWithHash(email);
+      if (!user || !user.passwordHash)
+        return res.status(401).json({ message: "Invalid credentials" });
+
+      const ok = await bcrypt.compare(password, user.passwordHash);
+      if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+
+      if (!user.isVerified)
+        return res.status(403).json({ message: "Email not verified" });
+
+      const payload = { userId: user.userId, role: user.role };
+      const token = jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES_IN || "1h",
+      });
+
+      const safe = { ...user };
+      delete safe.passwordHash;
+      res.json({ token, user: safe });
+    } catch (err) {
+      next(err);
+    }
+  },
+
   register: async function (req, res, next) {
     try {
       const { email, password, name, address, birthday } = req.body;
@@ -28,12 +55,10 @@ const controller = {
 
       const safe = { ...user };
       delete safe.passwordHash;
-      res
-        .status(201)
-        .json({
-          message: "User created. Verification code sent to email.",
-          user: safe,
-        });
+      res.status(201).json({
+        message: "User created. Verification code sent to email.",
+        user: safe,
+      });
     } catch (err) {
       next(err);
     }
