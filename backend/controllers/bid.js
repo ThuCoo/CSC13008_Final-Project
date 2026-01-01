@@ -1,4 +1,5 @@
 import bidService from "../services/bid.js";
+import ratingService from "../services/rating.js";
 
 const controller = {
   listAll: function (req, res, next) {
@@ -21,11 +22,29 @@ const controller = {
       .catch(next);
   },
 
-  create: function (req, res, next) {
-    bidService
-      .create(req.body)
-      .then((row) => res.status(201).json(row))
-      .catch(next);
+  create: async function (req, res, next) {
+    try {
+      const { bidderId } = req.body;
+      // configurable minimum positive ratio
+      const minRatio = parseFloat(process.env.RATING_MIN_POSITIVE_RATIO) || 0.8;
+      const summary = await ratingService.summaryForUserByRole(
+        bidderId,
+        "buyer"
+      );
+      if (summary.total > 0) {
+        const ratio = summary.up / summary.total;
+        if (ratio < minRatio) {
+          return res.status(403).json({
+            message: `Bid denied: bidder rating too low (required >= ${minRatio})`,
+          });
+        }
+      }
+
+      const row = await bidService.create(req.body);
+      res.status(201).json(row);
+    } catch (err) {
+      next(err);
+    }
   },
 
   remove: function (req, res, next) {

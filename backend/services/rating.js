@@ -37,6 +37,18 @@ const service = {
     const score = up - down;
     return { up, down, score, total: rows.length };
   },
+
+  // filters ratings by role context
+  summaryForUserByRole: async function (userId, role) {
+    const rows = await db
+      .select()
+      .from(ratings)
+      .where(eq(ratings.targetUserId, userId), eq(ratings.role, role));
+    const up = rows.filter((r) => Number(r.rating) === 1).length;
+    const down = rows.filter((r) => Number(r.rating) === -1).length;
+    const score = up - down;
+    return { up, down, score, total: rows.length };
+  },
 };
 
 export default service;
