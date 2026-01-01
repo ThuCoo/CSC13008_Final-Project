@@ -11,6 +11,8 @@ const defaultSelection = {
   sellerApproved: users.seller_approved,
   address: users.address,
   birthday: users.birthday,
+  isVerified: users.isVerified,
+  verifiedAt: users.verifiedAt,
 };
 
 const service = {

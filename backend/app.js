@@ -14,6 +14,7 @@ import sellerRequestRoute from "./routes/sellerRequest.js";
 import questionRoute from "./routes/question.js";
 import userRoute from "./routes/user.js";
 import ratingRoute from "./routes/rating.js";
+import authRoute from "./routes/auth.js";
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/seller-requests", sellerRequestRoute);
 app.use("/questions", questionRoute);
 app.use("/users", userRoute);
 app.use("/ratings", ratingRoute);
+app.use("/auth", authRoute);
 
 app.use(notFound);
 app.use(errorHandler);

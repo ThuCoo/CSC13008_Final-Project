@@ -21,6 +21,20 @@ export const users = pgTable("users", {
   seller_approved: boolean("seller_approved").notNull(),
   address: text("address").notNull(),
   birthday: date("birthday").notNull(),
+  isVerified: boolean("is_verified").default(false).notNull(),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const otps = pgTable("otps", {
+  otpId: serial("otp_id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.userId),
+  code: varchar("code").notNull(),
+  purpose: varchar("purpose").notNull(), // 'verify' | 'reset'
+  expiresAt: timestamp("expires_at").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

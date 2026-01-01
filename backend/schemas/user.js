@@ -16,6 +16,7 @@ export const createUserSchema = z
         return new Date(arg);
       return arg;
     }, z.date().optional()),
+    isVerified: z.boolean().optional(),
   })
   .refine((data) => !!(data.password || data.passwordHash), {
     message: "password or passwordHash is required",

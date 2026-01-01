@@ -1,0 +1,32 @@
+import { Router } from "express";
+import validateQuery from "../middlewares/validateQuery.js";
+import authController from "../controllers/auth.js";
+import {
+  registerSchema,
+  verifySchema,
+  forgotSchema,
+  resetSchema,
+} from "../schemas/auth.js";
+import recaptcha from "../middlewares/recaptcha.js";
+
+const route = new Router();
+// registration requires reCAPTCHA verification (can be disabled with RECAPTCHA_ENABLED=false)
+route.post(
+  "/register",
+  validateQuery(registerSchema, "body"),
+  recaptcha,
+  authController.register
+);
+route.post(
+  "/verify",
+  validateQuery(verifySchema, "body"),
+  authController.verify
+);
+route.post(
+  "/forgot",
+  validateQuery(forgotSchema, "body"),
+  authController.forgot
+);
+route.post("/reset", validateQuery(resetSchema, "body"), authController.reset);
+
+export default route;
