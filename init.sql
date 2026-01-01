@@ -13,6 +13,8 @@ CREATE TABLE users (
     seller_approved BOOLEAN DEFAULT FALSE,
     address TEXT NOT NULL,
     birthday DATE NOT NULL,
+    is_verified BOOLEAN DEFAULT FALSE NOT NULL,
+    verified_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
