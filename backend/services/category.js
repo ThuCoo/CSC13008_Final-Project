@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import db from "../db/index.js";
-import { categories } from "../db/schema.js";
+import { categories, subcategories, listings } from "../db/schema.js";
 
 const defaultSelection = {
   categoryId: categories.categoryId,
@@ -30,9 +30,25 @@ const service = {
       .update(categories)
       .set(category)
       .where(eq(categories.id, category.id));
-    return this.listById(category.id);
+    return this.listOne(category.id);
   },
   remove: async function (categoryId) {
+    const existingListings = await db
+      .select()
+      .from(listings)
+      .where(eq(listings.categoryId, categoryId));
+
+    if ((existingListings || []).length > 0) {
+      const err = new Error("Cannot delete category with existing listings");
+      err.code = "CATEGORY_HAS_LISTINGS";
+      throw err;
+    }
+
+    // delete subcategories
+    await db
+      .delete(subcategories)
+      .where(eq(subcategories.categoryId, categoryId));
+
     await db.delete(categories).where(eq(categories.categoryId, categoryId));
   },
 };
