@@ -15,11 +15,35 @@ import {
   Plus,
   ArrowLeft,
   User as UserIcon,
-} from "lucide-react"; // Added ArrowLeft, UserIcon
+  Pencil,
+  Search,
+} from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "../components/ui/dialog";
+import { Label } from "../components/ui/label";
+import { Badge } from "../components/ui/badge";
+import { Category } from "../context/CategoriesContext";
 
-// Mock Users for Admin Management (Since UserContext doesn't hold all users)
+// Mock Users
 const MOCK_ALL_USERS = [
   {
     id: "1",
@@ -48,12 +72,33 @@ export default function AdminDashboard() {
   const { user } = useUser();
   const { requests, approveRequest, rejectRequest } = useSellerRequests();
   const { listings, deleteListing } = useListings();
-  const { categories, addCategory, deleteCategory } = useCategories();
+  const { categories, addCategory, deleteCategory, updateCategory } = useCategories();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const [newCatName, setNewCatName] = useState("");
+  const [newCatSubs, setNewCatSubs] = useState("");
   const [users, setUsers] = useState(MOCK_ALL_USERS); // Local state for demo
+
+  // Search States
+  const [userSearch, setUserSearch] = useState("");
+  const [listingSearch, setListingSearch] = useState("");
+  const [catSearch, setCatSearch] = useState("");
+
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
+    u.email.toLowerCase().includes(userSearch.toLowerCase())
+  );
+
+  const filteredListings = listings.filter(l => 
+    l.title.toLowerCase().includes(listingSearch.toLowerCase()) || 
+    l.sellerName.toLowerCase().includes(listingSearch.toLowerCase())
+  );
+
+  const filteredCategories = categories.filter(c => 
+    c.name.toLowerCase().includes(catSearch.toLowerCase()) || 
+    (c.subcategories || []).some(sub => sub.toLowerCase().includes(catSearch.toLowerCase()))
+  );
 
   if (!user || user.type !== "admin") {
     return (
@@ -97,6 +142,98 @@ export default function AdminDashboard() {
     });
   };
 
+  const EditCategoryDialog = ({ category, trigger }: { category: Category, trigger?: React.ReactNode }) => {
+    const [name, setName] = useState(category.name);
+    const [subcats, setSubcats] = useState(
+      (category.subcategories || []).join(", ")
+    );
+    const [isOpen, setIsOpen] = useState(false);
+
+    const handleSave = () => {
+       const subList = subcats.split(",").map(s => s.trim()).filter(Boolean);
+       updateCategory(category.id, { name, subcategories: subList });
+       setIsOpen(false);
+       toast({ title: "Category Updated" });
+    };
+
+    return (
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button variant="ghost" size="icon">
+              <Pencil className="w-4 h-4 text-slate-400" />
+            </Button>
+          )}
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Category</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+             <div className="space-y-2">
+               <Label>Category Name</Label>
+               <Input value={name} onChange={e => setName(e.target.value)} />
+             </div>
+             <div className="space-y-2">
+               <Label>Subcategories (seperate by comma)</Label>
+               <Input value={subcats} onChange={e => setSubcats(e.target.value)} />
+             </div>
+          </div>
+          <DialogFooter>
+             <Button onClick={handleSave}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  const UserDetailDialog = ({ user }: { user: typeof MOCK_ALL_USERS[0] }) => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <div className="cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded transition-colors group">
+          <p className="font-medium group-hover:underline text-rose-600">
+            {user.name}
+            <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-slate-100 border text-slate-900 no-underline inline-block">
+              {user.type}
+            </span>
+          </p>
+          <p className="text-sm text-slate-500">{user.email}</p>
+        </div>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>User Details</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="flex flex-col gap-1">
+             <Label className="text-muted-foreground">User ID</Label>
+             <div className="font-mono text-sm">{user.id}</div>
+          </div>
+          <div className="flex flex-col gap-1">
+             <Label className="text-muted-foreground">Name</Label>
+             <div>{user.name}</div>
+          </div>
+          <div className="flex flex-col gap-1">
+             <Label className="text-muted-foreground">Email</Label>
+             <div>{user.email}</div>
+          </div>
+          <div className="flex flex-col gap-1">
+             <Label className="text-muted-foreground">Account Type</Label>
+             <div className="capitalize">{user.type}</div>
+          </div>
+          <div className="flex flex-col gap-1">
+             <Label className="text-muted-foreground">Status</Label>
+             <div>
+               <Badge variant={user.status === "banned" ? "destructive" : "outline"}>
+                 {user.status}
+               </Badge>
+             </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <div className="min-h-screen bg-slate-50">
 
@@ -106,16 +243,16 @@ export default function AdminDashboard() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Shield className="w-8 h-8 text-purple-600" /> Admin Dashboard
+            <Shield className="w-8 h-8 text-rose-600" /> Admin Dashboard
           </h1>
         </div>
 
         <Tabs defaultValue="requests">
-          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+          <TabsList className="grid w-full h-full grid-cols-2 md:grid-cols-4 max-w-2xl">
             <TabsTrigger value="requests">Seller Requests</TabsTrigger>
             <TabsTrigger value="users">Manage Users</TabsTrigger>{" "}
-            <TabsTrigger value="listings">Listings</TabsTrigger>
-            <TabsTrigger value="categories">Categories</TabsTrigger>
+            <TabsTrigger value="listings">Manage Listings</TabsTrigger>
+            <TabsTrigger value="categories">Manage Categories</TabsTrigger>
           </TabsList>
           {/* Seller Requests Tab */}
           <TabsContent value="requests" className="mt-6">
@@ -155,15 +292,33 @@ export default function AdminDashboard() {
                         >
                           <Check className="w-4 h-4 mr-1" /> Approve
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() =>
-                            rejectRequest(req.id, user.id, "Admin Rejected")
-                          }
-                        >
-                          <X className="w-4 h-4 mr-1" /> Reject
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                            >
+                              <X className="w-4 h-4 mr-1" /> Reject
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Reject Seller Request?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will reject the user's application to become a seller.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={() => rejectRequest(req.id, user.id, "Admin Rejected")}
+                              >
+                                Reject
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   ))
@@ -176,10 +331,21 @@ export default function AdminDashboard() {
               <div className="p-4 border-b bg-slate-50 font-medium flex justify-between">
                 <span>System Users</span>
                 <span className="text-xs text-slate-500 self-center">
-                  Total: {users.length}
+                  Total: {filteredUsers.length}
                 </span>
               </div>
-              {users.map((u) => (
+              <div className="p-4 border-b bg-slate-50">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                  <Input 
+                    placeholder="Search users by name or email..." 
+                    className="pl-9 bg-white"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+              {filteredUsers.map((u) => (
                 <div
                   key={u.id}
                   className="p-4 flex items-center justify-between border-b last:border-0"
@@ -189,37 +355,68 @@ export default function AdminDashboard() {
                       <UserIcon className="w-5 h-5 text-slate-500" />
                     </div>
                     <div>
-                      <p className="font-medium">
-                        {u.name}{" "}
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 border">
-                          {u.type}
-                        </span>
-                      </p>
-                      <p className="text-sm text-slate-500">{u.email}</p>
+                      <UserDetailDialog user={u} />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {u.status === "banned" ? (
-                      <span className="text-red-600 font-bold text-sm mr-2">
+                      <span className="text-rose-600 font-bold text-sm mr-2">
                         BANNED
                       </span>
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleBanUser(u.id)}
-                      >
-                        Ban
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            Ban
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Ban User?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This user will be unable to log in or perform actions.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                             onClick={() => handleBanUser(u.id)}
+                            >
+                              Ban User
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-500 hover:bg-red-50"
-                      onClick={() => handleDeleteUser(u.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-rose-500 hover:bg-rose-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete User?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. The user account will be permanently removed.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => handleDeleteUser(u.id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               ))}
@@ -228,62 +425,174 @@ export default function AdminDashboard() {
           {/* Listings Tab */}
           <TabsContent value="listings" className="mt-6">
             <div className="bg-white rounded-lg border shadow-sm divide-y">
-              {listings.map((l) => (
+              <div className="p-4 bg-slate-50">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                  <Input 
+                    placeholder="Search listings by title or seller..." 
+                    className="pl-9 bg-white"
+                    value={listingSearch}
+                    onChange={(e) => setListingSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+              {filteredListings.length === 0 ? (
+                 <div className="p-8 text-center text-slate-500">No listings found.</div>
+              ) : (
+              filteredListings.map((l) => (
                 <div
                   key={l.id}
                   className="p-4 flex justify-between items-center"
                 >
-                  <span className="font-medium">
-                    {l.title} (Seller: {l.sellerName})
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-red-600"
-                    onClick={() => {
-                      deleteListing(l.id);
-                      toast({ title: "Listing Removed" });
-                    }}
+                  <div 
+                    className="flex flex-col cursor-pointer" 
+                    onClick={() => navigate(`/auction/${l.id}`)}
                   >
-                    <Trash2 className="w-4 h-4 mr-2" /> Remove
-                  </Button>
+                    <span className="font-medium text-rose-600 hover:underline">
+                      {l.title}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Seller: {l.sellerName}
+                    </span>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-rose-600"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" /> Remove
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Listing?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will remove the listing permanently from the platform.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => {
+                            deleteListing(l.id);
+                            toast({ title: "Listing Removed" });
+                          }}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
-              ))}
+              )))}
             </div>
           </TabsContent>
           {/* Categories Tab */}
           <TabsContent value="categories" className="mt-6">
             <div className="bg-white rounded-lg border shadow-sm p-6">
-              <div className="flex gap-4 mb-6">
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <Input
                   placeholder="New Category Name"
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                 />
+                <Input
+                  placeholder="Subcategories (seperate by comma)"
+                  value={newCatSubs}
+                  onChange={(e) => setNewCatSubs(e.target.value)}
+                />
                 <Button
                   onClick={() => {
-                    addCategory(newCatName, "Desc", "📦");
+                    const subs = newCatSubs.split(",").map(Is => Is.trim()).filter(Boolean);
+                    addCategory(newCatName, "Desc", "📦", subs);
                     setNewCatName("");
+                    setNewCatSubs("");
                     toast({ title: "Category Added" });
                   }}
                 >
                   <Plus className="w-4 h-4 mr-2" /> Add
                 </Button>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                {categories.map((cat) => (
+              <div className="mb-4 relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                  <Input 
+                    placeholder="Search categories..." 
+                    className="pl-9 bg-white"
+                    value={catSearch}
+                    onChange={(e) => setCatSearch(e.target.value)}
+                  />
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                {filteredCategories.map((cat) => (
                   <div
                     key={cat.id}
                     className="flex justify-between items-center p-3 border rounded"
                   >
-                    <span>{cat.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                    >
-                      <Trash2 className="w-4 h-4 text-slate-400" />
-                    </Button>
+                    <div className="flex flex-col">
+                      <EditCategoryDialog 
+                        category={cat} 
+                        trigger={
+                          <span className="font-medium cursor-pointer hover:underline text-rose-600 w-fit">
+                            {cat.name}
+                          </span>
+                        }
+                      />
+                      {cat.subcategories && cat.subcategories.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                           {cat.subcategories.map(sub => (
+                             <Badge key={sub} variant="secondary" className="text-xs">
+                               {sub}
+                             </Badge>
+                           ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                    <EditCategoryDialog category={cat} />
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <Trash2 className="w-4 h-4 text-slate-400" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        {listings.some(l => l.category === cat.name || l.categories.includes(cat.name)) ? (
+                            <>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Cannot Delete Category</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This category contains active products. Please remove the products first.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Close</AlertDialogCancel>
+                                </AlertDialogFooter>
+                            </>
+                        ) : (
+                            <>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Category?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Are you sure you want to delete <strong>{cat.name}</strong>?
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                                >
+                                    Delete
+                                </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </>
+                        )}
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                   </div>
                 ))}
               </div>

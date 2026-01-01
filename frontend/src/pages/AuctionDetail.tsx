@@ -3,31 +3,75 @@ import { useState } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { useNavigate, Link, useParams } from "react-router-dom";
-import { Clock, Ban, MessageCircle, ArrowLeft } from "lucide-react";
+import { Clock, Ban, MessageCircle, ArrowLeft, Heart, Star } from "lucide-react";
 import { maskBidderName, formatAuctionTime } from "../lib/utils";
 import AutoBidForm from "../components/AutoBidForm";
 import { useListings } from "../context/ListingsContext";
+import { useWatchlist } from "../context/WatchlistContext";
 import { useUser } from "../context/UserContext";
 import { useToast } from "../hooks/use-toast";
 import NotFound from "./NotFound";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 
 export default function AuctionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { getListingById, placeBid, getListingsByCategory, addQuestion, answerQuestion, rejectBidder } = useListings();
+  const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
   const { user } = useUser();
 
-  const [bidAmount, setBidAmount] = useState("");
+  const listing = getListingById(id || "");
+  const [bidAmount, setBidAmount] = useState(listing ? (listing.currentBid + listing.stepPrice).toString() : "");
   const [questionText, setQuestionText] = useState("");
   const [answerText, setAnswerText] = useState("");
+  
+  // Image Gallery State
+  const [selectedImage, setSelectedImage] = useState("");
+  const [bidderToReject, setBidderToReject] = useState<string | null>(null);
+  
+  // Update state when listing changes
+  if (listing && listing.images.length > 0 && (!selectedImage || !listing.images.includes(selectedImage))) {
+      setSelectedImage(listing.images[0]);
+  }
+  // Reset when ID changes
+  if (listing && selectedImage && !listing.images.includes(selectedImage)) {
+      setSelectedImage(listing.images[0] || "");
+  }
 
-  const listing = getListingById(id || "");
+  // Reactive Bid Update: Update input when current bid changes
+  const [lastBidId, setLastBidId] = useState(listing?.currentBid || 0);
+  if (listing && listing.currentBid !== lastBidId) {
+      setLastBidId(listing.currentBid);
+      setBidAmount((listing.currentBid + listing.stepPrice).toString());
+  }
 
   if (!listing) return <NotFound />;
 
   const isSeller = user?.id === listing.sellerId;
   const relatedProducts = listing ? getListingsByCategory(listing.category).filter(l => l.id !== listing.id).slice(0, 5) : [];
+
+  const handleToggleWatchlist = () => {
+    if (!user) return navigate("/login");
+    if (isInWatchlist(listing.id, user.id)) {
+      removeFromWatchlist(listing.id, user.id);
+      toast({ title: "Removed from watchlist" });
+    } else {
+      addToWatchlist(listing.id, user.id);
+      toast({ title: "Added to watchlist" });
+    }
+  };
+
+  const isInWatchlistState = user ? isInWatchlist(listing.id, user.id) : false;
 
   const handlePlaceBid = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,15 +105,25 @@ export default function AuctionDetail() {
   const onNavigateBack = () => navigate(-1);
 
   const handleRejectBidder = (bidderId: string) => {
-    if (
-      confirm(
-        "Kick this bidder? Their bids will be removed and they will be banned from this item.",
-      )
-    ) {
-      rejectBidder(listing.id, bidderId);
+    setBidderToReject(bidderId);
+  };
+
+  const confirmRejectBidder = () => {
+    if (bidderToReject) {
+      rejectBidder(listing.id, bidderToReject);
       toast({ title: "Bidder rejected" });
+      setBidderToReject(null);
     }
   };
+
+  // Helper to generate a predictable mock rating
+  const getMockRating = (name: string) => {
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return 80 + Math.abs(hash % 20); // Rating between 80 and 99
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -87,10 +141,58 @@ export default function AuctionDetail() {
           <div className="lg:col-span-2 space-y-8">
             {/* Main Info */}
             <div className="bg-white rounded-xl border p-6">
-              <div
-                className={`h-96 rounded-xl bg-gradient-to-br ${listing.imageColor} mb-6`}
-              ></div>
-              <h1 className="text-3xl font-bold mb-2">{listing.title}</h1>
+              <div className="flex flex-col gap-4 mb-6">
+                  {/* Main Image */}
+                  <div className="h-96 rounded-xl bg-gray-200 overflow-hidden border">
+                    <img
+                       src={selectedImage || "https://placehold.co/800x600?text=No+Image"}
+                       alt={listing.title}
+                       className="w-full h-full object-contain bg-white"
+                    />
+                  </div>
+                  {/* Sub Images */}
+                  {listing.images && listing.images.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                          {listing.images.map((img, idx) => (
+                              <button 
+                                key={idx}
+                                onClick={() => setSelectedImage(img)}
+                                className={`w-20 h-20 rounded-md overflow-hidden border-2 shrink-0 transition ${selectedImage === img ? 'border-rose-600' : 'border-transparent'}`}
+                              >
+                                  <img src={img} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
+                              </button>
+                          ))}
+                      </div>
+                  )}
+              </div>
+
+              <div className="flex justify-between items-start mb-2">
+                <h1 className="text-3xl font-bold">{listing.title}</h1>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-full shrink-0"
+                  onClick={handleToggleWatchlist}
+                  title={isInWatchlistState ? "Remove from watchlist" : "Add to watchlist"}
+                >
+                  <Heart className={`w-5 h-5 ${isInWatchlistState ? "fill-current text-red-500" : "text-slate-400"}`} />
+                </Button>
+              </div>
+              
+              {/* Seller Info */}
+              <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-lg">
+                  <div className="w-10 h-10 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center font-bold">
+                      {listing.sellerName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                      <p className="font-medium text-sm">Seller: <span className="text-slate-900 font-bold">{listing.sellerName}</span></p>
+                      <div className="flex items-center gap-1 text-xs text-slate-500">
+                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                          <span>{getMockRating(listing.sellerName)}% Positive Feedback</span>
+                      </div>
+                  </div>
+              </div>
+
               <p className="text-slate-500 flex gap-2 items-center mb-6">
                 <Clock className="w-4 h-4" />{" "}
                 {formatAuctionTime(listing.endsAt)}
@@ -209,9 +311,15 @@ export default function AuctionDetail() {
                       className="flex justify-between items-center text-sm"
                     >
                       <div>
-                        <p className="font-medium">
-                          {maskBidderName(bid.bidderName)}
-                        </p>
+                        <div className="flex items-center gap-2">
+                            <p className="font-medium">
+                            {maskBidderName(bid.bidderName)}
+                            </p>
+                            <span className="text-[10px] bg-slate-100 px-1 rounded text-slate-500 flex items-center">
+                                <Star className="w-2.5 h-2.5 mr-0.5 fill-slate-400" />
+                                {getMockRating(bid.bidderName)}%
+                            </span>
+                        </div>
                         <p className="text-xs text-slate-500">
                           {new Date(bid.timestamp).toLocaleTimeString()}
                         </p>
@@ -248,9 +356,13 @@ export default function AuctionDetail() {
                     to={`/auction/${rel.id}`}
                     className="bg-white border rounded-lg overflow-hidden hover:shadow-md transition"
                   >
-                    <div
-                      className={`h-32 bg-gradient-to-br ${rel.imageColor}`}
-                    />
+                    <div className="h-32 bg-gray-200 relative">
+                       <img
+                         src={rel.images && rel.images.length > 0 ? rel.images[0] : "https://placehold.co/400x300?text=No+Image"}
+                         alt={rel.title}
+                         className="w-full h-full object-cover"
+                       />
+                    </div>
                     <div className="p-3">
                       <h4 className="font-bold truncate text-sm">
                         {rel.title}
@@ -265,9 +377,29 @@ export default function AuctionDetail() {
             ) : (
               <p className="text-slate-500">No related products found.</p>
             )}
-          </div>
+        </div>
         </div>
       </div>
+
+      <AlertDialog open={!!bidderToReject} onOpenChange={(open) => !open && setBidderToReject(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject Bidder?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove their bids and ban them from bidding on this item again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmRejectBidder}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Reject Bidder
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

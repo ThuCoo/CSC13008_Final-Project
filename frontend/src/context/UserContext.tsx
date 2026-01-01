@@ -4,7 +4,7 @@ import { User } from "./user";
 export interface UserContextType {
   user: Omit<User, "password"> | null;
   login: (email: string, password: string) => boolean;
-  signup: (data: { email: string; name: string; password?: string }) => void;
+  signup: (data: { email: string; name: string; password?: string, address?: string }) => void;
   logout: () => void;
   updateProfile: (id: string, data: Partial<User>) => void;
   changePassword: (id: string, current: string, newPass: string) => void;
@@ -54,9 +54,22 @@ export const MOCK_USERS = [MOCK_BUYER, MOCK_SELLER, MOCK_ADMIN];
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Omit<User, "password"> | null>(() => {
     if (typeof window !== "undefined") {
-      const storedUser = localStorage.getItem("auctionhub_user");
-      if (storedUser) {
-        return JSON.parse(storedUser);
+      const storedUserString = localStorage.getItem("auctionhub_user");
+      if (storedUserString) {
+        const storedUser = JSON.parse(storedUserString);
+        const mockMatch = MOCK_USERS.find(u => u.email === storedUser.email);
+        if (mockMatch) {
+             const updatedUser = {
+                 ...storedUser,
+                 type: mockMatch.type,
+                 sellerApproved: mockMatch.sellerApproved
+             };
+             if (updatedUser.type !== storedUser.type || updatedUser.sellerApproved !== storedUser.sellerApproved) {
+                 localStorage.setItem("auctionhub_user", JSON.stringify(updatedUser));
+             }
+             return updatedUser;
+        }
+        return storedUser;
       }
     }
     return null;
@@ -66,8 +79,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const foundUser = MOCK_USERS.find((u) => u.email === email);
 
     if (!foundUser || foundUser.password !== passwordInput) {
-       // Ideally use toast here but context shouldn't depend on components if possible
-       // Return false to let caller handle it
        return false;
     }
 
@@ -78,7 +89,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  const signup = (data: { email: string; name: string; password?: string }) => {
+  const signup = (data: { email: string; name: string; password?: string, address?: string }) => {
     const newUser: User = {
       id: String(Date.now()),
       email: data.email,
@@ -87,6 +98,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       type: "buyer",
       sellerApproved: false,
       createdAt: Date.now(),
+      address: data.address
     };
 
     const { ...userToStore } = newUser;

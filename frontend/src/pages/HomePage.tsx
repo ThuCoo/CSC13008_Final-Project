@@ -40,7 +40,12 @@ const ListingCard = ({ listing }: { listing: Listing }) => {
       to={`/auction/${listing.id}`}
       className="bg-white border rounded-xl overflow-hidden hover:shadow-lg transition group"
     >
-      <div className={`h-40 bg-gradient-to-br ${listing.imageColor} relative`}>
+      <div className="h-40 relative bg-gray-200">
+        <img
+           src={listing.images && listing.images.length > 0 ? listing.images[0] : "https://placehold.co/400x300?text=No+Image"}
+           alt={listing.title}
+           className="w-full h-full object-cover"
+        />
         <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
           <Clock className="w-3 h-3" /> {formatAuctionTime(listing.endsAt)}
         </div>
@@ -103,7 +108,7 @@ export default function HomePage() {
               <Button asChild variant="outline" size="lg" className="text-base text-rose-700 border-rose-700 hover:bg-rose-700 hover:text-white transition">
                 <Link to="/browse">Start Bidding</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-base text-rose-700 border-rose-700 hover:bg-rose-700 hover:text-white transition">
+              <Button asChild variant="outline" size="lg" className="text-base bg-rose-700 text-white hover:border-rose-700 hover:text-rose-700 hover:bg-white transition">
                 <Link to="/selling">Become a Seller</Link>
               </Button>
             </div>
@@ -148,7 +153,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2 mb-6">
             <Clock className="w-6 h-6 text-rose-600" />
             <h2 className="text-2xl font-bold text-gray-900">
-              Closing Soon (Top 5)
+              Closing Soon
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -163,7 +168,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2 mb-6">
             <TrendingUp className="w-6 h-6 text-rose-600" />
             <h2 className="text-2xl font-bold text-gray-900">
-              Most Active Auctions (Top 5)
+              Most Active Auctions
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -176,9 +181,9 @@ export default function HomePage() {
         {/* Section 3: Highest Price */}
         <section>
           <div className="flex items-center gap-2 mb-6">
-            <DollarSign className="w-6 h-6 text-green-600" />
+            <DollarSign className="w-6 h-6 text-rose-600" />
             <h2 className="text-2xl font-bold text-gray-900">
-              Highest Priced Items (Top 5)
+              Highest Priced Items
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">

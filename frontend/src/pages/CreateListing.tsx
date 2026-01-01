@@ -17,7 +17,17 @@ import {
 import { Checkbox } from "../components/ui/checkbox";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { Upload, DollarSign, Image as ImageIcon, Type } from "lucide-react";
+import { Upload, DollarSign, Image as ImageIcon, Type, ArrowLeft } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 
 export default function CreateListing() {
   const { user } = useUser();
@@ -30,7 +40,8 @@ export default function CreateListing() {
     title: "",
     description: "",
     category: "",
-    startingPrice: "",
+    subCategory: "",
+    startingPrice: "0",
     stepPrice: "50",
     buyNowPrice: "",
     shippingCost: "0",
@@ -38,6 +49,7 @@ export default function CreateListing() {
   });
 
   const [images, setImages] = useState<string[]>([]);
+  const [showExitDialog, setShowExitDialog] = useState(false);
 
   const hasAccess = user && user.type === "seller" && user.sellerApproved;
 
@@ -65,11 +77,22 @@ export default function CreateListing() {
     );
   }
 
-  const handleAddMockImage = () => {
-    const colors = ["red", "blue", "green", "purple", "orange"];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    const newImage = `https://placehold.co/600x400/${randomColor}/white?text=Item+Image+${images.length + 1}`;
-    setImages([...images, newImage]);
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      const promises = files.map(file => {
+          return new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+          });
+      });
+
+      Promise.all(promises).then(base64Images => {
+          setImages([...images, ...base64Images]);
+      }).catch(() => toast({ title: "Error uploading images", description: "Could not process files", variant: "destructive" }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -91,13 +114,13 @@ export default function CreateListing() {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        categories: [formData.category],
+        subCategory: formData.subCategory,
+        categories: [formData.category, formData.subCategory].filter(Boolean) as string[],
         startingPrice: parseFloat(formData.startingPrice),
         shippingCost: parseFloat(formData.shippingCost),
         returns: "No Returns",
         images: images,
         condition: "New",
-        imageColor: "from-rose-400 to-rose-600",
         endsAt: Date.now() + 3 * 24 * 60 * 60 * 1000,
         stepPrice: parseFloat(formData.stepPrice),
         buyNowPrice: formData.buyNowPrice
@@ -120,11 +143,30 @@ export default function CreateListing() {
     }
   };
 
+  const handleBack = () => {
+    const isDirty = 
+      formData.title || 
+      formData.description || 
+      formData.startingPrice !== "0" || 
+      images.length > 0;
+      
+    if (isDirty) {
+      setShowExitDialog(true);
+    } else {
+      navigate(-1);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
 
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Create New Listing</h1>
+        <div className="flex items-center gap-4 mb-8">
+            <Button variant="ghost" size="icon" onClick={handleBack}>
+                <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-3xl font-bold">Create New Listing</h1>
+        </div>
 
         <form
           onSubmit={handleSubmit}
@@ -158,6 +200,29 @@ export default function CreateListing() {
                       {c.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Subcategory (Optional)</Label>
+              <Select
+                disabled={!formData.category} // Disable if no main cat selected
+                value={formData.subCategory}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, subCategory: v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={formData.category ? "Select Subcategory" : "Select Category First"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories
+                    .find((c) => c.name === formData.category)
+                    ?.subcategories?.map((sub) => (
+                      <SelectItem key={sub} value={sub}>
+                        {sub}
+                      </SelectItem>
+                    )) || <SelectItem value="none" disabled>No subcategories</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
@@ -254,14 +319,24 @@ export default function CreateListing() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <Label>Product Images (Min. 3) </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAddMockImage}
-              >
-                <Upload className="w-4 h-4 mr-2" /> Add Image
-              </Button>
+              <div className="flex gap-2">
+                 <Input
+                   type="file"
+                   id="image-upload"
+                   multiple
+                   accept="image/*"
+                   className="hidden"
+                   onChange={handleImageUpload}
+                 />
+                 <Button
+                   type="button"
+                   variant="outline"
+                   size="sm"
+                   onClick={() => document.getElementById('image-upload')?.click()}
+                 >
+                   <Upload className="w-4 h-4 mr-2" /> Upload Images
+                 </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4 p-4 border-2 border-dashed rounded-lg bg-slate-50 min-h-[120px]">
@@ -301,6 +376,23 @@ export default function CreateListing() {
           </Button>
         </form>
       </div>
+
+      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard Changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to leave?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => navigate(-1)} className="bg-rose-600 hover:bg-rose-700">
+              Discard & Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

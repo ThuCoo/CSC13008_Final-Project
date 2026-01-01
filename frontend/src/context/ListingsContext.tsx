@@ -35,7 +35,6 @@ export interface Listing {
   createdAt: number;
   endsAt: number;
   condition: string;
-  imageColor: string;
   shippingCost: number;
   returns: string;
   images: string[];
@@ -108,7 +107,7 @@ const generateMockListings = (): Listing[] => {
   for (let i = 1; i <= 30; i++) {
     const cat = categories[i % 3];
     const sub = cat.sub[i % 2];
-    const timeLeft = Math.floor(Math.random() * 5 * 24 * 60 * 60 * 1000);
+    const timeLeft = Math.floor(Math.random() * 5 * 24 * 60 * 60 * 1000) + 24 * 60 * 60 * 1000; 
 
     listings.push({
       id: i.toString(),
@@ -135,10 +134,9 @@ const generateMockListings = (): Listing[] => {
       createdAt: Date.now() - 100000,
       endsAt: Date.now() + timeLeft,
       condition: "New",
-      imageColor: "from-rose-400 to-rose-600",
       shippingCost: 30000,
       returns: "None",
-      images: [],
+      images: [`https://picsum.photos/seed/${i * 123}/400/300`, `https://picsum.photos/seed/${i * 456}/400/300`],
       autoExtendedDates: [],
       questions: [],
     });
@@ -149,7 +147,11 @@ const generateMockListings = (): Listing[] => {
 export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const [listings, setListings] = useState<Listing[]>(() => {
     const stored = localStorage.getItem("auctionhub_listings");
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+       const parsed = JSON.parse(stored);
+       const needsMigration = parsed.some((l: Listing) => !l.images || l.images.length === 0);
+       if (!needsMigration) return parsed;
+    }
     return generateMockListings();
   });
 
