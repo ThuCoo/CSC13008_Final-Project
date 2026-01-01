@@ -13,6 +13,7 @@ import watchlistRoute from "./routes/watchlist.js";
 import sellerRequestRoute from "./routes/sellerRequest.js";
 import questionRoute from "./routes/question.js";
 import userRoute from "./routes/user.js";
+import ratingRoute from "./routes/rating.js";
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use("/watchlists", watchlistRoute);
 app.use("/seller-requests", sellerRequestRoute);
 app.use("/questions", questionRoute);
 app.use("/users", userRoute);
+app.use("/ratings", ratingRoute);
 
 app.use(notFound);
 app.use(errorHandler);

@@ -116,3 +116,17 @@ export const sellerRequests = pgTable("seller_requests", {
   rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const ratings = pgTable("ratings", {
+  ratingId: serial("rating_id").primaryKey(),
+  targetUserId: integer("target_user_id")
+    .notNull()
+    .references(() => users.userId),
+  raterUserId: integer("rater_user_id")
+    .notNull()
+    .references(() => users.userId),
+  rating: integer("rating").notNull(), // 1 or -1
+  role: varchar("role").notNull(), // 'buyer' or 'seller'
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
