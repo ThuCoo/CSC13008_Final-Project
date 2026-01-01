@@ -144,3 +144,14 @@ export const ratings = pgTable("ratings", {
   comment: text("comment"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const orders = pgTable("orders", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id").notNull().references(() => listings.listingId),
+  buyerId: integer("buyer_id").notNull().references(() => users.userId),
+  sellerId: integer("seller_id").notNull().references(() => users.userId),
+  finalPrice: decimal("final_price").notNull(),
+  status: varchar("status").notNull(),
+  shippingAddress: text("shipping_address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

@@ -143,9 +143,55 @@ CREATE TABLE ratings (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
+-- Basic constraints to enforce data sanity
+ALTER TABLE listings
+  ADD CONSTRAINT listing_start_nonnegative CHECK (starting_price >= 0),
+  ADD CONSTRAINT listing_step_positive CHECK (step_price > 0),
+  ADD CONSTRAINT listing_current_nonnegative CHECK (current_bid >= 0),
+  ADD CONSTRAINT listing_buynow_ge_start CHECK (buy_now_price IS NULL OR buy_now_price >= starting_price);
+
+ALTER TABLE bids
+  ADD CONSTRAINT bids_positive_amount CHECK (amount > 0);
+
 -- =========================
 -- Seed test data
 -- =========================
+
+-- Additional test users for validation scenarios
+INSERT INTO users (email, password_hash, name, avatar_url, role, seller_approved, address, birthday)
+VALUES
+('lowbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Low Bidder', 'https://example.com/avatars/low.jpg', 'buyer', FALSE, '1 Low St', '1995-06-06'),
+('highbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'High Bidder', 'https://example.com/avatars/high.jpg', 'buyer', FALSE, '2 High St', '1994-05-05'),
+('rejectedbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Rejected Bidder', 'https://example.com/avatars/rej.jpg', 'buyer', FALSE, '3 Rej St', '1993-04-04');
+
+-- Low bidder: 1 up, 9 down => 10% positive
+INSERT INTO ratings (target_user_id, rater_user_id, rating, role)
+SELECT (SELECT user_id FROM users WHERE email='lowbidder@example.com'), user_id, -1, 'buyer'
+FROM users WHERE role='seller' LIMIT 9;
+INSERT INTO ratings (target_user_id, rater_user_id, rating, role)
+VALUES ((SELECT user_id FROM users WHERE email='lowbidder@example.com'), (SELECT user_id FROM users WHERE email='admin1@example.com'), 1, 'buyer');
+
+-- High bidder: 9 up, 1 down => 90% positive
+INSERT INTO ratings (target_user_id, rater_user_id, rating, role)
+SELECT (SELECT user_id FROM users WHERE email='highbidder@example.com'), user_id, 1, 'buyer'
+FROM users WHERE role='seller' LIMIT 9;
+INSERT INTO ratings (target_user_id, rater_user_id, rating, role)
+VALUES ((SELECT user_id FROM users WHERE email='highbidder@example.com'), (SELECT user_id FROM users WHERE email='admin1@example.com'), -1, 'buyer');
+
+-- Listing that rejects a specific bidder
+INSERT INTO listings (seller_id, title, description, category_id, subcategory_id, starting_price, current_bid, step_price, buy_now_price, status, item_condition, shipping_cost, return_policy, images, auto_extended_dates, rejected_bidders, ends_at)
+VALUES
+((SELECT user_id FROM users WHERE email='seller1@example.com'), 'Rejected Listing', 'Seller rejected a bidder for testing', (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Phones' LIMIT 1), 30.00, 30.00, 1.00, NULL, 'active', 'new', 0.00, 'no returns', '[]'::jsonb, (SELECT jsonb_build_array((SELECT user_id FROM users WHERE email='rejectedbidder@example.com'))), now() + interval '7 days');
+
+-- Buy-now listing (buyNowPrice set)
+INSERT INTO listings (seller_id, title, description, category_id, subcategory_id, starting_price, current_bid, step_price, buy_now_price, status, item_condition, shipping_cost, return_policy, images, auto_extended_dates, rejected_bidders, ends_at)
+VALUES
+((SELECT user_id FROM users WHERE email='seller2@example.com'), 'BuyNow Listing', 'Has buy now price', (SELECT category_id FROM categories WHERE name='Books'), (SELECT subcategory_id FROM subcategories WHERE name='Fiction' LIMIT 1), 20.00, 20.00, 1.00, 200.00, 'active', 'new', 0.00, 'no returns', '[]'::jsonb, '[]'::jsonb, NULL, now() + interval '7 days');
+
+-- Auto-extend listing (ends soon) to test extension logic
+INSERT INTO listings (seller_id, title, description, category_id, subcategory_id, starting_price, current_bid, step_price, buy_now_price, status, item_condition, shipping_cost, return_policy, images, auto_extended_dates, rejected_bidders, ends_at)
+VALUES
+((SELECT user_id FROM users WHERE email='seller3@example.com'), 'AutoExtend Listing', 'Ends soon to test auto-extend', (SELECT category_id FROM categories WHERE name='Home & Garden'), (SELECT subcategory_id FROM subcategories WHERE name='Kitchen' LIMIT 1), 5.00, 5.00, 1.00, NULL, 'active', 'new', 0.00, 'no returns', '[]'::jsonb, '[]'::jsonb, now() + interval '4 minutes');
 
 -- Categories
 INSERT INTO categories (name, description, icon) VALUES
@@ -327,3 +373,14 @@ WHERE l.title IN ('Seed Listing 1', 'Seed Listing 5', 'Seed Listing 12', 'Seed L
 
 UPDATE listings SET status = 'sold'
 WHERE listing_id IN (SELECT listing_id FROM orders);
+
+-- Create otps table for verification/reset codes
+CREATE TABLE IF NOT EXISTS otps (
+  otp_id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(user_id),
+  code VARCHAR(10) NOT NULL,
+  purpose VARCHAR(20) NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);

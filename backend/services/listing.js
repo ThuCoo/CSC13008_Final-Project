@@ -94,10 +94,24 @@ const service = {
     const result = await db.insert(listings).values(listing).returning();
     return result[0];
   },
+
   update: async function (listing) {
-    await db.update(listings).set(listing).where(eq(listings.id, listing.id));
-    return this.listById(listing.id);
+    await db
+      .update(listings)
+      .set(listing)
+      .where(eq(listings.listingId, listing.listingId));
+    return this.listOne(listing.listingId);
   },
+
+  // update current bid amount for a listing
+  updateCurrentBid: async function (listingId, amount) {
+    await db
+      .update(listings)
+      .set({ currentBid: amount })
+      .where(eq(listings.listingId, listingId));
+    return this.listOne(listingId);
+  },
+
   remove: async function (listingId) {
     await db.delete(listings).where(eq(listings.listingId, listingId));
   },
