@@ -28,6 +28,11 @@ const service = {
     const result = await query;
     return result[0] || null;
   },
+  // returns full user row including passwordHash for authentication checks
+  getByEmailWithHash: async function (email) {
+    const result = await db.select().from(users).where(eq(users.email, email));
+    return result[0] || null;
+  },
   create: async function (user) {
     const result = await db.insert(users).values(user).returning();
     return result[0];
