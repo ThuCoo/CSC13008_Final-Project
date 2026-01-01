@@ -1,20 +1,16 @@
-import nodemailer from "nodemailer";
+import sgMail from "@sendgrid/mail";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || "587"),
-  secure: process.env.SMTP_SECURE === "true",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// Use SendGrid API key
+if (!process.env.SENDGRID_API_KEY) {
+  console.warn("SENDGRID_API_KEY not set - email sending will fail");
+} else {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 async function sendMail({ to, subject, text, html }) {
-  const from =
-    process.env.EMAIL_FROM ||
-    `no-reply@${process.env.SMTP_HOST || "example.com"}`;
-  return transporter.sendMail({ from, to, subject, text, html });
+  const from = process.env.EMAIL_FROM || "no-reply@example.com";
+  const msg = { to, from, subject, text, html };
+  return sgMail.send(msg);
 }
 
 export async function sendOtpEmail(to, code, purpose) {
