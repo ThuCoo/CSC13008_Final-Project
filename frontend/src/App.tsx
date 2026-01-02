@@ -16,6 +16,7 @@ import { BiddingRulesProvider } from "./context/BiddingRulesContext";
 // Global Layout Components
 import Footer from "./components/Footer";
 import Header from "./components/Header";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Pages (The UI Layer)
 import HomePage from "./pages/HomePage";
@@ -56,6 +57,7 @@ function App() {
                       <Toaster />
                       <Sonner />
                       <BrowserRouter>
+                        <ScrollToTop />
                       <Header/>
                         <div className="flex flex-col min-h-screen">
                           <div className="flex-grow">

@@ -24,6 +24,8 @@ export interface Listing {
   sellerName: string;
   title: string;
   description: string;
+  categoryId: number;
+  subcategoryId?: number;
   category: string;
   subCategory?: string;
   categories: string[];
@@ -36,8 +38,10 @@ export interface Listing {
   createdAt: number;
   endsAt: number;
   condition: string;
+  itemCondition?: string;
   shippingCost: number;
   returns: string;
+  returnPolicy?: string;
   images: string[];
   autoExtendedDates: number[];
   rejectedBidders?: string[];

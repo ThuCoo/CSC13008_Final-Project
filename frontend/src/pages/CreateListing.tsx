@@ -109,18 +109,21 @@ export default function CreateListing() {
 
     try {
       createListing({
-        sellerId: user.id,
+        sellerId: user.id || "0",
         sellerName: user.name,
         title: formData.title,
         description: formData.description,
-        category: formData.category,
-        subCategory: formData.subCategory,
-        categories: [formData.category, formData.subCategory].filter(Boolean) as string[],
+        categoryId: parseInt(formData.category),
+        subcategoryId: formData.subCategory ? parseInt(formData.subCategory) : undefined,
+        category: "Dummy",
+        categories: [],
         startingPrice: parseFloat(formData.startingPrice),
         shippingCost: parseFloat(formData.shippingCost),
-        returns: "No Returns",
+        itemCondition: "New",
+        returnPolicy: "No Returns",
         images: images,
         condition: "New",
+        returns: "No Returns",
         endsAt: Date.now() + 3 * 24 * 60 * 60 * 1000,
         stepPrice: parseFloat(formData.stepPrice),
         buyNowPrice: formData.buyNowPrice
@@ -187,44 +190,44 @@ export default function CreateListing() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Category</Label>
-              <Select
-                onValueChange={(v) => setFormData({ ...formData, category: v })}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.name}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Subcategory (Optional)</Label>
-              <Select
-                disabled={!formData.category} // Disable if no main cat selected
-                value={formData.subCategory}
-                onValueChange={(v) =>
-                  setFormData({ ...formData, subCategory: v })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={formData.category ? "Select Subcategory" : "Select Category First"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories
-                    .find((c) => c.name === formData.category)
-                    ?.subcategories?.map((sub) => (
-                      <SelectItem key={sub} value={sub}>
-                        {sub}
+                <Select
+                  onValueChange={(v) => setFormData({ ...formData, category: v })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
                       </SelectItem>
-                    )) || <SelectItem value="none" disabled>No subcategories</SelectItem>}
-                </SelectContent>
-              </Select>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Subcategory (Optional)</Label>
+                <Select
+                  disabled={!formData.category} // Disable if no main cat selected
+                  value={formData.subCategory}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, subCategory: v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={formData.category ? "Select Subcategory" : "Select Category First"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories
+                      .find((c) => c.id === formData.category)
+                      ?.subcategories?.map((sub) => (
+                        <SelectItem key={sub.id} value={sub.id}>
+                          {sub.name}
+                        </SelectItem>
+                      )) || <SelectItem value="none" disabled>No subcategories</SelectItem>}
+                  </SelectContent>
+                </Select>
             </div>
             <div className="space-y-2">
               <Label>Starting Price ($)</Label>

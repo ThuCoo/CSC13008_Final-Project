@@ -7,13 +7,13 @@ export interface Category {
   name: string;
   description: string;
   icon: string;
-  subcategories?: string[];
+  subcategories?: { id: string; name: string }[];
   createdAt: number;
 }
 
 interface CategoriesContextType {
   categories: Category[];
-  addCategory: (name: string, description: string, icon: string, subcategories?: string[]) => Promise<Category>;
+  addCategory: (name: string, description: string, icon: string, subcategories?: { id: string; name: string }[]) => Promise<Category>;
   updateCategory: (id: string, data: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   getCategoryById: (id: string) => Category | undefined;
@@ -49,7 +49,7 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
     name: string,
     description: string,
     icon: string,
-    _subcategories: string[] = []
+    _subcategories: { id: string; name: string }[] = []
   ): Promise<Category> => {
      try {
        const { data } = await apiClient.post("/categories", { name, description, icon });

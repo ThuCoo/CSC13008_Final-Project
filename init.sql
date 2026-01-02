@@ -1,6 +1,6 @@
 DROP TABLE IF EXISTS otps CASCADE;
 DROP TABLE IF EXISTS ratings CASCADE;
-DROP TABLE IF EXISTS listing_questions CASCADE;
+DROP TABLE IF EXISTS questions CASCADE;
 DROP TABLE IF EXISTS seller_requests CASCADE;
 DROP TABLE IF EXISTS watchlists CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
@@ -140,7 +140,7 @@ CREATE TABLE seller_requests (
 );
 
 -- ListingQuestions
-CREATE TABLE listing_questions (
+CREATE TABLE questions (
     question_id SERIAL PRIMARY KEY,
     listing_id INTEGER NOT NULL REFERENCES listings(listing_id),
     user_id INTEGER NOT NULL REFERENCES users(user_id),
@@ -245,71 +245,143 @@ VALUES
 ('highbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'High Bidder', 'https://example.com/avatars/high.jpg', 'buyer', FALSE, '2 High St', '1994-05-05'),
 ('rejectedbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Rejected Bidder', 'https://example.com/avatars/rej.jpg', 'buyer', FALSE, '3 Rej St', '1993-04-04');
 
+-- ==========================================
+-- ADDED MANUAL TESTING USERS
+-- ==========================================
+INSERT INTO users (email, password_hash, name, avatar_url, role, seller_approved, address, birthday)
+VALUES
+('buyer@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Buyer', 'https://loremflickr.com/200/200/human?random=99', 'buyer', FALSE, '99 Manual St', '1995-01-01'),
+('seller@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Seller', 'https://loremflickr.com/200/200/human?random=100', 'seller', TRUE, '100 Manual Ave', '1990-01-01'),
+('admin@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Admin', 'https://loremflickr.com/200/200/human?random=101', 'admin', FALSE, '101 Manual Blvd', '1985-01-01');
+
+
 -- Seed Data: Listings
 INSERT INTO listings (seller_id, title, description, category_id, subcategory_id, starting_price, current_bid, step_price, buy_now_price, status, item_condition, shipping_cost, return_policy, images, auto_extended_dates, rejected_bidders, ends_at)
 VALUES
 ((SELECT user_id FROM users WHERE email='seller1@example.com'), 'Seed Listing 1', 'Sample description 1', (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Phones' LIMIT 1),
- 250000, 250000, 25000, NULL, 'active', 'new', 0, 'no returns', '["https://example.com/images/1-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '7 days'),
+ 250000, 250000, 25000, NULL, 'active', 'new', 0, 'no returns',
+ '["https://loremflickr.com/500/500/smartphone?random=1", "https://loremflickr.com/500/500/smartphone?random=2", "https://loremflickr.com/500/500/mobilephone?random=3"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '7 days'),
 
 ((SELECT user_id FROM users WHERE email='seller2@example.com'), 'Seed Listing 2', 'Sample description 2', (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Computers' LIMIT 1),
- 1250000, 1250000, 125000, NULL, 'active', 'used', 125000, '30-day returns', '["https://example.com/images/2-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '4 days'),
+ 1250000, 1250000, 125000, NULL, 'active', 'used', 125000, '30-day returns',
+ '["https://loremflickr.com/500/500/laptop?random=4", "https://loremflickr.com/500/500/computer?random=5", "https://loremflickr.com/500/500/tech?random=6"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '4 days'),
 
 ((SELECT user_id FROM users WHERE email='seller3@example.com'), 'Seed Listing 3', 'Sample description 3', (SELECT category_id FROM categories WHERE name='Home & Garden'), (SELECT subcategory_id FROM subcategories WHERE name='Furniture' LIMIT 1),
- 2500000, 2500000, 250000, NULL, 'active', 'used', 375000, 'no returns', '["https://example.com/images/3-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '10 days'),
+ 2500000, 2500000, 250000, NULL, 'active', 'used', 375000, 'no returns',
+ '["https://loremflickr.com/500/500/furniture?random=7", "https://loremflickr.com/500/500/sofa?random=8", "https://loremflickr.com/500/500/chair?random=9"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '10 days'),
 
 ((SELECT user_id FROM users WHERE email='seller4@example.com'), 'Seed Listing 4', 'Sample description 4', (SELECT category_id FROM categories WHERE name='Clothing'), (SELECT subcategory_id FROM subcategories WHERE name='Men' LIMIT 1),
- 500000, 500000, 50000, NULL, 'active', 'new', 75000, 'no returns', '["https://example.com/images/4-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '8 days'),
+ 500000, 500000, 50000, NULL, 'active', 'new', 75000, 'no returns',
+ '["https://loremflickr.com/500/500/menswear?random=10", "https://loremflickr.com/500/500/shirt?random=11", "https://loremflickr.com/500/500/clothing?random=12"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '8 days'),
 
 ((SELECT user_id FROM users WHERE email='seller5@example.com'), 'Seed Listing 5', 'Sample description 5', (SELECT category_id FROM categories WHERE name='Sports'), (SELECT subcategory_id FROM subcategories WHERE name='Outdoor' LIMIT 1),
- 625000, 625000, 62500, NULL, 'active', 'new', 0, 'no returns', '["https://example.com/images/5-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '5 days'),
+ 625000, 625000, 62500, NULL, 'active', 'new', 0, 'no returns',
+ '["https://loremflickr.com/500/500/camping?random=13", "https://loremflickr.com/500/500/hiking?random=14", "https://loremflickr.com/500/500/outdoor?random=15"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '5 days'),
 
 ((SELECT user_id FROM users WHERE email='seller1@example.com'), 'Seed Listing 6', 'Sample description 6', (SELECT category_id FROM categories WHERE name='Books'), (SELECT subcategory_id FROM subcategories WHERE name='Fiction' LIMIT 1),
- 200000, 200000, 25000, NULL, 'active', 'used', 50000, '30-day returns', '["https://example.com/images/6-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '6 days'),
+ 200000, 200000, 25000, NULL, 'active', 'used', 50000, '30-day returns',
+ '["https://loremflickr.com/500/500/book?random=16", "https://loremflickr.com/500/500/novel?random=17", "https://loremflickr.com/500/500/reading?random=18"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '6 days'),
 
 ((SELECT user_id FROM users WHERE email='seller2@example.com'), 'Seed Listing 7', 'Sample listing 7', (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Accessories' LIMIT 1),
- 375000, 375000, 37500, NULL, 'active', 'new', 25000, 'no returns', '["https://example.com/images/7-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '9 days'),
+ 375000, 375000, 37500, NULL, 'active', 'new', 25000, 'no returns',
+ '["https://loremflickr.com/500/500/headphones?random=19", "https://loremflickr.com/500/500/cable?random=20", "https://loremflickr.com/500/500/charger?random=21"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '9 days'),
 
 ((SELECT user_id FROM users WHERE email='seller3@example.com'), 'Seed Listing 8', 'Sample listing 8', (SELECT category_id FROM categories WHERE name='Home & Garden'), (SELECT subcategory_id FROM subcategories WHERE name='Kitchen' LIMIT 1),
- 1500000, 1500000, 75000, NULL, 'active', 'new', 250000, 'no returns', '["https://example.com/images/8-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '3 days'),
+ 1500000, 1500000, 75000, NULL, 'active', 'new', 250000, 'no returns',
+ '["https://loremflickr.com/500/500/kitchen?random=22", "https://loremflickr.com/500/500/cookware?random=23", "https://loremflickr.com/500/500/dishes?random=24"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '3 days'),
 
 ((SELECT user_id FROM users WHERE email='seller4@example.com'), 'Seed Listing 9', 'Sample listing 9', (SELECT category_id FROM categories WHERE name='Clothing'), (SELECT subcategory_id FROM subcategories WHERE name='Women' LIMIT 1),
- 875000, 875000, 50000, NULL, 'active', 'new', 100000, 'no returns', '["https://example.com/images/9-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '11 days'),
+ 875000, 875000, 50000, NULL, 'active', 'new', 100000, 'no returns',
+ '["https://loremflickr.com/500/500/dress?random=25", "https://loremflickr.com/500/500/fashion?random=26", "https://loremflickr.com/500/500/womenswear?random=27"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '11 days'),
 
 ((SELECT user_id FROM users WHERE email='seller5@example.com'), 'Seed Listing 10', 'Sample listing 10', (SELECT category_id FROM categories WHERE name='Sports'), (SELECT subcategory_id FROM subcategories WHERE name='Gym' LIMIT 1),
- 450000, 450000, 45000, NULL, 'active', 'new', 0, 'no returns', '["https://example.com/images/10-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '12 days'),
+ 450000, 450000, 45000, NULL, 'active', 'new', 0, 'no returns',
+ '["https://loremflickr.com/500/500/gym?random=28", "https://loremflickr.com/500/500/dumbbell?random=29", "https://loremflickr.com/500/500/fitness?random=30"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '12 days'),
 
 ((SELECT user_id FROM users WHERE email='seller1@example.com'), 'Seed Listing 11', 'Sample listing 11', (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Audio' LIMIT 1),
- 1125000, 1125000, 62500, NULL, 'active', 'used', 150000, '30-day returns', '["https://example.com/images/11-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '2 days'),
+ 1125000, 1125000, 62500, NULL, 'active', 'used', 150000, '30-day returns',
+ '["https://loremflickr.com/500/500/speaker?random=31", "https://loremflickr.com/500/500/audio?random=32", "https://loremflickr.com/500/500/sound?random=33"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '2 days'),
 
 ((SELECT user_id FROM users WHERE email='seller2@example.com'), 'Seed Listing 12', 'Sample listing 12', (SELECT category_id FROM categories WHERE name='Home & Garden'), (SELECT subcategory_id FROM subcategories WHERE name='Garden' LIMIT 1),
- 750000, 750000, 75000, NULL, 'active', 'used', 125000, 'no returns', '["https://example.com/images/12-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '7 days'),
+ 750000, 750000, 75000, NULL, 'active', 'used', 125000, 'no returns',
+ '["https://loremflickr.com/500/500/garden?random=34", "https://loremflickr.com/500/500/flowers?random=35", "https://loremflickr.com/500/500/plants?random=36"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '7 days'),
 
 ((SELECT user_id FROM users WHERE email='seller3@example.com'), 'Seed Listing 13', 'Sample listing 13', (SELECT category_id FROM categories WHERE name='Clothing'), (SELECT subcategory_id FROM subcategories WHERE name='Shoes' LIMIT 1),
- 1375000, 1375000, 62500, NULL, 'active', 'new', 200000, 'no returns', '["https://example.com/images/13-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '6 days'),
+ 1375000, 1375000, 62500, NULL, 'active', 'new', 200000, 'no returns',
+ '["https://loremflickr.com/500/500/shoes?random=37", "https://loremflickr.com/500/500/sneakers?random=38", "https://loremflickr.com/500/500/footwear?random=39"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '6 days'),
 
 ((SELECT user_id FROM users WHERE email='seller4@example.com'), 'Seed Listing 14', 'Sample listing 14', (SELECT category_id FROM categories WHERE name='Sports'), (SELECT subcategory_id FROM subcategories WHERE name='Cycling' LIMIT 1),
- 3000000, 3000000, 125000, NULL, 'active', 'used', 300000, '30-day returns', '["https://example.com/images/14-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '9 days'),
+ 3000000, 3000000, 125000, NULL, 'active', 'used', 300000, '30-day returns',
+ '["https://loremflickr.com/500/500/bicycle?random=40", "https://loremflickr.com/500/500/cycling?random=41", "https://loremflickr.com/500/500/bike?random=42"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '9 days'),
 
 ((SELECT user_id FROM users WHERE email='seller5@example.com'), 'Seed Listing 15', 'Sample listing 15', (SELECT category_id FROM categories WHERE name='Books'), (SELECT subcategory_id FROM subcategories WHERE name='Non-Fiction' LIMIT 1),
- 300000, 300000, 25000, NULL, 'active', 'new', 37500, 'no returns', '["https://example.com/images/15-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '4 days'),
+ 300000, 300000, 25000, NULL, 'active', 'new', 37500, 'no returns',
+ '["https://loremflickr.com/500/500/textbook?random=43", "https://loremflickr.com/500/500/library?random=44", "https://loremflickr.com/500/500/study?random=45"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '4 days'),
 
 ((SELECT user_id FROM users WHERE email='seller1@example.com'), 'Seed Listing 16', 'Sample listing 16', (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Cameras' LIMIT 1),
- 1875000, 1875000, 75000, NULL, 'active', 'used', 175000, '30-day returns', '["https://example.com/images/16-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '14 days'),
+ 1875000, 1875000, 75000, NULL, 'active', 'used', 175000, '30-day returns',
+ '["https://loremflickr.com/500/500/camera?random=46", "https://loremflickr.com/500/500/lens?random=47", "https://loremflickr.com/500/500/photography?random=48"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '14 days'),
 
 ((SELECT user_id FROM users WHERE email='seller2@example.com'), 'Seed Listing 17', 'Sample listing 17', (SELECT category_id FROM categories WHERE name='Home & Garden'), (SELECT subcategory_id FROM subcategories WHERE name='Bedding' LIMIT 1),
- 1000000, 1000000, 100000, NULL, 'active', 'new', 150000, 'no returns', '["https://example.com/images/17-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '10 days'),
+ 1000000, 1000000, 100000, NULL, 'active', 'new', 150000, 'no returns',
+ '["https://loremflickr.com/500/500/bed?random=49", "https://loremflickr.com/500/500/bedroom?random=50", "https://loremflickr.com/500/500/pillow?random=51"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '10 days'),
 
 ((SELECT user_id FROM users WHERE email='seller3@example.com'), 'Seed Listing 18', 'Sample listing 18', (SELECT category_id FROM categories WHERE name='Clothing'), (SELECT subcategory_id FROM subcategories WHERE name='Accessories' LIMIT 1),
- 550000, 550000, 50000, NULL, 'active', 'new', 75000, 'no returns', '["https://example.com/images/18-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '6 days'),
+ 550000, 550000, 50000, NULL, 'active', 'new', 75000, 'no returns',
+ '["https://loremflickr.com/500/500/watch?random=52", "https://loremflickr.com/500/500/jewelry?random=53", "https://loremflickr.com/500/500/handbag?random=54"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '6 days'),
 
 ((SELECT user_id FROM users WHERE email='seller4@example.com'), 'Seed Listing 19', 'Sample listing 19', (SELECT category_id FROM categories WHERE name='Sports'), (SELECT subcategory_id FROM subcategories WHERE name='Team Sports' LIMIT 1),
- 400000, 400000, 37500, NULL, 'active', 'new', 50000, 'no returns', '["https://example.com/images/19-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '3 days'),
+ 400000, 400000, 37500, NULL, 'active', 'new', 50000, 'no returns',
+ '["https://loremflickr.com/500/500/soccer?random=55", "https://loremflickr.com/500/500/basketball?random=56", "https://loremflickr.com/500/500/sports?random=57"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '3 days'),
 
 ((SELECT user_id FROM users WHERE email='seller5@example.com'), 'Seed Listing 20', 'Sample listing 20', (SELECT category_id FROM categories WHERE name='Books'), (SELECT subcategory_id FROM subcategories WHERE name='Textbooks' LIMIT 1),
- 2250000, 2250000, 125000, NULL, 'active', 'used', 250000, '30-day returns', '["https://example.com/images/20-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '15 days');
+ 2250000, 2250000, 125000, NULL, 'active', 'used', 250000, '30-day returns',
+ '["https://loremflickr.com/500/500/books?random=58", "https://loremflickr.com/500/500/school?random=59", "https://loremflickr.com/500/500/learning?random=60"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '15 days'),
 
-INSERT INTO listings (seller_id, title, description, category_id, subcategory_id, starting_price, current_bid, step_price, buy_now_price, status, item_condition, shipping_cost, return_policy, images, auto_extended_dates, rejected_bidders, ends_at)
-VALUES
+-- ==========================================
+-- MANUAL TEST LISTINGS
+-- ==========================================
+(
+  (SELECT user_id FROM users WHERE email='seller@example.com'),
+  'Manual Test Phone',
+  'A phone specifically for manual testing',
+  (SELECT category_id FROM categories WHERE name='Electronics'),
+  (SELECT subcategory_id FROM subcategories WHERE name='Phones' LIMIT 1),
+  100000, 100000, 10000, NULL, 'active', 'new', 0, 'no returns',
+  '["https://loremflickr.com/500/500/smartphone?random=101", "https://loremflickr.com/500/500/mobile?random=102", "https://loremflickr.com/500/500/technology?random=103"]'::jsonb,
+  '[]'::jsonb, NULL, now() + interval '30 days'
+),
+(
+  (SELECT user_id FROM users WHERE email='seller@example.com'),
+  'Manual Test Chair',
+  'A comfortable chair for testing',
+  (SELECT category_id FROM categories WHERE name='Home & Garden'),
+  (SELECT subcategory_id FROM subcategories WHERE name='Furniture' LIMIT 1),
+  500000, 500000, 50000, NULL, 'active', 'used', 0, 'no returns',
+  '["https://loremflickr.com/500/500/chair?random=104", "https://loremflickr.com/500/500/seat?random=105", "https://loremflickr.com/500/500/furniture?random=106"]'::jsonb,
+  '[]'::jsonb, NULL, now() + interval '30 days'
+),
+
 (
   (SELECT user_id FROM users WHERE email='seller1@example.com'),
   'Rejected Listing',
@@ -317,7 +389,8 @@ VALUES
   (SELECT category_id FROM categories WHERE name='Electronics'),
   (SELECT subcategory_id FROM subcategories WHERE name='Phones' LIMIT 1),
   750000, 750000, 25000, NULL, 'active', 'new', 0, 'no returns',
-  '[]'::jsonb, '[]'::jsonb,
+  '["https://loremflickr.com/500/500/smartphone?random=61", "https://loremflickr.com/500/500/mobile?random=62", "https://loremflickr.com/500/500/tech?random=63"]'::jsonb,
+  '[]'::jsonb,
   (SELECT jsonb_build_array((SELECT user_id FROM users WHERE email='rejectedbidder@example.com'))),
   now() + interval '7 days'
 ),
@@ -328,7 +401,8 @@ VALUES
   (SELECT category_id FROM categories WHERE name='Books'),
   (SELECT subcategory_id FROM subcategories WHERE name='Fiction' LIMIT 1),
   500000, 500000, 25000, 5000000, 'active', 'new', 0, 'no returns',
-  '[]'::jsonb, '[]'::jsonb, NULL,
+  '["https://loremflickr.com/500/500/novel?random=64", "https://loremflickr.com/500/500/story?random=65", "https://loremflickr.com/500/500/fantasy?random=66"]'::jsonb,
+  '[]'::jsonb, NULL,
   now() + interval '7 days'
 ),
 (
@@ -338,7 +412,8 @@ VALUES
   (SELECT category_id FROM categories WHERE name='Home & Garden'),
   (SELECT subcategory_id FROM subcategories WHERE name='Kitchen' LIMIT 1),
   125000, 125000, 25000, NULL, 'active', 'new', 0, 'no returns',
-  '[]'::jsonb, '[]'::jsonb, NULL,
+  '["https://loremflickr.com/500/500/cooking?random=67", "https://loremflickr.com/500/500/chef?random=68", "https://loremflickr.com/500/500/kitchenware?random=69"]'::jsonb,
+  '[]'::jsonb, NULL,
   now() + interval '4 minutes'
 );
 
@@ -366,6 +441,16 @@ UPDATE listings SET current_bid = (
   SELECT COALESCE(MAX(amount), listings.starting_price) FROM bids WHERE bids.listing_id = listings.listing_id
 );
 
+-- ==========================================
+-- ADDED MANUAL TESTING BID
+-- ==========================================
+INSERT INTO bids (listing_id, bidder_id, amount)
+VALUES (
+    (SELECT listing_id FROM listings WHERE title='Manual Test Phone'),
+    (SELECT user_id FROM users WHERE email='buyer@example.com'),
+    110000 -- Starting price (100k) + Step (10k)
+);
+
 -- Seed Data: AutoBids
 INSERT INTO auto_bids (listing_id, user_id, max_bid_amount, increment_amount)
 SELECT 
@@ -384,18 +469,18 @@ JOIN listings l ON l.title = v.title
 JOIN users u ON u.email = v.email;
 
 -- Seed Data: Questions
-INSERT INTO listing_questions (listing_id, user_id, question_text, answer_text)
+INSERT INTO questions (listing_id, user_id, question_text, answer_text)
 SELECT l.listing_id, u.user_id,
   'Is this item in good condition?', 'Yes, in good condition.'
 FROM listings l
 JOIN users u ON u.email = ('buyer' || ((l.listing_id % 5) + 1)::text || '@example.com');
 
-INSERT INTO listing_questions (listing_id, user_id, question_text)
+INSERT INTO questions (listing_id, user_id, question_text)
 SELECT l.listing_id, u.user_id, 'Does it come with original packaging?'
 FROM listings l
 JOIN users u ON u.email = ('buyer' || (((l.listing_id+1) % 5) + 1)::text || '@example.com');
 
-INSERT INTO listing_questions (listing_id, user_id, question_text)
+INSERT INTO questions (listing_id, user_id, question_text)
 SELECT l.listing_id, u.user_id, 'Any defects to report?'
 FROM listings l
 JOIN users u ON u.email = ('buyer' || (((l.listing_id+2) % 5) + 1)::text || '@example.com');
@@ -406,6 +491,15 @@ SELECT u.user_id, l.listing_id
 FROM users u
 CROSS JOIN listings l
 WHERE u.email LIKE 'buyer%' AND (l.listing_id % 7 = (substring(u.email from '\d')::int % 7));
+
+-- ==========================================
+-- ADDED MANUAL TESTING WATCHLIST
+-- ==========================================
+INSERT INTO watchlists (user_id, listing_id)
+VALUES (
+    (SELECT user_id FROM users WHERE email='buyer@example.com'),
+    (SELECT listing_id FROM listings WHERE title='Manual Test Chair')
+);
 
 -- Seed Data: Ratings
 INSERT INTO ratings (target_user_id, rater_user_id, rating, role, comment)
@@ -423,6 +517,20 @@ VALUES
 ((SELECT user_id FROM users WHERE email='buyer1@example.com'), 'Buyer1 Shop', 'I sell vintage items', 'pending'),
 ((SELECT user_id FROM users WHERE email='buyer2@example.com'), 'Buyer2 Shop', 'Collectibles and more', 'pending'),
 ((SELECT user_id FROM users WHERE email='buyer3@example.com'), 'Buyer3 Store', 'Handmade crafts', 'rejected');
+
+-- ==========================================
+-- ADDED MANUAL TESTING SELLER REQUEST (APPROVED)
+-- ==========================================
+INSERT INTO seller_requests (user_id, business_name, business_description, status, reviewed_by, reviewed_at)
+VALUES (
+    (SELECT user_id FROM users WHERE email='seller@example.com'),
+    'Manual Seller Shop',
+    'A shop for manual testing purposes',
+    'approved',
+    (SELECT user_id FROM users WHERE email='admin@example.com'),
+    now()
+);
+
 
 -- Seed Data: Orders
 UPDATE listings

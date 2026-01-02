@@ -17,6 +17,7 @@ const service = {
         name: categories.name,
         description: categories.description,
         icon: categories.icon,
+        subcategoryId: subcategories.subcategoryId,
         subcategoryName: subcategories.name,
       })
       .from(categories)
@@ -36,7 +37,10 @@ const service = {
         });
       }
       if (row.subcategoryName) {
-         categoryMap.get(row.categoryId).subcategories.push(row.subcategoryName);
+         categoryMap.get(row.categoryId).subcategories.push({
+             id: row.subcategoryId,
+             name: row.subcategoryName
+         });
       }
     }
 

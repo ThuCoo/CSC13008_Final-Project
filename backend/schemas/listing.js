@@ -47,10 +47,17 @@ const listingBaseSchema = z.object({
 
 export const createListingSchema = listingBaseSchema
   .pick({
+    sellerId: true,
     title: true,
     description: true,
+    categoryId: true,
+    subcategoryId: true,  
     startingPrice: true,
     stepPrice: true,
+    buyNowPrice: true,
+    itemCondition: true,
+    shippingCost: true,
+    returnPolicy: true,
   })
   .extend({
     images: z.array(z.string()).min(3, "At least 3 images are required."),
