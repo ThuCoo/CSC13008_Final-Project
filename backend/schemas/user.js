@@ -8,7 +8,7 @@ export const createUserSchema = z
     passwordHash: z.string().min(60).optional(),
     name: z.string().min(1),
     avatarUrl: z.url().optional(),
-    role: z.enum(["buyer", "seller", "admin"]).optional(),
+    role: z.enum(["bidder", "seller", "admin"]).optional(),
     sellerApproved: z.boolean().optional(),
     address: z.string().optional(),
     birthday: z.preprocess((arg) => {
@@ -29,7 +29,7 @@ export const updateUserSchema = z.object({
   passwordHash: z.string().min(60).optional(),
   name: z.string().min(1).optional(),
   avatarUrl: z.url().optional(),
-  role: z.enum(["buyer", "seller", "admin"]).optional(),
+  role: z.enum(["bidder", "seller", "admin"]).optional(),
   sellerApproved: z.boolean().optional(),
   address: z.string().optional(),
   birthday: z.preprocess((arg) => {

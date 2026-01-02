@@ -19,7 +19,7 @@ DROP TYPE IF EXISTS user_role CASCADE;
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Users
-CREATE TYPE user_role AS ENUM ('buyer', 'seller', 'admin');
+CREATE TYPE user_role AS ENUM ('bidder', 'seller', 'admin');
 
 CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
@@ -27,7 +27,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     avatar_url TEXT NOT NULL,
-    role user_role NOT NULL DEFAULT 'buyer',
+    role user_role NOT NULL DEFAULT 'bidder',
     seller_approved BOOLEAN DEFAULT FALSE,
     address TEXT NOT NULL,
     birthday DATE NOT NULL,
@@ -108,7 +108,7 @@ CREATE TYPE order_status AS ENUM ('pending_payment', 'paid', 'shipped', 'deliver
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
     listing_id INTEGER NOT NULL REFERENCES listings(listing_id),
-    buyer_id INTEGER NOT NULL REFERENCES users(user_id),
+    bidder_id INTEGER NOT NULL REFERENCES users(user_id),
     seller_id INTEGER NOT NULL REFERENCES users(user_id),
     final_price DECIMAL(15, 2) NOT NULL,
     status order_status DEFAULT 'pending_payment',
@@ -155,7 +155,7 @@ CREATE TABLE ratings (
     target_user_id INTEGER NOT NULL REFERENCES users(user_id),
     rater_user_id INTEGER NOT NULL REFERENCES users(user_id),
     rating SMALLINT NOT NULL CHECK (rating IN (1, -1)),
-    role VARCHAR(50) NOT NULL CHECK (role IN ('buyer','seller')),
+    role VARCHAR(50) NOT NULL CHECK (role IN ('bidder','seller')),
     comment TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -223,11 +223,11 @@ INSERT INTO subcategories (category_id, name) VALUES
 -- Seed Data: Users
 INSERT INTO users (email, password_hash, name, avatar_url, role, seller_approved, address, birthday)
 VALUES
-('buyer1@example.com', crypt('password123', gen_salt('bf', 10)), 'Buyer One', 'https://example.com/avatars/buyer1.jpg', 'buyer', FALSE, '123 Buyer St', '1990-01-01'),
-('buyer2@example.com', crypt('password123', gen_salt('bf', 10)), 'Buyer Two', 'https://example.com/avatars/buyer2.jpg', 'buyer', FALSE, '124 Buyer St', '1991-02-02'),
-('buyer3@example.com', crypt('password123', gen_salt('bf', 10)), 'Buyer Three', 'https://example.com/avatars/buyer3.jpg', 'buyer', FALSE, '125 Buyer St', '1992-03-03'),
-('buyer4@example.com', crypt('password123', gen_salt('bf', 10)), 'Buyer Four', 'https://example.com/avatars/buyer4.jpg', 'buyer', FALSE, '126 Buyer St', '1993-04-04'),
-('buyer5@example.com', crypt('password123', gen_salt('bf', 10)), 'Buyer Five', 'https://example.com/avatars/buyer5.jpg', 'buyer', FALSE, '127 Buyer St', '1994-05-05'),
+('bidder1@example.com', crypt('password123', gen_salt('bf', 10)), 'Bidder One', 'https://example.com/avatars/buyer1.jpg', 'bidder', FALSE, '123 Bidder St', '1990-01-01'),
+('bidder2@example.com', crypt('password123', gen_salt('bf', 10)), 'Bidder Two', 'https://example.com/avatars/buyer2.jpg', 'bidder', FALSE, '124 Bidder St', '1991-02-02'),
+('bidder3@example.com', crypt('password123', gen_salt('bf', 10)), 'Bidder Three', 'https://example.com/avatars/buyer3.jpg', 'bidder', FALSE, '125 Bidder St', '1992-03-03'),
+('bidder4@example.com', crypt('password123', gen_salt('bf', 10)), 'Bidder Four', 'https://example.com/avatars/buyer4.jpg', 'bidder', FALSE, '126 Bidder St', '1993-04-04'),
+('bidder5@example.com', crypt('password123', gen_salt('bf', 10)), 'Bidder Five', 'https://example.com/avatars/buyer5.jpg', 'bidder', FALSE, '127 Bidder St', '1994-05-05'),
 
 ('seller1@example.com', crypt('password123', gen_salt('bf', 10)), 'Seller One', 'https://example.com/avatars/seller1.jpg', 'seller', TRUE, '201 Seller Rd', '1985-06-06'),
 ('seller2@example.com', crypt('password123', gen_salt('bf', 10)), 'Seller Two', 'https://example.com/avatars/seller2.jpg', 'seller', TRUE, '202 Seller Rd', '1986-07-07'),
@@ -241,16 +241,16 @@ VALUES
 ('admin4@example.com', crypt('password123', gen_salt('bf', 10)), 'Admin Four', 'https://example.com/avatars/admin4.jpg', 'admin', FALSE, '304 Admin Ave', '1980-04-04'),
 ('admin5@example.com', crypt('password123', gen_salt('bf', 10)), 'Admin Five', 'https://example.com/avatars/admin5.jpg', 'admin', FALSE, '305 Admin Ave', '1980-05-05'),
 
-('lowbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Low Bidder', 'https://example.com/avatars/low.jpg', 'buyer', FALSE, '1 Low St', '1995-06-06'),
-('highbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'High Bidder', 'https://example.com/avatars/high.jpg', 'buyer', FALSE, '2 High St', '1994-05-05'),
-('rejectedbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Rejected Bidder', 'https://example.com/avatars/rej.jpg', 'buyer', FALSE, '3 Rej St', '1993-04-04');
+('lowbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Low Bidder', 'https://example.com/avatars/low.jpg', 'bidder', FALSE, '1 Low St', '1995-06-06'),
+('highbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'High Bidder', 'https://example.com/avatars/high.jpg', 'bidder', FALSE, '2 High St', '1994-05-05'),
+('rejectedbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Rejected Bidder', 'https://example.com/avatars/rej.jpg', 'bidder', FALSE, '3 Rej St', '1993-04-04');
 
 -- ==========================================
 -- ADDED MANUAL TESTING USERS
 -- ==========================================
 INSERT INTO users (email, password_hash, name, avatar_url, role, seller_approved, address, birthday)
 VALUES
-('buyer@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Buyer', 'https://loremflickr.com/200/200/human?random=99', 'buyer', FALSE, '99 Manual St', '1995-01-01'),
+('bidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Bidder', 'https://loremflickr.com/200/200/human?random=99', 'bidder', FALSE, '99 Manual St', '1995-01-01'),
 ('seller@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Seller', 'https://loremflickr.com/200/200/human?random=100', 'seller', TRUE, '100 Manual Ave', '1990-01-01'),
 ('admin@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Admin', 'https://loremflickr.com/200/200/human?random=101', 'admin', FALSE, '101 Manual Blvd', '1985-01-01');
 
@@ -423,7 +423,7 @@ INSERT INTO bids (listing_id, bidder_id, amount)
 SELECT l.listing_id, b.user_id, (l.starting_price + (gs.increment * l.step_price))
 FROM listings l
 CROSS JOIN LATERAL (VALUES (1),(2),(3),(4),(5)) AS gs(increment)
-JOIN users b ON b.email = ('buyer' || ( ( (l.listing_id % 5) + 1 )::text) || '@example.com');
+JOIN users b ON b.email = ('bidder' || ( ( (l.listing_id % 5) + 1 )::text) || '@example.com');
 
 WITH bid_calc AS (
     SELECT
@@ -447,7 +447,7 @@ UPDATE listings SET current_bid = (
 INSERT INTO bids (listing_id, bidder_id, amount)
 VALUES (
     (SELECT listing_id FROM listings WHERE title='Manual Test Phone'),
-    (SELECT user_id FROM users WHERE email='buyer@example.com'),
+    (SELECT user_id FROM users WHERE email='bidder@example.com'),
     110000 -- Starting price (100k) + Step (10k)
 );
 
@@ -459,11 +459,11 @@ SELECT
     v.max_amount,
     l.step_price
 FROM (VALUES 
-    ('Seed Listing 2', 'buyer1@example.com', 2125000.00),
-    ('Seed Listing 3', 'buyer2@example.com', 3750000.00),
+    ('Seed Listing 2', 'bidder1@example.com', 2125000.00),
+    ('Seed Listing 3', 'bidder2@example.com', 3750000.00),
     ('Seed Listing 6', 'highbidder@example.com', 625000.00),
     ('Seed Listing 10', 'lowbidder@example.com', 550000.00),
-    ('Seed Listing 14', 'buyer3@example.com', 3750000.00)
+    ('Seed Listing 14', 'bidder3@example.com', 3750000.00)
 ) AS v(title, email, max_amount)
 JOIN listings l ON l.title = v.title
 JOIN users u ON u.email = v.email;
@@ -473,50 +473,50 @@ INSERT INTO questions (listing_id, user_id, question_text, answer_text)
 SELECT l.listing_id, u.user_id,
   'Is this item in good condition?', 'Yes, in good condition.'
 FROM listings l
-JOIN users u ON u.email = ('buyer' || ((l.listing_id % 5) + 1)::text || '@example.com');
+JOIN users u ON u.email = ('bidder' || ((l.listing_id % 5) + 1)::text || '@example.com');
 
 INSERT INTO questions (listing_id, user_id, question_text)
 SELECT l.listing_id, u.user_id, 'Does it come with original packaging?'
 FROM listings l
-JOIN users u ON u.email = ('buyer' || (((l.listing_id+1) % 5) + 1)::text || '@example.com');
+JOIN users u ON u.email = ('bidder' || (((l.listing_id+1) % 5) + 1)::text || '@example.com');
 
 INSERT INTO questions (listing_id, user_id, question_text)
 SELECT l.listing_id, u.user_id, 'Any defects to report?'
 FROM listings l
-JOIN users u ON u.email = ('buyer' || (((l.listing_id+2) % 5) + 1)::text || '@example.com');
+JOIN users u ON u.email = ('bidder' || (((l.listing_id+2) % 5) + 1)::text || '@example.com');
 
 -- Seed Data: Watchlists
 INSERT INTO watchlists (user_id, listing_id)
 SELECT u.user_id, l.listing_id
 FROM users u
 CROSS JOIN listings l
-WHERE u.email LIKE 'buyer%' AND (l.listing_id % 7 = (substring(u.email from '\d')::int % 7));
+WHERE u.email LIKE 'bidder%' AND (l.listing_id % 7 = (substring(u.email from '\d')::int % 7));
 
 -- ==========================================
 -- ADDED MANUAL TESTING WATCHLIST
 -- ==========================================
 INSERT INTO watchlists (user_id, listing_id)
 VALUES (
-    (SELECT user_id FROM users WHERE email='buyer@example.com'),
+    (SELECT user_id FROM users WHERE email='bidder@example.com'),
     (SELECT listing_id FROM listings WHERE title='Manual Test Chair')
 );
 
 -- Seed Data: Ratings
 INSERT INTO ratings (target_user_id, rater_user_id, rating, role, comment)
 VALUES
-((SELECT user_id FROM users WHERE email='seller1@example.com'), (SELECT user_id FROM users WHERE email='buyer1@example.com'), 1, 'seller', 'Great seller, fast shipping'),
-((SELECT user_id FROM users WHERE email='seller2@example.com'), (SELECT user_id FROM users WHERE email='buyer2@example.com'), 1, 'seller', 'Items as described'),
-((SELECT user_id FROM users WHERE email='seller3@example.com'), (SELECT user_id FROM users WHERE email='buyer3@example.com'), -1, 'seller', 'Late shipment'),
-((SELECT user_id FROM users WHERE email='buyer1@example.com'), (SELECT user_id FROM users WHERE email='seller1@example.com'), 1, 'buyer', 'Smooth checkout'),
-((SELECT user_id FROM users WHERE email='buyer2@example.com'), (SELECT user_id FROM users WHERE email='seller2@example.com'), -1, 'buyer', 'No communication'),
-((SELECT user_id FROM users WHERE email='buyer3@example.com'), (SELECT user_id FROM users WHERE email='seller3@example.com'), 1, 'buyer', 'Prompt payment');
+((SELECT user_id FROM users WHERE email='seller1@example.com'), (SELECT user_id FROM users WHERE email='bidder1@example.com'), 1, 'seller', 'Great seller, fast shipping'),
+((SELECT user_id FROM users WHERE email='seller2@example.com'), (SELECT user_id FROM users WHERE email='bidder2@example.com'), 1, 'seller', 'Items as described'),
+((SELECT user_id FROM users WHERE email='seller3@example.com'), (SELECT user_id FROM users WHERE email='bidder3@example.com'), -1, 'seller', 'Late shipment'),
+((SELECT user_id FROM users WHERE email='bidder1@example.com'), (SELECT user_id FROM users WHERE email='seller1@example.com'), 1, 'bidder', 'Smooth checkout'),
+((SELECT user_id FROM users WHERE email='bidder2@example.com'), (SELECT user_id FROM users WHERE email='seller2@example.com'), -1, 'bidder', 'No communication'),
+((SELECT user_id FROM users WHERE email='bidder3@example.com'), (SELECT user_id FROM users WHERE email='seller3@example.com'), 1, 'bidder', 'Prompt payment');
 
 -- Seed Data: Requests
 INSERT INTO seller_requests (user_id, business_name, business_description, status)
 VALUES
-((SELECT user_id FROM users WHERE email='buyer1@example.com'), 'Buyer1 Shop', 'I sell vintage items', 'pending'),
-((SELECT user_id FROM users WHERE email='buyer2@example.com'), 'Buyer2 Shop', 'Collectibles and more', 'pending'),
-((SELECT user_id FROM users WHERE email='buyer3@example.com'), 'Buyer3 Store', 'Handmade crafts', 'rejected');
+((SELECT user_id FROM users WHERE email='bidder1@example.com'), 'Bidder1 Shop', 'I sell vintage items', 'pending'),
+((SELECT user_id FROM users WHERE email='bidder2@example.com'), 'Bidder2 Shop', 'Collectibles and more', 'pending'),
+((SELECT user_id FROM users WHERE email='bidder3@example.com'), 'Bidder3 Store', 'Handmade crafts', 'rejected');
 
 -- ==========================================
 -- ADDED MANUAL TESTING SELLER REQUEST (APPROVED)
@@ -537,9 +537,9 @@ UPDATE listings
 SET ends_at = now() - interval '1 day', status = 'sold'
 WHERE title IN ('Seed Listing 1', 'Seed Listing 5', 'Seed Listing 12', 'Seed Listing 20');
 
-INSERT INTO orders (listing_id, buyer_id, seller_id, final_price, status, shipping_address)
+INSERT INTO orders (listing_id, bidder_id, seller_id, final_price, status, shipping_address)
 SELECT l.listing_id,
-       (SELECT b.bidder_id FROM bids b WHERE b.listing_id = l.listing_id ORDER BY b.amount DESC LIMIT 1) AS buyer_id,
+       (SELECT b.bidder_id FROM bids b WHERE b.listing_id = l.listing_id ORDER BY b.amount DESC LIMIT 1) AS bidder_id,
        l.seller_id,
        l.current_bid,
        'paid',

@@ -49,7 +49,7 @@ const MOCK_ALL_USERS = [
     id: "1",
     name: "John Buyer",
     email: "buyer..example.com",
-    type: "buyer",
+    type: "bidder",
     status: "active",
   },
   {
@@ -63,7 +63,7 @@ const MOCK_ALL_USERS = [
     id: "3",
     name: "Bad Actor",
     email: "bad..example.com",
-    type: "buyer",
+    type: "bidder",
     status: "banned",
   },
 ];
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
 
   const filteredCategories = categories.filter(c => 
     c.name.toLowerCase().includes(catSearch.toLowerCase()) || 
-    (c.subcategories || []).some(sub => sub.toLowerCase().includes(catSearch.toLowerCase()))
+    (c.subcategories || []).some(sub => sub.name.toLowerCase().includes(catSearch.toLowerCase()))
   );
 
   if (!user || user.type !== "admin") {
@@ -144,13 +144,16 @@ export default function AdminDashboard() {
   const EditCategoryDialog = ({ category, trigger }: { category: Category, trigger?: React.ReactNode }) => {
     const [name, setName] = useState(category.name);
     const [subcats, setSubcats] = useState(
-      (category.subcategories || []).join(", ")
+      (category.subcategories || []).map(s => s.name).join(", ")
     );
     const [isOpen, setIsOpen] = useState(false);
 
     const handleSave = () => {
        const subList = subcats.split(",").map(s => s.trim()).filter(Boolean);
-       updateCategory(category.id, { name, subcategories: subList });
+       updateCategory(category.id, { 
+         name, 
+         subcategories: subList.map((s, i) => ({ id: `temp-${i}`, name: s })) 
+       });
        setIsOpen(false);
        toast({ title: "Category Updated" });
     };
@@ -512,7 +515,7 @@ export default function AdminDashboard() {
                 <Button
                   onClick={() => {
                     const subs = newCatSubs.split(",").map(Is => Is.trim()).filter(Boolean);
-                    addCategory(newCatName, "Desc", newCatIcon || "📦", subs);
+                    addCategory(newCatName, "Desc", newCatIcon || "📦", subs.map(s => ({ id: "0", name: s })));
                     setNewCatName("");
                     setNewCatSubs("");
                     setNewCatIcon("");
@@ -549,8 +552,8 @@ export default function AdminDashboard() {
                       {cat.subcategories && cat.subcategories.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                            {cat.subcategories.map(sub => (
-                             <Badge key={sub} variant="secondary" className="text-xs">
-                               {sub}
+                             <Badge key={sub.id} variant="secondary" className="text-xs">
+                               {sub.name}
                              </Badge>
                            ))}
                         </div>

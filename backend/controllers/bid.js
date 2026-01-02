@@ -46,7 +46,7 @@ const controller = {
         return res.status(403).json({ message: "Cannot bid on your own listing" });
 
       // only buyers can bid
-      if (bidder.role !== "buyer")
+      if (bidder.role !== "bidder")
         return res.status(403).json({ message: "Only buyers can place bids" });
 
       // rejected bidders
@@ -61,7 +61,7 @@ const controller = {
       const minRatio = parseFloat(process.env.RATING_MIN_POSITIVE_RATIO) || 0.8;
       const summary = await ratingService.summaryForUserByRole(
         bidderId,
-        "buyer"
+        "bidder"
       );
       if (summary.total > 0) {
         const ratio = summary.up / summary.total;
@@ -109,7 +109,7 @@ const controller = {
       if (listing.buyNowPrice && Number(amount) >= Number(listing.buyNowPrice)) {
         // create order and mark listing sold
         const orderService = await import("../services/order.js");
-        await orderService.default.create({ listingId, buyerId: bidderId, sellerId: listing.sellerId, finalPrice: amount, shippingAddress: null });
+        await orderService.default.create({ listingId, bidderId: bidderId, sellerId: listing.sellerId, finalPrice: amount, shippingAddress: null });
         // reflect sold status
         const updated = await listingService.listOne(listingId);
         return res.status(201).json({ bid: row, orderCreated: true, listing: updated });

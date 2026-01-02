@@ -59,13 +59,13 @@ export default function SalesHistory() {
       });
   };
 
-  const handleRateBuyer = (id: string, _rating: 1 | -1) => {
+  const handleRateBidder = (id: string, _rating: 1 | -1) => {
     if (!reviewComment) {
         toast({ title: "Comment Required", description: "Please write a review", variant: "destructive" });
         return;
     }
     setOrderSteps(prev => ({ ...prev, [id]: 4 })); // Move to Completed
-    toast({ title: "Buyer Rated", description: "Transaction completed." });
+    toast({ title: "Bidder Rated", description: "Transaction completed." });
     setReviewComment("");
   };
 
@@ -117,7 +117,7 @@ export default function SalesHistory() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Buyer</p>
+                        <p className="text-sm text-muted-foreground">Bidder</p>
                         <p className="font-semibold">{winner}</p>
                       </div>
                     </div>
@@ -202,7 +202,7 @@ export default function SalesHistory() {
                               </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
-                                  <DialogTitle>Rate Buyer: {winner}</DialogTitle>
+                                  <DialogTitle>Rate Bidder: {winner}</DialogTitle>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
                                   <Textarea
@@ -213,13 +213,13 @@ export default function SalesHistory() {
                                   <div className="flex gap-2 justify-end">
                                     <Button
                                       variant="destructive"
-                                      onClick={() => handleRateBuyer(sale.id, -1)}
+                                      onClick={() => handleRateBidder(sale.id, -1)}
                                     >
                                       <ThumbsDown className="w-4 h-4 mr-2" /> -1
                                     </Button>
                                     <Button
                                       className="bg-rose-600 hover:bg-rose-700"
-                                      onClick={() => handleRateBuyer(sale.id, 1)}
+                                      onClick={() => handleRateBidder(sale.id, 1)}
                                     >
                                       <ThumbsUp className="w-4 h-4 mr-2" /> +1
                                     </Button>

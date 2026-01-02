@@ -140,7 +140,7 @@ export const ratings = pgTable("ratings", {
     .notNull()
     .references(() => users.userId),
   rating: integer("rating").notNull(), // 1 or -1
-  role: varchar("role").notNull(), // 'buyer' or 'seller'
+  role: varchar("role").notNull(), // 'bidder' or 'seller'
   comment: text("comment"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -148,7 +148,7 @@ export const ratings = pgTable("ratings", {
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   listingId: integer("listing_id").notNull().references(() => listings.listingId),
-  buyerId: integer("buyer_id").notNull().references(() => users.userId),
+  bidderId: integer("bidder_id").notNull().references(() => users.userId),
   sellerId: integer("seller_id").notNull().references(() => users.userId),
   finalPrice: decimal("final_price").notNull(),
   status: varchar("status").notNull(),

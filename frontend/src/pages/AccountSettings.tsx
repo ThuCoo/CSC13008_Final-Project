@@ -46,9 +46,9 @@ export interface User {
 
 // Mock Reviews Data
 const MOCK_REVIEWS = [
-  { id: 1, reviewer: "John Doe", type: "buyer", rating: 1, comment: "Fast shipping, great item!", date: "2024-10-10" },
-  { id: 2, reviewer: "Alice Smith", type: "seller", rating: 1, comment: "Excellent buyer, quick payment.", date: "2024-10-12" },
-  { id: 3, reviewer: "Bob Brown", type: "buyer", rating: -1, comment: "Item description was slightly off.", date: "2024-10-15" },
+  { id: 1, reviewer: "John Doe", type: "bidder", rating: 1, comment: "Fast shipping, great item!", date: "2024-10-10" },
+  { id: 2, reviewer: "Alice Smith", type: "seller", rating: 1, comment: "Excellent bidder, quick payment.", date: "2024-10-12" },
+  { id: 3, reviewer: "Bob Brown", type: "bidder", rating: -1, comment: "Item description was slightly off.", date: "2024-10-15" },
 ];
 
 export default function AccountSettings() {
