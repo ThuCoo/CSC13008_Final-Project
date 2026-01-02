@@ -1,31 +1,11 @@
 
 import { Link } from "react-router-dom";
 import { Folder } from "lucide-react";
-
-const CATEGORY_TREE = [
-  {
-    name: "Electronics",
-    icon: "📱",
-    sub: ["Mobile Phones", "Laptops", "Cameras", "Audio"],
-  },
-  {
-    name: "Fashion",
-    icon: "👕",
-    sub: ["Shoes", "Watches", "Clothing", "Accessories"],
-  },
-  {
-    name: "Collectibles",
-    icon: "🏛️",
-    sub: ["Coins", "Stamps", "Art", "Comics"],
-  },
-  {
-    name: "Home & Garden",
-    icon: "🏡",
-    sub: ["Furniture", "Decor", "Tools", "Kitchen"],
-  },
-];
+import { useCategories } from "../context/CategoriesContext";
 
 export default function Categories() {
+  const { categories } = useCategories();
+
   return (
     <div className="min-h-screen bg-slate-50">
 
@@ -35,13 +15,13 @@ export default function Categories() {
         </h1>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {CATEGORY_TREE.map((cat) => (
+          {categories.map((cat) => (
             <div
-              key={cat.name}
+              key={cat.id}
               className="bg-white border rounded-xl p-6 hover:shadow-md transition"
             >
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">{cat.icon}</span>
+                <span className="text-3xl">{cat.icon || "📦"}</span>
                 <h2 className="text-xl font-bold text-slate-800">
                   <Link
                     to={`/browse?cat=${cat.name}`}
@@ -52,7 +32,8 @@ export default function Categories() {
                 </h2>
               </div>
               <ul className="space-y-2">
-                {cat.sub.map((sub) => (
+                {cat.subcategories && cat.subcategories.length > 0 ? (
+                  cat.subcategories.map((sub) => (
                   <li key={sub}>
                     <Link
                       to={`/browse?cat=${cat.name}&sub=${sub}`}
@@ -61,7 +42,10 @@ export default function Categories() {
                       <Folder className="w-4 h-4 text-slate-400" /> {sub}
                     </Link>
                   </li>
-                ))}
+                  ))
+                ) : (
+                  <li className="text-sm text-gray-400 italic">No subcategories</li>
+                )}
               </ul>
             </div>
           ))}

@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import apiClient from "../lib/api-client";
 
 export interface Category {
   id: string;
+  categoryId?: number;
   name: string;
   description: string;
   icon: string;
@@ -11,107 +13,73 @@ export interface Category {
 
 interface CategoriesContextType {
   categories: Category[];
-  addCategory: (name: string, description: string, icon: string, subcategories?: string[]) => Category;
-  updateCategory: (id: string, data: Partial<Category>) => void;
-  deleteCategory: (id: string) => void;
+  addCategory: (name: string, description: string, icon: string, subcategories?: string[]) => Promise<Category>;
+  updateCategory: (id: string, data: Partial<Category>) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
   getCategoryById: (id: string) => Category | undefined;
   getCategoryByName: (name: string) => Category | undefined;
 }
 
 const CategoriesContext = createContext<CategoriesContextType | undefined>(undefined);
 
-const INITIAL_CATEGORIES: Category[] = [
-  {
-    id: "1",
-    name: "Electronics",
-    description: "Phones, computers, tablets, and more",
-    icon: "📱",
-    subcategories: ["Mobile Phones", "Laptops", "Tablets", "Accessories"],
-    createdAt: Date.now() - 90 * 24 * 60 * 60 * 1000,
-  },
-  {
-    id: "2",
-    name: "Collectibles",
-    description: "Rare and vintage collectible items",
-    icon: "🏛️",
-    createdAt: Date.now() - 90 * 24 * 60 * 60 * 1000,
-  },
-  {
-    id: "3",
-    name: "Jewelry",
-    description: "Watches, rings, necklaces, and accessories",
-    icon: "💎",
-    createdAt: Date.now() - 90 * 24 * 60 * 60 * 1000,
-  },
-  {
-    id: "4",
-    name: "Home & Garden",
-    description: "Furniture, decor, and garden items",
-    icon: "🏡",
-    subcategories: ["Furniture", "Decor", "Garden", "Kitchen"],
-    createdAt: Date.now() - 90 * 24 * 60 * 60 * 1000,
-  },
-  {
-    id: "5",
-    name: "Sports & Outdoors",
-    description: "Equipment, gear, and sports items",
-    icon: "⚽",
-    createdAt: Date.now() - 90 * 24 * 60 * 60 * 1000,
-  },
-  {
-    id: "6",
-    name: "Art & Antiques",
-    description: "Original artwork and antique pieces",
-    icon: "🎨",
-    createdAt: Date.now() - 90 * 24 * 60 * 60 * 1000,
-  },
-];
-
 export function CategoriesProvider({ children }: { children: React.ReactNode }) {
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const stored = localStorage.getItem("auctionhub_categories");
-    if (!stored) return INITIAL_CATEGORIES;
-    return JSON.parse(stored);
-  });
+  const [categories, setCategories] = useState<Category[]>([]);
 
-  const saveCategories = (newCategories: Category[]) => {
-    setCategories(newCategories);
-    localStorage.setItem("auctionhub_categories", JSON.stringify(newCategories));
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      const { data } = await apiClient.get("/categories?limit=100");
+      if (data && Array.isArray(data)) {
+        const mapped = data.map((c: any) => ({
+            ...c,
+            id: String(c.categoryId),
+            subcategories: c.subcategories || []
+        }));
+        setCategories(mapped);
+      }
+    } catch (error) {
+       console.error("Failed to load categories", error);
+    }
   };
 
-  const addCategory = (
+  const addCategory = async (
     name: string,
     description: string,
     icon: string,
-    subcategories: string[] = []
-  ): Category => {
-    if (getCategoryByName(name)) {
-      throw new Error("Category already exists");
+    _subcategories: string[] = []
+  ): Promise<Category> => {
+     try {
+       const { data } = await apiClient.post("/categories", { name, description, icon });
+       const newCat = { ...data, id: String(data.categoryId), subcategories: [] }; 
+       setCategories(prev => [...prev, newCat]);
+       return newCat;
+     } catch (error) {
+       console.error("Failed to add category", error);
+       throw error;
+     }
+  };
+
+  const updateCategory = async (id: string, data: Partial<Category>) => {
+    try {
+        await apiClient.put(`/categories/${id}`, data);
+        setCategories(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+    } catch (error) {
+        console.error("Failed to update category", error);
+        throw error;
     }
-
-    const newCategory: Category = {
-      id: String(Date.now()),
-      name,
-      description,
-      icon,
-      subcategories,
-      createdAt: Date.now(),
-    };
-
-    saveCategories([...categories, newCategory]);
-    return newCategory;
   };
 
-  const updateCategory = (id: string, data: Partial<Category>) => {
-    const updated = categories.map((cat) =>
-      cat.id === id ? { ...cat, ...data } : cat
-    );
-    saveCategories(updated);
-  };
-
-  const deleteCategory = (id: string) => {
-    const filtered = categories.filter((cat) => cat.id !== id);
-    saveCategories(filtered);
+  const deleteCategory = async (id: string) => {
+    try {
+        await apiClient.delete(`/categories/${id}`);
+        setCategories(prev => prev.filter(c => c.id !== id));
+    } catch (error) {
+        console.error("Failed to delete category", error);
+        throw error;
+    }
   };
 
   const getCategoryById = (id: string): Category | undefined => {

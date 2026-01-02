@@ -3,6 +3,11 @@ import validateQuery from "../middlewares/validateQuery.js";
 import listingController from "../controllers/listing.js";
 import { paginationSchema, searchSchema, idParams } from "../schemas/common.js";
 
+import {
+  createListingSchema,
+  updateListingSchema,
+} from "../schemas/listing.js";
+
 const route = new Router();
 
 route.get(
@@ -16,5 +21,17 @@ route.get(
   listingController.search
 );
 route.get("/:id", validateQuery(idParams, "params"), listingController.listOne);
+route.post(
+  "/",
+  validateQuery(createListingSchema, "body"),
+  listingController.create
+);
+route.put(
+  "/:id",
+  validateQuery(idParams, "params"),
+  validateQuery(updateListingSchema, "body"),
+  listingController.update
+);
+route.delete("/:id", validateQuery(idParams, "params"), listingController.remove);
 
 export default route;

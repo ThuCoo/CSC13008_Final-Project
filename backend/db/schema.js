@@ -57,7 +57,7 @@ export const subcategories = pgTable("subcategories", {
 
 export const listings = pgTable("listings", {
   listingId: serial("listing_id").primaryKey(),
-  sellerId: integer("user_id")
+  sellerId: integer("seller_id")
     .notNull()
     .references(() => users.userId),
   title: varchar("title").notNull(),

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import apiClient from "../lib/api-client";
 
 export interface WatchlistItem {
   listingId: string;
@@ -8,45 +9,63 @@ export interface WatchlistItem {
 
 interface WatchlistContextType {
   watchlist: WatchlistItem[];
-  addToWatchlist: (listingId: string, userId: string) => void;
-  removeFromWatchlist: (listingId: string, userId: string) => void;
+  addToWatchlist: (listingId: string, userId: string) => Promise<void>;
+  removeFromWatchlist: (listingId: string, userId: string) => Promise<void>;
   isInWatchlist: (listingId: string, userId: string) => boolean;
   getUserWatchlist: (userId: string) => string[];
-  clearUserWatchlist: (userId: string) => void;
+  clearUserWatchlist: (userId: string) => Promise<void>;
 }
 
 const WatchlistContext = createContext<WatchlistContextType | undefined>(undefined);
 
-const INITIAL_WATCHLIST: WatchlistItem[] = [];
-
 export function WatchlistProvider({ children }: { children: React.ReactNode }) {
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>(() => {
-    const stored = localStorage.getItem("auctionhub_watchlist");
-    if (!stored) return INITIAL_WATCHLIST;
-    return JSON.parse(stored);
-  });
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
 
-  const saveWatchlist = (newWatchlist: WatchlistItem[]) => {
-    setWatchlist(newWatchlist);
-    localStorage.setItem("auctionhub_watchlist", JSON.stringify(newWatchlist));
+  useEffect(() => {
+    loadWatchlist();
+  }, []);
+
+  const loadWatchlist = async () => {
+      try {
+          const { data } = await apiClient.get("/watchlists");
+          if (Array.isArray(data)) {
+              const mapped = data.map((item: any) => ({
+                  listingId: String(item.listingId),
+                  userId: String(item.userId),
+                  addedAt: new Date(item.addedAt).getTime()
+              }));
+              setWatchlist(mapped);
+          }
+      } catch (e) {
+          console.error("Failed to load watchlist", e);
+      }
   };
 
-  const addToWatchlist = (listingId: string, userId: string) => {
+  const addToWatchlist = async (listingId: string, userId: string) => {
     if (!isInWatchlist(listingId, userId)) {
-      const newItem: WatchlistItem = {
-        listingId,
-        userId,
-        addedAt: Date.now(),
-      };
-      saveWatchlist([...watchlist, newItem]);
+        try {
+            await apiClient.post("/watchlists", { listingId, userId });
+            const newItem: WatchlistItem = {
+                listingId,
+                userId,
+                addedAt: Date.now(),
+            };
+            setWatchlist(prev => [...prev, newItem]);
+        } catch (e) {
+            console.error("Failed to add to watchlist", e);
+        }
     }
   };
 
-  const removeFromWatchlist = (listingId: string, userId: string) => {
-    const filtered = watchlist.filter(
-      (item) => !(item.listingId === listingId && item.userId === userId)
-    );
-    saveWatchlist(filtered);
+  const removeFromWatchlist = async (listingId: string, userId: string) => {
+      try {
+          await apiClient.delete(`/watchlists/${userId}/${listingId}`);
+          setWatchlist(prev => prev.filter(
+            (item) => !(item.listingId === listingId && item.userId === userId)
+          ));
+      } catch (e) {
+          console.error("Failed to remove from watchlist", e);
+      }
   };
 
   const isInWatchlist = (listingId: string, userId: string) => {
@@ -62,9 +81,11 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       .map((item) => item.listingId);
   };
 
-  const clearUserWatchlist = (userId: string) => {
-    const filtered = watchlist.filter((item) => item.userId !== userId);
-    saveWatchlist(filtered);
+  const clearUserWatchlist = async (userId: string) => {
+      const userItems = watchlist.filter(item => item.userId === userId);
+      for (const item of userItems) {
+          await removeFromWatchlist(item.listingId, userId);
+      }
   };
 
   return (

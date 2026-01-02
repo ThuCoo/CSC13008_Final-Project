@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import apiClient from "../lib/api-client";
 
 export interface AutoBid {
   id: string;
+  autoBidId?: number;
   listingId: string;
   userId: string;
   maxBidAmount: number;
@@ -18,75 +20,92 @@ interface AutoBidsContextType {
     userId: string,
     maxBidAmount: number,
     incrementAmount: number
-  ) => AutoBid;
-  updateAutoBid: (id: string, data: Partial<AutoBid>) => void;
-  deleteAutoBid: (id: string) => void;
+  ) => Promise<AutoBid>;
+  updateAutoBid: (id: string, data: Partial<AutoBid>) => Promise<void>;
+  deleteAutoBid: (id: string) => Promise<void>;
   getAutoBidByListingAndUser: (
     listingId: string,
     userId: string
   ) => AutoBid | undefined;
   getUserAutoBids: (userId: string) => AutoBid[];
   getAutoBidsForListing: (listingId: string) => AutoBid[];
-  placingAutoBids: (listingId: string, newBidAmount: number) => string | null;
+  placingAutoBids: (listingId: string, newBidAmount: number) => Promise<string | null>;
 }
 
 const AutoBidsContext = createContext<AutoBidsContextType | undefined>(undefined);
 
-const INITIAL_AUTO_BIDS: AutoBid[] = [];
-
 export function AutoBidsProvider({ children }: { children: React.ReactNode }) {
-  const [autoBids, setAutoBids] = useState<AutoBid[]>(() => {
-    const stored = localStorage.getItem("auctionhub_auto_bids");
-    if (!stored) return INITIAL_AUTO_BIDS;
-    return JSON.parse(stored);
-  });
+  const [autoBids, setAutoBids] = useState<AutoBid[]>([]);
 
-  const saveAutoBids = (newAutoBids: AutoBid[]) => {
-    setAutoBids(newAutoBids);
-    localStorage.setItem("auctionhub_auto_bids", JSON.stringify(newAutoBids));
+  useEffect(() => {
+     loadAutoBids();
+  }, []);
+
+  const loadAutoBids = async () => {
+      try {
+          const { data } = await apiClient.get("/auto-bids");
+          if (Array.isArray(data)) {
+              const mapped = data.map((b: any) => ({
+                  ...b,
+                  id: String(b.autoBidId),
+                  listingId: String(b.listingId),
+                  userId: String(b.userId),
+                  createdAt: new Date(b.createdAt).getTime(),
+                  maxBidAmount: Number(b.maxBidAmount),
+                  currentBidAmount: Number(b.currentBidAmount),
+                  incrementAmount: Number(b.incrementAmount)
+              }));
+              setAutoBids(mapped);
+          }
+      } catch (e) { console.error("Failed to load auto bids", e) }
   };
 
-  const createAutoBid = (
+  const createAutoBid = async (
     listingId: string,
     userId: string,
     maxBidAmount: number,
     incrementAmount: number
-  ): AutoBid => {
-    const existingBid = getAutoBidByListingAndUser(listingId, userId);
-    if (existingBid) {
-      updateAutoBid(existingBid.id, {
-        maxBidAmount,
-        incrementAmount,
-        isActive: true,
-      });
-      return { ...existingBid, maxBidAmount, incrementAmount, isActive: true };
-    }
-
-    const newAutoBid: AutoBid = {
-      id: String(Date.now()),
-      listingId,
-      userId,
-      maxBidAmount,
-      currentBidAmount: 0,
-      isActive: true,
-      createdAt: Date.now(),
-      incrementAmount,
-    };
-
-    saveAutoBids([...autoBids, newAutoBid]);
-    return newAutoBid;
+  ): Promise<AutoBid> => {
+     try {
+         const { data } = await apiClient.post("/auto-bids", {
+             listingId, userId, maxBidAmount, incrementAmount
+         });
+         const newBid: AutoBid = {
+             ...data,
+             id: String(data.autoBidId),
+             listingId: String(data.listingId),
+             userId: String(data.userId),
+             createdAt: new Date(data.createdAt).getTime(),
+             maxBidAmount: Number(data.maxBidAmount),
+             currentBidAmount: Number(data.currentBidAmount),
+             incrementAmount: Number(data.incrementAmount)
+         };
+         setAutoBids(prev => [...prev, newBid]);
+         return newBid;
+     } catch (error) {
+         console.error("Failed to create auto bid", error);
+         throw error;
+     }
   };
 
-  const updateAutoBid = (id: string, data: Partial<AutoBid>) => {
-    const updated = autoBids.map((bid) =>
-      bid.id === id ? { ...bid, ...data } : bid
-    );
-    saveAutoBids(updated);
+  const updateAutoBid = async (id: string, data: Partial<AutoBid>) => {
+      try {
+          await apiClient.put(`/auto-bids/${id}`, data);
+          setAutoBids(prev => prev.map(b => b.id === id ? { ...b, ...data } : b));
+      } catch (error) {
+          console.error("Failed to update auto bid", error);
+          throw error;
+      }
   };
 
-  const deleteAutoBid = (id: string) => {
-    const filtered = autoBids.filter((bid) => bid.id !== id);
-    saveAutoBids(filtered);
+  const deleteAutoBid = async (id: string) => {
+      try {
+          await apiClient.delete(`/auto-bids/${id}`);
+          setAutoBids(prev => prev.filter(b => b.id !== id));
+      } catch (error) {
+          console.error("Failed to delete auto bid", error);
+          throw error;
+      }
   };
 
   const getAutoBidByListingAndUser = (
@@ -106,39 +125,12 @@ export function AutoBidsProvider({ children }: { children: React.ReactNode }) {
     return autoBids.filter((bid) => bid.listingId === listingId && bid.isActive);
   };
 
-  const placingAutoBids = (
-    listingId: string,
-    newBidAmount: number
-  ): string | null => {
-    const autoBidsForListing = getAutoBidsForListing(listingId);
-
-    let highestAutoBidId: string | null = null;
-    let highestBidderId: string | null = null;
-    let highestMaxBid = 0;
-
-    for (const autoBid of autoBidsForListing) {
-      if (
-        autoBid.isActive &&
-        autoBid.maxBidAmount >= newBidAmount &&
-        autoBid.maxBidAmount > highestMaxBid
-      ) {
-        highestMaxBid = autoBid.maxBidAmount;
-        highestAutoBidId = autoBid.id;
-        highestBidderId = autoBid.userId;
-      }
-    }
-
-    if (highestAutoBidId && highestBidderId) {
-      updateAutoBid(highestAutoBidId, {
-        currentBidAmount: Math.min(
-          newBidAmount,
-          highestMaxBid
-        ),
-      });
-      return highestBidderId;
-    }
-
-    return null;
+  const placingAutoBids = async (
+    _listingId: string,
+    _newBidAmount: number
+  ): Promise<string | null> => {
+      console.warn("placingAutoBids called on frontend. This logic should be backend handled.");
+      return null;
   };
 
   return (

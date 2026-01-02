@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import apiClient from "../lib/api-client";
 
 export interface SellerRequest {
   id: string;
   userId: string;
-  userName: string;
-  userEmail: string;
+  userName?: string;
+  userEmail?: string;
   status: "pending" | "approved" | "rejected";
   businessName: string;
   businessDescription: string;
@@ -16,93 +17,71 @@ export interface SellerRequest {
 
 interface SellerRequestsContextType {
   requests: SellerRequest[];
-  createSellerRequest: (data: Omit<SellerRequest, "id" | "status" | "createdAt">) => SellerRequest;
-  approveRequest: (requestId: string, adminId: string) => void;
-  rejectRequest: (requestId: string, adminId: string, reason: string) => void;
+  createSellerRequest: (data: Omit<SellerRequest, "id" | "status" | "createdAt" | "userName" | "userEmail">) => Promise<SellerRequest>;
+  approveRequest: (requestId: string, adminId: string) => Promise<void>;
+  rejectRequest: (requestId: string, adminId: string, reason: string) => Promise<void>;
   getPendingRequests: () => SellerRequest[];
   getRequestByUserId: (userId: string) => SellerRequest | undefined;
 }
 
 const SellerRequestsContext = createContext<SellerRequestsContextType | undefined>(undefined);
 
-const INITIAL_REQUESTS: SellerRequest[] = [];
-
 export function SellerRequestsProvider({ children }: { children: React.ReactNode }) {
-  const [requests, setRequests] = useState<SellerRequest[]>(() => {
-    const stored = localStorage.getItem("auctionhub_seller_requests");
-    if (!stored) return INITIAL_REQUESTS;
-    return JSON.parse(stored);
-  });
+  const [requests, setRequests] = useState<SellerRequest[]>([]);
+  // Load requests on mount
+  
+  useEffect(() => {
+     loadRequests();
+  }, []);
 
-  const saveRequests = (newRequests: SellerRequest[]) => {
-    setRequests(newRequests);
-    localStorage.setItem("auctionhub_seller_requests", JSON.stringify(newRequests));
-  };
-
-  const createSellerRequest = (
-    data: Omit<SellerRequest, "id" | "status" | "createdAt">
-  ): SellerRequest => {
-    const existingRequest = requests.find(
-      (r) => r.userId === data.userId && r.status === "pending"
-    );
-
-    if (existingRequest) {
-      throw new Error("You already have a pending seller request");
-    }
-
-    const newRequest: SellerRequest = {
-      ...data,
-      id: String(Date.now()),
-      status: "pending",
-      createdAt: Date.now(),
-    };
-
-    saveRequests([...requests, newRequest]);
-    return newRequest;
-  };
-
-  const approveRequest = (requestId: string, adminId: string) => {
-    const request = requests.find((r) => r.id === requestId);
-    if (!request) return;
-
-    const updated = requests.map((r) =>
-      r.id === requestId
-        ? {
-            ...r,
-            status: "approved" as const,
-            reviewedAt: Date.now(),
-            reviewedBy: adminId,
-          }
-        : r
-    );
-
-    saveRequests(updated);
-
-    const storedUser = localStorage.getItem("auctionhub_user");
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      if (user.id === request.userId) {
-        user.type = "seller";
-        user.sellerApproved = true;
-        localStorage.setItem("auctionhub_user", JSON.stringify(user));
-      }
+  const loadRequests = async () => {
+    try {
+        const { data } = await apiClient.get("/seller-requests");
+        if (data && Array.isArray(data)) {
+            const mapped = data.map((r: any) => ({
+                ...r,
+                id: String(r.requestId),
+                userId: String(r.userId),
+            }));
+            setRequests(mapped);
+        }
+    } catch (e) {
+        console.error("Failed to load seller requests", e);
     }
   };
 
-  const rejectRequest = (requestId: string, adminId: string, reason: string) => {
-    const updated = requests.map((r) =>
-      r.id === requestId
-        ? {
-            ...r,
-            status: "rejected" as const,
-            reviewedAt: Date.now(),
-            reviewedBy: adminId,
-            rejectionReason: reason,
-          }
-        : r
-    );
+  const createSellerRequest = async (
+    data: Omit<SellerRequest, "id" | "status" | "createdAt" | "userName" | "userEmail">
+  ): Promise<SellerRequest> => {
+     try {
+         const { data: newReq } = await apiClient.post("/seller-requests", data);
+         const mapped = { ...newReq, id: String(newReq.requestId), userId: String(newReq.userId) } as SellerRequest;
+         setRequests(prev => [...prev, mapped]);
+         return mapped;
+     } catch (error) {
+         console.error("Failed to create seller request", error);
+         throw error;
+     }
+  };
 
-    saveRequests(updated);
+  const approveRequest = async (requestId: string, _adminId: string) => {
+     try {
+         await apiClient.put(`/seller-requests/${requestId}`, { status: "approved" });
+         setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: "approved" } : r));
+     } catch (error) {
+         console.error("Failed to approve request", error);
+         throw error;
+     }
+  };
+
+  const rejectRequest = async (requestId: string, _adminId: string, reason: string) => {
+    try {
+        await apiClient.put(`/seller-requests/${requestId}`, { status: "rejected", rejectionReason: reason });
+        setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: "rejected", rejectionReason: reason } : r));
+    } catch (error) {
+        console.error("Failed to reject request", error);
+        throw error;
+    }
   };
 
   const getPendingRequests = () => {

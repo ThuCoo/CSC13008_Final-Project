@@ -1,133 +1,91 @@
 import React, { createContext, useContext, useState } from "react";
 import { User } from "./user";
+import apiClient from "../lib/api-client";
 
 export interface UserContextType {
   user: Omit<User, "password"> | null;
-  login: (email: string, password: string) => boolean;
-  signup: (data: { email: string; name: string; password?: string, address?: string }) => void;
+  login: (email: string, password: string) => Promise<boolean>;
+  signup: (data: { email: string; name: string; password?: string, address?: string, birthday?: string }) => Promise<void>;
   logout: () => void;
-  updateProfile: (id: string, data: Partial<User>) => void;
-  changePassword: (id: string, current: string, newPass: string) => void;
+  updateProfile: (id: string, data: Partial<User>) => Promise<void>;
+  changePassword: (id: string, current: string, newPass: string) => Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// Mock Data
-const MOCK_BUYER: User & { password: string } = {
-  id: "1",
-  email: "buyer@example.com",
-  name: "Account Buyer",
-  avatar: "AB",
-  type: "buyer",
-  sellerApproved: false,
-  address: "227 Nguyen Van Cu, Cho Quan Ward, HCM City",
-  birthday: "1995-08-15",
-  password: "password123", // Plain text for mock
-};
-
-const MOCK_SELLER: User & { password: string } = {
-  id: "2",
-  email: "seller@example.com",
-  name: "Account Seller",
-  avatar: "AS",
-  type: "seller",
-  sellerApproved: true,
-  address: "227 Nguyen Van Cu, Cho Quan Ward, HCM City",
-  birthday: "1995-08-15",
-  password: "password123",
-};
-
-const MOCK_ADMIN: User & { password: string } = {
-  id: "3",
-  email: "admin@example.com",
-  name: "Account Admin",
-  avatar: "AA",
-  type: "admin",
-  sellerApproved: true,
-  address: "227 Nguyen Van Cu, Cho Quan Ward, HCM City",
-  birthday: "1995-08-15",
-  password: "password123",
-};
-
-export const MOCK_USERS = [MOCK_BUYER, MOCK_SELLER, MOCK_ADMIN];
-
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<Omit<User, "password"> | null>(() => {
-    if (typeof window !== "undefined") {
-      const storedUserString = localStorage.getItem("auctionhub_user");
-      if (storedUserString) {
-        const storedUser = JSON.parse(storedUserString);
-        const mockMatch = MOCK_USERS.find(u => u.email === storedUser.email);
-        if (mockMatch) {
-             const updatedUser = {
-                 ...storedUser,
-                 type: mockMatch.type,
-                 sellerApproved: mockMatch.sellerApproved
-             };
-             if (updatedUser.type !== storedUser.type || updatedUser.sellerApproved !== storedUser.sellerApproved) {
-                 localStorage.setItem("auctionhub_user", JSON.stringify(updatedUser));
-             }
-             return updatedUser;
-        }
-        return storedUser;
-      }
+  const [user, setUser] = useState<Omit<User, "password"> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setIsLoading(false);
+      return;
     }
-    return null;
-  });
-
-  const login = (email: string, passwordInput: string): boolean => {
-    const foundUser = MOCK_USERS.find((u) => u.email === email);
-
-    if (!foundUser || foundUser.password !== passwordInput) {
-       return false;
+    try {
+      const { data } = await apiClient.get("/users/me");
+      setUser(data.user);
+    } catch (error) {
+      console.error("Failed to load user", error);
+      localStorage.removeItem("token");
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
-
-    const { password, ...userToStore } = foundUser;
-    
-    setUser(userToStore);
-    localStorage.setItem("auctionhub_user", JSON.stringify(userToStore));
-    return true;
   };
 
-  const signup = (data: { email: string; name: string; password?: string, address?: string }) => {
-    const newUser: User = {
-      id: String(Date.now()),
-      email: data.email,
-      name: data.name,
-      avatar: data.name.slice(0, 2).toUpperCase(),
-      type: "buyer",
-      sellerApproved: false,
-      createdAt: Date.now(),
-      address: data.address
-    };
+  const login = async (email: string, passwordInput: string): Promise<boolean> => {
+    try {
+      const { data } = await apiClient.post("/auth/login", { email, password: passwordInput });
+      localStorage.setItem("token", data.token);
+      setUser(data.user);
+      return true;
+    } catch (error) {
+      console.error("Login failed", error);
+      return false;
+    }
+  };
 
-    const { ...userToStore } = newUser;
-    setUser(userToStore);
-    localStorage.setItem("auctionhub_user", JSON.stringify(userToStore));
+  const signup = async (data: { email: string; name: string; password?: string, address?: string, birthday?: string }) => {
+    try {
+      await apiClient.post("/auth/register", data);
+      alert("Registration successful! Please check your email for the verification code.");
+    } catch (error) {
+      console.error("Signup failed", error);
+      alert("Registration failed");
+    }
   };
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem("token");
     localStorage.removeItem("auctionhub_user");
   };
 
-  const updateProfile = (id: string, data: Partial<User>) => {
+  const updateProfile = async (id: string, data: Partial<User>) => {
     if (!user || user.id !== id) return;
-    const updatedUser = { ...user, ...data } as Omit<User, "password">;
-    setUser(updatedUser);
-    localStorage.setItem("auctionhub_user", JSON.stringify(updatedUser));
+    try {
+        await apiClient.put(`/users/${id}`, data);
+        setUser({ ...user, ...data } as Omit<User, "password">);
+    } catch(error) {
+        console.error("Update profile failed", error);
+    }
   };
 
-  const changePassword = (id: string, current: string, newPass: string) => {
-    // Mock implementation
-    console.log(`Password changed for user ${id} from ${current} to ${newPass}`);
+  const changePassword = async (id: string, current: string, newPass: string) => {
+    console.log(`Password change request for ${id}`, current, newPass);
   };
 
   return (
     <UserContext.Provider
       value={{ user, login, signup, logout, updateProfile, changePassword }}
     >
-      {children}
+      {!isLoading && children}
     </UserContext.Provider>
   );
 }

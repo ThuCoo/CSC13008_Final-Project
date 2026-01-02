@@ -1,6 +1,3 @@
--- ==========================================
--- 1. CLEANUP
--- ==========================================
 DROP TABLE IF EXISTS otps CASCADE;
 DROP TABLE IF EXISTS ratings CASCADE;
 DROP TABLE IF EXISTS listing_questions CASCADE;
@@ -18,10 +15,6 @@ DROP TYPE IF EXISTS request_status CASCADE;
 DROP TYPE IF EXISTS order_status CASCADE;
 DROP TYPE IF EXISTS listing_status CASCADE;
 DROP TYPE IF EXISTS user_role CASCADE;
-
--- ==========================================
--- 2. SCHEMA SETUP
--- ==========================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -69,7 +62,6 @@ CREATE TABLE listings (
     subcategory_id INTEGER NOT NULL REFERENCES subcategories(subcategory_id),
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    -- CHANGED: Precision increased to (15, 2) for VND
     starting_price DECIMAL(15, 2) NOT NULL,
     current_bid DECIMAL(15, 2) NOT NULL,
     step_price DECIMAL(15, 2) NOT NULL,
@@ -85,7 +77,6 @@ CREATE TABLE listings (
     ends_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
--- Full-text search index (Title + Description)
 CREATE INDEX IF NOT EXISTS listings_search_idx ON listings USING GIN (
   to_tsvector('english', title || ' ' || description)
 );
@@ -95,18 +86,18 @@ CREATE TABLE bids (
     bid_id SERIAL PRIMARY KEY,
     listing_id INTEGER NOT NULL REFERENCES listings(listing_id),
     bidder_id INTEGER NOT NULL REFERENCES users(user_id),
-    -- CHANGED: Precision increased to (15, 2) for VND
     amount DECIMAL(15, 2) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- AutoBids
 CREATE TABLE auto_bids (
-    id SERIAL PRIMARY KEY,
+    auto_bid_id SERIAL PRIMARY KEY,
     listing_id INTEGER NOT NULL REFERENCES listings(listing_id),
     user_id INTEGER NOT NULL REFERENCES users(user_id),
-    -- CHANGED: Precision increased to (15, 2) for VND
-    max_limit DECIMAL(15, 2) NOT NULL,
+    max_bid_amount DECIMAL(15, 2) NOT NULL,
+    current_bid_amount DECIMAL(15, 2) DEFAULT 0,
+    increment_amount DECIMAL(15, 2) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -119,7 +110,6 @@ CREATE TABLE orders (
     listing_id INTEGER NOT NULL REFERENCES listings(listing_id),
     buyer_id INTEGER NOT NULL REFERENCES users(user_id),
     seller_id INTEGER NOT NULL REFERENCES users(user_id),
-    -- CHANGED: Precision increased to (15, 2) for VND
     final_price DECIMAL(15, 2) NOT NULL,
     status order_status DEFAULT 'pending_payment',
     shipping_address TEXT,
@@ -181,7 +171,6 @@ CREATE TABLE otps (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
--- Basic constraints
 ALTER TABLE listings
   ADD CONSTRAINT listing_start_nonnegative CHECK (starting_price >= 0),
   ADD CONSTRAINT listing_step_positive CHECK (step_price > 0),
@@ -191,11 +180,7 @@ ALTER TABLE listings
 ALTER TABLE bids
   ADD CONSTRAINT bids_positive_amount CHECK (amount > 0);
 
--- =========================
--- 3. SEED DATA
--- =========================
-
--- Categories
+-- Seed Data: Categories
 INSERT INTO categories (name, description, icon) VALUES
 ('Electronics', 'Devices, phones, computers and accessories', 'icon-electronics'),
 ('Home & Garden', 'Furniture, decor, and garden tools', 'icon-home'),
@@ -203,7 +188,7 @@ INSERT INTO categories (name, description, icon) VALUES
 ('Sports', 'Sporting goods and outdoor equipment', 'icon-sports'),
 ('Books', 'Books across many genres and formats', 'icon-books');
 
--- Subcategories
+-- Seed Data: Subcategories
 INSERT INTO subcategories (category_id, name) VALUES
 ((SELECT category_id FROM categories WHERE name='Electronics'), 'Phones'),
 ((SELECT category_id FROM categories WHERE name='Electronics'), 'Computers'),
@@ -235,7 +220,7 @@ INSERT INTO subcategories (category_id, name) VALUES
 ((SELECT category_id FROM categories WHERE name='Books'), 'Comics'),
 ((SELECT category_id FROM categories WHERE name='Books'), 'Children');
 
--- Users
+-- Seed Data: Users
 INSERT INTO users (email, password_hash, name, avatar_url, role, seller_approved, address, birthday)
 VALUES
 ('buyer1@example.com', crypt('password123', gen_salt('bf', 10)), 'Buyer One', 'https://example.com/avatars/buyer1.jpg', 'buyer', FALSE, '123 Buyer St', '1990-01-01'),
@@ -254,17 +239,13 @@ VALUES
 ('admin2@example.com', crypt('password123', gen_salt('bf', 10)), 'Admin Two', 'https://example.com/avatars/admin2.jpg', 'admin', FALSE, '302 Admin Ave', '1980-02-02'),
 ('admin3@example.com', crypt('password123', gen_salt('bf', 10)), 'Admin Three', 'https://example.com/avatars/admin3.jpg', 'admin', FALSE, '303 Admin Ave', '1980-03-03'),
 ('admin4@example.com', crypt('password123', gen_salt('bf', 10)), 'Admin Four', 'https://example.com/avatars/admin4.jpg', 'admin', FALSE, '304 Admin Ave', '1980-04-04'),
-('admin5@example.com', crypt('password123', gen_salt('bf', 10)), 'Admin Five', 'https://example.com/avatars/admin5.jpg', 'admin', FALSE, '305 Admin Ave', '1980-05-05');
+('admin5@example.com', crypt('password123', gen_salt('bf', 10)), 'Admin Five', 'https://example.com/avatars/admin5.jpg', 'admin', FALSE, '305 Admin Ave', '1980-05-05'),
 
--- Additional test users
-INSERT INTO users (email, password_hash, name, avatar_url, role, seller_approved, address, birthday)
-VALUES
 ('lowbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Low Bidder', 'https://example.com/avatars/low.jpg', 'buyer', FALSE, '1 Low St', '1995-06-06'),
 ('highbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'High Bidder', 'https://example.com/avatars/high.jpg', 'buyer', FALSE, '2 High St', '1994-05-05'),
 ('rejectedbidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Rejected Bidder', 'https://example.com/avatars/rej.jpg', 'buyer', FALSE, '3 Rej St', '1993-04-04');
 
--- Listings
--- Pricing Note: Converted at approx 1 USD = 25,000 VND.
+-- Seed Data: Listings
 INSERT INTO listings (seller_id, title, description, category_id, subcategory_id, starting_price, current_bid, step_price, buy_now_price, status, item_condition, shipping_cost, return_policy, images, auto_extended_dates, rejected_bidders, ends_at)
 VALUES
 ((SELECT user_id FROM users WHERE email='seller1@example.com'), 'Seed Listing 1', 'Sample description 1', (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Phones' LIMIT 1),
@@ -327,7 +308,6 @@ VALUES
 ((SELECT user_id FROM users WHERE email='seller5@example.com'), 'Seed Listing 20', 'Sample listing 20', (SELECT category_id FROM categories WHERE name='Books'), (SELECT subcategory_id FROM subcategories WHERE name='Textbooks' LIMIT 1),
  2250000, 2250000, 125000, NULL, 'active', 'used', 250000, '30-day returns', '["https://example.com/images/20-1.jpg"]'::jsonb, '[]'::jsonb, NULL, now() + interval '15 days');
 
--- Specific Test Listings
 INSERT INTO listings (seller_id, title, description, category_id, subcategory_id, starting_price, current_bid, step_price, buy_now_price, status, item_condition, shipping_cost, return_policy, images, auto_extended_dates, rejected_bidders, ends_at)
 VALUES
 (
@@ -363,15 +343,13 @@ VALUES
 );
 
 
--- Bids (Insert placeholder amounts first)
--- Logic changed: Increment is multiplied by step_price to create valid VND bid steps.
+-- Seed Data: Bids
 INSERT INTO bids (listing_id, bidder_id, amount)
 SELECT l.listing_id, b.user_id, (l.starting_price + (gs.increment * l.step_price))
 FROM listings l
 CROSS JOIN LATERAL (VALUES (1),(2),(3),(4),(5)) AS gs(increment)
 JOIN users b ON b.email = ('buyer' || ( ( (l.listing_id % 5) + 1 )::text) || '@example.com');
 
--- Update Bids (Calculate incremental bids per listing)
 WITH bid_calc AS (
     SELECT
         b.bid_id,
@@ -384,22 +362,28 @@ SET amount = bid_calc.proper_amount
 FROM bid_calc
 WHERE bids.bid_id = bid_calc.bid_id;
 
--- Fix listing current_bid to max bid
 UPDATE listings SET current_bid = (
   SELECT COALESCE(MAX(amount), listings.starting_price) FROM bids WHERE bids.listing_id = listings.listing_id
 );
 
--- ==========================================
--- MOCK AUTO BIDS (VND Values)
--- ==========================================
-INSERT INTO auto_bids (listing_id, user_id, max_limit) VALUES
-((SELECT listing_id FROM listings WHERE title='Seed Listing 2' LIMIT 1), (SELECT user_id FROM users WHERE email='buyer1@example.com'), 2125000),
-((SELECT listing_id FROM listings WHERE title='Seed Listing 3' LIMIT 1), (SELECT user_id FROM users WHERE email='buyer2@example.com'), 3750000),
-((SELECT listing_id FROM listings WHERE title='Seed Listing 6' LIMIT 1), (SELECT user_id FROM users WHERE email='highbidder@example.com'), 625000),
-((SELECT listing_id FROM listings WHERE title='Seed Listing 10' LIMIT 1), (SELECT user_id FROM users WHERE email='lowbidder@example.com'), 550000),
-((SELECT listing_id FROM listings WHERE title='Seed Listing 14' LIMIT 1), (SELECT user_id FROM users WHERE email='buyer3@example.com'), 3750000);
+-- Seed Data: AutoBids
+INSERT INTO auto_bids (listing_id, user_id, max_bid_amount, increment_amount)
+SELECT 
+    l.listing_id,
+    u.user_id,
+    v.max_amount,
+    l.step_price
+FROM (VALUES 
+    ('Seed Listing 2', 'buyer1@example.com', 2125000.00),
+    ('Seed Listing 3', 'buyer2@example.com', 3750000.00),
+    ('Seed Listing 6', 'highbidder@example.com', 625000.00),
+    ('Seed Listing 10', 'lowbidder@example.com', 550000.00),
+    ('Seed Listing 14', 'buyer3@example.com', 3750000.00)
+) AS v(title, email, max_amount)
+JOIN listings l ON l.title = v.title
+JOIN users u ON u.email = v.email;
 
--- Questions
+-- Seed Data: Questions
 INSERT INTO listing_questions (listing_id, user_id, question_text, answer_text)
 SELECT l.listing_id, u.user_id,
   'Is this item in good condition?', 'Yes, in good condition.'
@@ -416,14 +400,14 @@ SELECT l.listing_id, u.user_id, 'Any defects to report?'
 FROM listings l
 JOIN users u ON u.email = ('buyer' || (((l.listing_id+2) % 5) + 1)::text || '@example.com');
 
--- Watchlists
+-- Seed Data: Watchlists
 INSERT INTO watchlists (user_id, listing_id)
 SELECT u.user_id, l.listing_id
 FROM users u
 CROSS JOIN listings l
 WHERE u.email LIKE 'buyer%' AND (l.listing_id % 7 = (substring(u.email from '\d')::int % 7));
 
--- Ratings
+-- Seed Data: Ratings
 INSERT INTO ratings (target_user_id, rater_user_id, rating, role, comment)
 VALUES
 ((SELECT user_id FROM users WHERE email='seller1@example.com'), (SELECT user_id FROM users WHERE email='buyer1@example.com'), 1, 'seller', 'Great seller, fast shipping'),
@@ -433,16 +417,14 @@ VALUES
 ((SELECT user_id FROM users WHERE email='buyer2@example.com'), (SELECT user_id FROM users WHERE email='seller2@example.com'), -1, 'buyer', 'No communication'),
 ((SELECT user_id FROM users WHERE email='buyer3@example.com'), (SELECT user_id FROM users WHERE email='seller3@example.com'), 1, 'buyer', 'Prompt payment');
 
--- Seller requests
+-- Seed Data: Requests
 INSERT INTO seller_requests (user_id, business_name, business_description, status)
 VALUES
 ((SELECT user_id FROM users WHERE email='buyer1@example.com'), 'Buyer1 Shop', 'I sell vintage items', 'pending'),
 ((SELECT user_id FROM users WHERE email='buyer2@example.com'), 'Buyer2 Shop', 'Collectibles and more', 'pending'),
 ((SELECT user_id FROM users WHERE email='buyer3@example.com'), 'Buyer3 Store', 'Handmade crafts', 'rejected');
 
--- =====
--- Mark some listings as ended and create orders
--- =====
+-- Seed Data: Orders
 UPDATE listings
 SET ends_at = now() - interval '1 day', status = 'sold'
 WHERE title IN ('Seed Listing 1', 'Seed Listing 5', 'Seed Listing 12', 'Seed Listing 20');

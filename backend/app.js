@@ -15,10 +15,14 @@ import questionRoute from "./routes/question.js";
 import userRoute from "./routes/user.js";
 import ratingRoute from "./routes/rating.js";
 import authRoute from "./routes/auth.js";
+import autoBidRoute from "./routes/autoBid.js";
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:8080",
+  credentials: true
+}));
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(authMiddleware);
@@ -27,7 +31,8 @@ app.use("/categories", categoryRoute);
 app.use("/listings", listingRoute);
 app.use("/subcategories", subcategoryRoute);
 app.use("/bids", bidRoute);
-app.use("/watchlists", watchlistRoute);
+app.use("/watchlists", watchlistRoute); 
+app.use("/auto-bids", autoBidRoute);
 app.use("/seller-requests", sellerRequestRoute);
 app.use("/questions", questionRoute);
 app.use("/users", userRoute);

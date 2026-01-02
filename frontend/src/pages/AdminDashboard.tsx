@@ -78,7 +78,8 @@ export default function AdminDashboard() {
 
   const [newCatName, setNewCatName] = useState("");
   const [newCatSubs, setNewCatSubs] = useState("");
-  const [users, setUsers] = useState(MOCK_ALL_USERS); // Local state for demo
+  const [newCatIcon, setNewCatIcon] = useState("");
+  const [users, setUsers] = useState(MOCK_ALL_USERS);
 
   // Search States
   const [userSearch, setUserSearch] = useState("");
@@ -126,7 +127,6 @@ export default function AdminDashboard() {
   };
 
   const handleBanUser = (userId: string) => {
-    // Future: call API to ban the user
     setUsers(
       users.map((u) => (u.id === userId ? { ...u, status: "banned" } : u)),
     );
@@ -134,7 +134,6 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteUser = (userId: string) => {
-    // Future: Remove user
     setUsers(users.filter((u) => u.id !== userId));
     toast({
       title: "User Deleted",
@@ -500,6 +499,12 @@ export default function AdminDashboard() {
                   onChange={(e) => setNewCatName(e.target.value)}
                 />
                 <Input
+                  placeholder="Icon (emoji or text)"
+                  className="w-24 md:w-32"
+                  value={newCatIcon}
+                  onChange={(e) => setNewCatIcon(e.target.value)}
+                />
+                <Input
                   placeholder="Subcategories (seperate by comma)"
                   value={newCatSubs}
                   onChange={(e) => setNewCatSubs(e.target.value)}
@@ -507,9 +512,10 @@ export default function AdminDashboard() {
                 <Button
                   onClick={() => {
                     const subs = newCatSubs.split(",").map(Is => Is.trim()).filter(Boolean);
-                    addCategory(newCatName, "Desc", "📦", subs);
+                    addCategory(newCatName, "Desc", newCatIcon || "📦", subs);
                     setNewCatName("");
                     setNewCatSubs("");
+                    setNewCatIcon("");
                     toast({ title: "Category Added" });
                   }}
                 >

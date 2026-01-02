@@ -5,7 +5,7 @@ const controller = {
     const page = req.query.page ? Number(req.query.page) : undefined;
     const limit = req.query.limit ? Number(req.query.limit) : undefined;
     listingService
-      .listPage({ page, limit })
+      .listAll({ page, limit })
       .then((result) => res.json(result))
       .catch(next);
   },
@@ -29,6 +29,36 @@ const controller = {
     listingService
       .searchListings({ query: q, page, limit })
       .then((result) => res.json(result))
+      .catch(next);
+  },
+
+  create: function (req, res, next) {
+    listingService
+      .create(req.body)
+      .then((row) => res.status(201).json(row))
+      .catch(next);
+  },
+
+  update: async function (req, res, next) {
+    try {
+      const id = Number(req.params.id);
+      const existing = await listingService.listOne(id);
+      if (!existing)
+        return res.status(404).json({ message: "Listing not found" });
+
+      const updates = { ...existing, ...req.body, listingId: id };
+      const updated = await listingService.update(updates);
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  remove: function (req, res, next) {
+    const id = Number(req.params.id);
+    listingService
+      .remove(id)
+      .then(() => res.json({}))
       .catch(next);
   },
 };

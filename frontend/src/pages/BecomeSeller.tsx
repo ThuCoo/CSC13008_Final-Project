@@ -38,8 +38,6 @@ export default function BecomeSeller() {
     e.preventDefault();
     createSellerRequest({
       userId: user.id,
-      userName: user.name,
-      userEmail: user.email,
       businessName: formData.businessName,
       businessDescription: formData.businessDescription,
     });

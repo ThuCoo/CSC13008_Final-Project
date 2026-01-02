@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import apiClient from "../lib/api-client";
 
 export interface Bid {
   id: string;
@@ -57,7 +58,7 @@ type NewListingData = Omit<
 
 interface ListingsContextType {
   listings: Listing[];
-  createListing: (data: NewListingData) => Listing;
+  createListing: (data: NewListingData) => Promise<Listing>;
   updateListing: (id: string, data: Partial<Listing>) => void;
   deleteListing: (id: string) => void;
   endListing: (id: string) => void;
@@ -94,186 +95,96 @@ const ListingsContext = createContext<ListingsContextType | undefined>(
   undefined,
 );
 
-// Mock Data
-const generateMockListings = (): Listing[] => {
-  const categories = [
-    { main: "Electronics", sub: ["Mobile Phones", "Laptops"] },
-    { main: "Fashion", sub: ["Shoes", "Watches"] },
-    { main: "Collectibles", sub: ["Coins", "Stamps"] },
-  ];
-
-  const listings: Listing[] = [];
-
-  for (let i = 1; i <= 30; i++) {
-    const cat = categories[i % 3];
-    const sub = cat.sub[i % 2];
-    const timeLeft = Math.floor(Math.random() * 5 * 24 * 60 * 60 * 1000) + 24 * 60 * 60 * 1000; 
-
-    listings.push({
-      id: i.toString(),
-      sellerId: "2",
-      sellerName: "Jane Seller",
-      title: `${sub} Item #${i} - ${cat.main} Edition`,
-      description: "Description...",
-      category: cat.main,
-      subCategory: sub,
-      categories: [cat.main, sub],
-      startingPrice: 1000000 * i,
-      currentBid: 1000000 * i + Math.floor(Math.random() * 500000),
-      stepPrice: 50000,
-      bids: Array(Math.floor(Math.random() * 10))
-        .fill(null)
-        .map((_, idx) => ({
-          id: `b${i}_${idx}`,
-          bidderId: "1",
-          bidderName: "Test User",
-          amount: 1000000,
-          timestamp: Date.now(),
-        })),
-      status: "active",
-      createdAt: Date.now() - 100000,
-      endsAt: Date.now() + timeLeft,
-      condition: "New",
-      shippingCost: 30000,
-      returns: "None",
-      images: [`https://picsum.photos/seed/${i * 123}/400/300`, `https://picsum.photos/seed/${i * 456}/400/300`],
-      autoExtendedDates: [],
-      questions: [],
-    });
-  }
-  return listings;
-};
-
 export function ListingsProvider({ children }: { children: React.ReactNode }) {
-  const [listings, setListings] = useState<Listing[]>(() => {
-    const stored = localStorage.getItem("auctionhub_listings");
-    if (stored) {
-       const parsed = JSON.parse(stored);
-       const needsMigration = parsed.some((l: Listing) => !l.images || l.images.length === 0);
-       if (!needsMigration) return parsed;
+  const [listings, setListings] = useState<Listing[]>([]);
+
+  useEffect(() => {
+    loadListings();
+  }, []);
+
+  const loadListings = async () => {
+    try {
+      const { data } = await apiClient.get("/listings?limit=50&page=1"); 
+      if (data && Array.isArray(data.data)) {
+        setListings(data.data);
+      }
+    } catch (error) {
+      console.error("Failed to load listings", error);
     }
-    return generateMockListings();
-  });
-
-  const saveListings = (newListings: Listing[]) => {
-    setListings(newListings);
-    localStorage.setItem("auctionhub_listings", JSON.stringify(newListings));
   };
 
-  const createListing = (data: NewListingData) => {
-    const newListing: Listing = {
-      ...data,
-      id: String(Date.now()),
-      bids: [],
-      createdAt: Date.now(),
-      currentBid: data.startingPrice,
-      status: "active" as const,
-      autoExtendedDates: [],
-      rejectedBidders: [],
-      questions: [],
-    };
-    saveListings([newListing, ...listings]);
-    return newListing;
+  const createListing = async (data: NewListingData) => {
+    try {
+      const { data: newListing } = await apiClient.post("/listings", data);
+      setListings((prev) => [newListing, ...prev]);
+      return newListing;
+    } catch (error) {
+      console.error("Failed to create listing", error);
+      throw error;
+    }
   };
 
-  const updateListing = (id: string, data: Partial<Listing>) => {
-    const updated = listings.map((l) =>
-      l.id === id ? ({ ...l, ...data } as Listing) : l,
-    );
-    saveListings(updated);
+  const updateListing = async (id: string, data: Partial<Listing>) => {
+     try {
+       await apiClient.put(`/listings/${id}`, data);
+       setListings(prev => prev.map(l => l.id === id ? { ...l, ...data } as Listing : l));
+     } catch (error) {
+       console.error("Failed to update listing", error);
+     }
   };
 
-  const deleteListing = (id: string) => {
-    saveListings(listings.filter((l) => l.id !== id));
+  const deleteListing = async (id: string) => {
+    try {
+      await apiClient.delete(`/listings/${id}`);
+      setListings(prev => prev.filter(l => l.id !== id));
+    } catch (error) {
+      console.error("Failed to delete listing", error);
+    }
   };
 
-  const endListing = (id: string) => {
-    const updated = listings.map((l) =>
-      l.id === id ? ({ ...l, status: "ended" } as Listing) : l,
-    );
-    saveListings(updated);
+  const endListing = async (id: string) => {
+     await updateListing(id, { status: "ended" });
   };
 
-  const placeBid = (
+  const placeBid = async (
     listingId: string,
     bidderId: string,
-    bidderName: string,
+    _bidderName: string,
     amount: number,
-    bidderStats?: { positive: number; total: number },
+    _bidderStats?: { positive: number; total: number },
   ) => {
-    const listing = listings.find((l) => l.id === listingId);
-    if (!listing) throw new Error("Listing not found");
-
-    if (listing.rejectedBidders?.includes(bidderId)) {
-      throw new Error("You have been blocked from bidding on this item.");
-    }
-
-    if (bidderStats) {
-      const { positive, total } = bidderStats;
-      if (total > 0) {
-        const rating = (positive / total) * 100;
-        if (rating < 80) {
-          throw new Error(
-            `Cannot bid. Your rating (${rating.toFixed(1)}%) is below 80%. `,
-          );
-        }
+    try {
+      const { data } = await apiClient.post("/bids", {
+        listingId,
+        bidderId,
+        amount
+      });
+      if (data.listing) {
+          setListings(prev => prev.map(l => l.id === listingId ? data.listing : l));
       }
+    } catch (error: any) {
+      console.error("Failed to place bid", error);
+      throw new Error(error.response?.data?.message || "Failed to place bid");
     }
-    if (amount <= listing.currentBid) throw new Error("Bid too low");
-
-    let newEndsAt = listing.endsAt;
-    const timeRemaining = listing.endsAt - Date.now();
-    if (timeRemaining < 5 * 60 * 1000 && timeRemaining > 0) {
-      newEndsAt += 10 * 60 * 1000;
-    }
-
-    const newBid = {
-      id: String(Date.now()),
-      bidderId,
-      bidderName,
-      amount,
-      timestamp: Date.now(),
-    };
-
-    const updated = listings.map((l) =>
-      l.id === listingId
-        ? {
-            ...l,
-            bids: [newBid, ...l.bids],
-            currentBid: amount,
-            endsAt: newEndsAt,
-          }
-        : l,
-    );
-
-    saveListings(updated);
   };
 
-  const rejectBidder = (listingId: string, bidderId: string) => {
-    const listing = listings.find((l) => l.id === listingId);
-    if (!listing) return;
-
-    const validBids = listing.bids.filter((b) => b.bidderId !== bidderId);
-
-    let newPrice = listing.startingPrice;
-    if (validBids.length > 0) {
-      newPrice = Math.max(...validBids.map((b) => b.amount));
-    }
-
-    const updated = listings.map((l) =>
-      l.id === listingId
-        ? {
-            ...l,
-            bids: validBids,
-            currentBid: newPrice,
-            rejectedBidders: [...(l.rejectedBidders || []), bidderId],
-          }
-        : l,
-    );
-
-    saveListings(updated);
+  const rejectBidder = async (listingId: string, bidderId: string) => {
+     const listing = listings.find(l => l.id === listingId);
+     if (!listing) return;
+     const currentRejected = listing.rejectedBidders || [];
+     if (!currentRejected.includes(bidderId)) {
+         await updateListing(listingId, { rejectedBidders: [...currentRejected, bidderId] });
+     }
   };
 
+  const getListingById = (id: string) => listings.find((l) => l.id === id);
+  const getSellerListings = (id: string) => listings.filter((l) => l.sellerId === id);
+  const getActiveBiddingListings = (id: string) =>
+          listings.filter((l) => l.bids?.some((b) => b.bidderId === id));
+  const extendAuctionIfNoBids = (_id: string) => false; 
+  const getListingsByCategory = (cat: string) =>
+          listings.filter((l) => l.category === cat);
+  
   const getTop5ClosingSoon = () => {
     return listings
       .filter((l) => l.status === "active" && l.endsAt > Date.now())
@@ -284,7 +195,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const getTop5MostBids = () => {
     return listings
       .filter((l) => l.status === "active")
-      .sort((a, b) => b.bids.length - a.bids.length)
+      .sort((a, b) => (b.bids?.length||0) - (a.bids?.length||0))
       .slice(0, 5);
   };
 
@@ -295,62 +206,44 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
       .slice(0, 5);
   };
 
-  const addQuestion = (
+  const addQuestion = async (
     listingId: string,
     questionText: string,
     userId: string,
-    userName: string,
+    _userName: string,
   ) => {
-    const newQuestion: Question = {
-      id: String(Date.now()),
-      userId,
-      userName,
-      question: questionText,
-      timestamp: Date.now(),
-    };
-
-    const updated = listings.map((l) =>
-      l.id === listingId
-        ? { ...l, questions: [...l.questions, newQuestion] }
-        : l,
-    );
-    saveListings(updated);
+    try {
+        await apiClient.post("/questions", { listingId, userId, questionText });
+        loadListings(); 
+    } catch(e) { console.error(e) }
   };
 
-  const answerQuestion = (
-    listingId: string,
+  const answerQuestion = async (
+    _listingId: string,
     questionId: string,
     answer: string,
   ) => {
-    const updated = listings.map((l) => {
-      if (l.id === listingId) {
-        const updatedQuestions = l.questions.map((q) =>
-          q.id === questionId ? { ...q, answer } : q,
-        );
-        return { ...l, questions: updatedQuestions };
-      }
-      return l;
-    });
-    saveListings(updated);
+     try {
+         await apiClient.put(`/questions/${questionId}`, { answerText: answer });
+         loadListings();
+     } catch(e) { console.error(e) }
   };
 
   return (
     <ListingsContext.Provider
       value={{
         listings,
-        createListing,
+        createListing: createListing as any,
         updateListing,
         deleteListing,
         endListing,
         placeBid,
         rejectBidder,
-        getListingById: (id) => listings.find((l) => l.id === id),
-        getSellerListings: (id) => listings.filter((l) => l.sellerId === id),
-        getActiveBiddingListings: (id) =>
-          listings.filter((l) => l.bids.some((b) => b.bidderId === id)),
-        extendAuctionIfNoBids: (_id) => false, // placeholder
-        getListingsByCategory: (cat) =>
-          listings.filter((l) => l.category === cat),
+        getListingById,
+        getSellerListings,
+        getActiveBiddingListings,
+        extendAuctionIfNoBids,
+        getListingsByCategory,
         getTop5ClosingSoon,
         getTop5MostBids,
         getTop5HighestPrice,

@@ -14,15 +14,11 @@ import { Clock, Zap, ChevronRight, ChevronLeft } from "lucide-react";
 import { useListings, Listing } from "../context/ListingsContext";
 import { isNewProduct, formatAuctionTime, maskBidderName } from "../lib/utils";
 
-// Categories Structure for Sidebar
-const CATEGORY_TREE = [
-  { name: "Electronics", sub: ["Mobile Phones", "Laptops"] },
-  { name: "Fashion", sub: ["Shoes", "Watches"] },
-  { name: "Collectibles", sub: ["Coins", "Stamps"] },
-];
+import { useCategories } from "../context/CategoriesContext";
 
 export default function Browse() {
   const { listings, getListingsByCategory } = useListings();
+  const { categories } = useCategories();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const initialCat = searchParams.get("cat") || "All";
@@ -116,8 +112,8 @@ export default function Browse() {
                     All Categories
                   </button>
                 </li>
-                {CATEGORY_TREE.map((cat) => (
-                  <li key={cat.name}>
+                {categories.map((cat) => (
+                  <li key={cat.id}>
                     <button
                       onClick={() => handleCategoryClick(cat.name)}
                       className={`text-sm font-medium block w-full text-left ${initialCat === cat.name && !initialSub ? "text-rose-600 font-bold" : "text-gray-700"}`}
@@ -126,7 +122,7 @@ export default function Browse() {
                     </button>
                     {/* Subcategories */}
                     <ul className="ml-4 mt-2 space-y-2 border-l-2 border-gray-100 pl-2">
-                      {cat.sub.map((sub) => (
+                      {cat.subcategories?.map((sub) => (
                         <li key={sub}>
                           <button
                             onClick={() => handleCategoryClick(cat.name, sub)}
