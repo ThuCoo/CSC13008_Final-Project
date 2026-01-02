@@ -3,7 +3,8 @@ export interface User {
   email: string;
   name: string;
   avatar?: string;
-  type: "bidder" | "seller" | "admin";
+  role: "bidder" | "seller" | "admin";
+  type?: "bidder" | "seller" | "admin";
   sellerApproved?: boolean;
   createdAt?: number;
   address?: string;

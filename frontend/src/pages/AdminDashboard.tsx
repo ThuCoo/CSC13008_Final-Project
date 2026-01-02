@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { useSellerRequests } from "../context/SellerRequestsContext";
 import { useUser } from "../context/UserContext";
@@ -43,33 +43,8 @@ import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Category } from "../context/CategoriesContext";
 
-// Mock Users
-const MOCK_ALL_USERS = [
-  {
-    id: "1",
-    name: "John Buyer",
-    email: "buyer..example.com",
-    type: "bidder",
-    status: "active",
-  },
-  {
-    id: "2",
-    name: "Jane Seller",
-    email: "seller..example.com",
-    type: "seller",
-    status: "active",
-  },
-  {
-    id: "3",
-    name: "Bad Actor",
-    email: "bad..example.com",
-    type: "bidder",
-    status: "banned",
-  },
-];
-
 export default function AdminDashboard() {
-  const { user } = useUser();
+  const { user, getAllUsers, banUser, deleteUser } = useUser();
   const { requests, approveRequest, rejectRequest } = useSellerRequests();
   const { listings, deleteListing } = useListings();
   const { categories, addCategory, deleteCategory, updateCategory } = useCategories();
@@ -79,12 +54,26 @@ export default function AdminDashboard() {
   const [newCatName, setNewCatName] = useState("");
   const [newCatSubs, setNewCatSubs] = useState("");
   const [newCatIcon, setNewCatIcon] = useState("");
-  const [users, setUsers] = useState(MOCK_ALL_USERS);
+  const [users, setUsers] = useState<any[]>([]);
 
   // Search States
   const [userSearch, setUserSearch] = useState("");
   const [listingSearch, setListingSearch] = useState("");
   const [catSearch, setCatSearch] = useState("");
+
+  useEffect(() => {
+     if (user?.role === "admin") {
+         getAllUsers().then(data => {
+             const mapped = data.map((u: any) => ({
+                 ...u,
+                 id: String(u.userId),
+                 role: u.role,
+                 status: (u as any).status || "active"
+             }));
+             setUsers(mapped);
+         });
+     }
+  }, [user]);
 
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
@@ -101,7 +90,7 @@ export default function AdminDashboard() {
     (c.subcategories || []).some(sub => sub.name.toLowerCase().includes(catSearch.toLowerCase()))
   );
 
-  if (!user || user.type !== "admin") {
+  if (!user || user.role !== "admin") {
     return (
       <div className="p-8 text-center flex flex-col items-center justify-center h-screen">
         <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
@@ -126,14 +115,16 @@ export default function AdminDashboard() {
     toast({ title: "Category Deleted" });
   };
 
-  const handleBanUser = (userId: string) => {
+  const handleBanUser = async (userId: string) => {
+    await banUser(userId);
     setUsers(
       users.map((u) => (u.id === userId ? { ...u, status: "banned" } : u)),
     );
     toast({ title: "User Banned", description: "User access restricted" });
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
+    await deleteUser(userId);
     setUsers(users.filter((u) => u.id !== userId));
     toast({
       title: "User Deleted",
@@ -189,14 +180,14 @@ export default function AdminDashboard() {
     );
   };
 
-  const UserDetailDialog = ({ user }: { user: typeof MOCK_ALL_USERS[0] }) => (
+  const UserDetailDialog = ({ user }: { user: any }) => (
     <Dialog>
       <DialogTrigger asChild>
         <div className="cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded transition-colors group">
           <p className="font-medium group-hover:underline text-rose-600">
             {user.name}
             <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-slate-100 border text-slate-900 no-underline inline-block">
-              {user.type}
+              {user.role}
             </span>
           </p>
           <p className="text-sm text-slate-500">{user.email}</p>
@@ -220,8 +211,8 @@ export default function AdminDashboard() {
              <div>{user.email}</div>
           </div>
           <div className="flex flex-col gap-1">
-             <Label className="text-muted-foreground">Account Type</Label>
-             <div className="capitalize">{user.type}</div>
+             <Label className="text-muted-foreground">Account Role</Label>
+             <div className="capitalize">{user.role}</div>
           </div>
           <div className="flex flex-col gap-1">
              <Label className="text-muted-foreground">Status</Label>

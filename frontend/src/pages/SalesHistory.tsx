@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { useUser } from "../context/UserContext";
 import { useListings } from "../context/ListingsContext";
@@ -18,60 +18,78 @@ import {
 import { Textarea } from "../components/ui/textarea";
 
 export default function SalesHistory() {
-  const { user } = useUser();
-  const { getSellerListings } = useListings();
+  const { user, rateUser } = useUser();
+  const { getSellerOrders, updateOrderStatus } = useListings();
   const { toast } = useToast();
 
-  // Mock State for Order Workflow
-  const [orderSteps, setOrderSteps] = useState<Record<string, number>>({});
+  const [orders, setOrders] = useState<any[]>([]);
   const [reviewComment, setReviewComment] = useState("");
 
-  if (!user || user.type !== "seller") return null;
+  useEffect(() => {
+      if (user?.role === "seller" || user?.type === "seller") {
+          getSellerOrders(user.id).then(setOrders);
+      }
+  }, [user]);
 
-  const sales = getSellerListings(user.id).filter((l) => l.status === "sold");
+  if (!user || (user.type !== "seller" && user.role !== "seller")) return null;
 
-  const handleCancelTransaction = (id: string) => {
-    setOrderSteps((prev) => ({ ...prev, [id]: -1 }));
+  // Helper to map status to step index
+  const getStep = (status: string) => {
+      switch(status) {
+          case 'paid': return 0;
+          case 'shipped': return 1;
+          case 'delivered': return 2; // Bidder received
+          case 'completed': return 4; // Rated
+          case 'cancelled': return -1;
+          default: return 0;
+      }
+  };
+
+  const sales = orders || []; // fallback
+
+  const handleCancelTransaction = async (id: string) => {
+    await updateOrderStatus(id, "cancelled");
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: "cancelled" } : o));
     toast({
       title: "Transaction Cancelled",
-      description: "Bidder has been automatically rated -1. ",
+      description: "Order marked as cancelled.",
       variant: "destructive",
     });
   };
 
-  const advanceOrderStep = (id: string, currentStep: number) => {
-    setOrderSteps((prev) => ({ ...prev, [id]: currentStep + 1 }));
+  const advanceOrderStep = async (id: string, currentStatus: string) => {
+    let nextStatus = currentStatus;
+    let msg = "";
+    
+    if (currentStatus === "paid") { nextStatus = "shipped"; msg = "Item Shipped"; }
+    else if (currentStatus === "shipped") { nextStatus = "delivered"; msg = "Delivery Confirmed"; } // Ideally bidder does this
+    else if (currentStatus === "delivered") { nextStatus = "completed"; msg = "Order Completed"; }
 
-    if (currentStep === 0)
-      toast({
-        title: "Payment Confirmed",
-        description: "Invoice sent to bidder.",
-      });
-    if (currentStep === 1)
-      toast({
-        title: "Item Shipped",
-        description: "Waiting for bidder receipt.",
-      });
-    if (currentStep === 2)
-      toast({
-        title: "Delivery Confirmed",
-        description: "Bidder received item. You can now leave feedback.",
-      });
+    if (nextStatus !== currentStatus) {
+        await updateOrderStatus(id, nextStatus);
+        setOrders(prev => prev.map(o => o.id === id ? { ...o, status: nextStatus } : o));
+        toast({ title: msg });
+    }
   };
 
-  const handleRateBidder = (id: string, _rating: 1 | -1) => {
+  const handleRateBidder = async (orderId: string, rating: 1 | -1, bidderId?: string) => {
     if (!reviewComment) {
         toast({ title: "Comment Required", description: "Please write a review", variant: "destructive" });
         return;
     }
-    setOrderSteps(prev => ({ ...prev, [id]: 4 })); // Move to Completed
+
+    if (bidderId) {
+        await rateUser(bidderId, rating, reviewComment, "bidder");
+    }
+    
+    await updateOrderStatus(orderId, "completed");
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "completed" } : o));
     toast({ title: "Bidder Rated", description: "Transaction completed." });
     setReviewComment("");
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
-
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
@@ -89,13 +107,13 @@ export default function SalesHistory() {
         ) : (
           <div className="space-y-6">
             {sales.map((sale) => {
-              const currentStep = orderSteps[sale.id] || 0;
-              const winner = sale.bids[0]?.bidderName || "Unknown";
+              const currentStep = getStep(sale.status);
+              const winner = sale.bidderName || "Unknown";
 
               return (
                 <Card key={sale.id}>
                   <CardHeader className="bg-slate-50 border-b flex flex-row justify-between items-center py-3">
-                    <span className="font-bold text-lg">{sale.title}</span>
+                    <span className="font-bold text-lg">{sale.listingTitle}</span>
                     <Badge
                       variant={currentStep === -1 ? "destructive" : "default"}
                     >
@@ -103,17 +121,17 @@ export default function SalesHistory() {
                         ? "Cancelled"
                         : currentStep >= 4
                           ? "Completed"
-                          : "In Progress"}
+                          : sale.status.toUpperCase()}
                     </Badge>
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="flex justify-between gap-6 mb-6">
                       <div>
                         <p className="text-sm text-muted-foreground">
-                          Winning Bid
+                          Sold Price
                         </p>
                         <p className="text-2xl font-bold text-rose-600">
-                          {sale.currentBid.toLocaleString()}₫
+                          {Number(sale.finalPrice).toLocaleString()}₫
                         </p>
                       </div>
                       <div>
@@ -123,77 +141,29 @@ export default function SalesHistory() {
                     </div>
 
                     <div className="mt-4 border-t pt-4">
+                      {/* Workflow Steps */}
                       <div className="flex flex-wrap items-center gap-2 mb-4 text-sm font-medium">
-                        <span
-                          className={
-                            currentStep >= 1
-                              ? "text-rose-600"
-                              : "text-gray-400"
-                          }
-                        >
-                          1. Paid
-                        </span>{" "}
-                        &rarr;
-                        <span
-                          className={
-                            currentStep >= 2
-                              ? "text-rose-600"
-                              : "text-gray-400"
-                          }
-                        >
-                          2. Shipped
-                        </span>{" "}
-                        &rarr;
-                        <span
-                          className={
-                            currentStep >= 3
-                              ? "text-rose-600"
-                              : "text-gray-400"
-                          }
-                        >
-                          3. Received
-                        </span>{" "}
-                        &rarr;
-                        <span
-                          className={
-                            currentStep >= 4
-                              ? "text-rose-600"
-                              : "text-gray-400"
-                          }
-                        >
-                          4. Rated (Done)
-                        </span>
+                         Status: {sale.status}
                       </div>
 
                       {currentStep !== -1 && currentStep < 4 && (
                         <div className="flex gap-3">
-                          {/* Only show buttons relevant to Seller actions */}
-                          {currentStep === 0 && (
-                            <Button
-                              onClick={() => advanceOrderStep(sale.id, 0)}
-                            >
-                              Confirm Payment
-                            </Button>
-                          )}
-                          {currentStep === 1 && (
-                            <Button
-                              onClick={() => advanceOrderStep(sale.id, 1)}
-                            >
+                          {currentStep === 0 && ( // Paid -> Shipped
+                            <Button onClick={() => advanceOrderStep(sale.id, 'paid')}>
                               Mark Shipped
                             </Button>
                           )}
-                          {currentStep === 2 && (
+                          {currentStep === 1 && ( // Shipped -> Delivered
                             <div className="flex gap-2 items-center">
                                 <span className="text-sm text-amber-600 italic mr-2">
-                                  Waiting for bidder confirmation... 
+                                  Waiting for bidder receipt...
                                 </span>
-                                {/* Mocking Bidder Confirmation for demo purposes */}
-                                <Button variant="outline" size="sm" onClick={() => advanceOrderStep(sale.id, 2)}>
-                                    (Mock) Bidder Confirms
+                                <Button variant="outline" size="sm" onClick={() => advanceOrderStep(sale.id, 'shipped')}>
+                                    (Mock) Bidder Confirms Receipt
                                 </Button>
                             </div>
                           )}
-                          {currentStep === 3 && (
+                          {currentStep === 2 && ( // Delivered -> Rate -> Completed
                               <Dialog>
                               <DialogTrigger asChild>
                                 <Button className="bg-rose-600 hover:bg-rose-700">
@@ -213,13 +183,13 @@ export default function SalesHistory() {
                                   <div className="flex gap-2 justify-end">
                                     <Button
                                       variant="destructive"
-                                      onClick={() => handleRateBidder(sale.id, -1)}
+                                      onClick={() => handleRateBidder(sale.id, -1, sale.bidderId)}
                                     >
                                       <ThumbsDown className="w-4 h-4 mr-2" /> -1
                                     </Button>
                                     <Button
                                       className="bg-rose-600 hover:bg-rose-700"
-                                      onClick={() => handleRateBidder(sale.id, 1)}
+                                      onClick={() => handleRateBidder(sale.id, 1, sale.bidderId)}
                                     >
                                       <ThumbsUp className="w-4 h-4 mr-2" /> +1
                                     </Button>
@@ -234,7 +204,7 @@ export default function SalesHistory() {
                             className="ml-auto"
                             onClick={() => handleCancelTransaction(sale.id)}
                           >
-                            Cancel & Rate -1
+                            Cancel Order
                           </Button>
                         </div>
                       )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -29,7 +29,7 @@ export default function AuctionDetail() {
   const { toast } = useToast();
   const { listings, isLoading, getListingById, placeBid, getListingsByCategory, addQuestion, answerQuestion, rejectBidder } = useListings();
   const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
-  const { user } = useUser();
+  const { user, getUserReviews } = useUser();
 
   const listing = getListingById(id || "");
   const [bidAmount, setBidAmount] = useState(listing ? (listing.currentBid + listing.stepPrice).toString() : "");
@@ -39,6 +39,22 @@ export default function AuctionDetail() {
   // Image Gallery State
   const [selectedImage, setSelectedImage] = useState("");
   const [bidderToReject, setBidderToReject] = useState<string | null>(null);
+
+  // Seller Rating State
+  const [sellerRating, setSellerRating] = useState<number | null>(null);
+
+  useEffect(() => {
+      if (listing?.sellerId) {
+          getUserReviews(listing.sellerId).then(reviews => {
+              if (reviews.length > 0) {
+                  const positive = reviews.filter((r: any) => r.rating === 1).length;
+                  setSellerRating(Math.round((positive / reviews.length) * 100));
+              } else {
+                  setSellerRating(null); // No rating
+              }
+          });
+      }
+  }, [listing?.sellerId]);
   
   // Update state when listing changes
   if (listing && listing.images.length > 0 && (!selectedImage || !listing.images.includes(selectedImage))) {
@@ -125,15 +141,6 @@ export default function AuctionDetail() {
     }
   };
 
-  // Helper to generate a predictable mock rating
-  const getMockRating = (name: string) => {
-      let hash = 0;
-      for (let i = 0; i < name.length; i++) {
-          hash = name.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      return 80 + Math.abs(hash % 20); // Rating between 80 and 99
-  }
-
   return (
     <div className="min-h-screen bg-slate-50">
 
@@ -197,7 +204,7 @@ export default function AuctionDetail() {
                       <p className="font-medium text-sm">Seller: <span className="text-slate-900 font-bold">{listing.sellerName}</span></p>
                       <div className="flex items-center gap-1 text-xs text-slate-500">
                           <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                          <span>{getMockRating(listing.sellerName)}% Positive Feedback</span>
+                          <span>{sellerRating !== null ? `${sellerRating}% Positive Feedback` : "No ratings yet"}</span>
                       </div>
                   </div>
               </div>
@@ -324,10 +331,7 @@ export default function AuctionDetail() {
                             <p className="font-medium">
                             {maskBidderName(bid.bidderName)}
                             </p>
-                            <span className="text-[10px] bg-slate-100 px-1 rounded text-slate-500 flex items-center">
-                                <Star className="w-2.5 h-2.5 mr-0.5 fill-slate-400" />
-                                {getMockRating(bid.bidderName)}%
-                            </span>
+                           {/*  Removed Bidder Rating for now to avoid complexity */}
                         </div>
                         <p className="text-xs text-slate-500">
                           {new Date(bid.timestamp).toLocaleTimeString()}

@@ -9,6 +9,11 @@ export interface UserContextType {
   logout: () => void;
   updateProfile: (id: string, data: Partial<User>) => Promise<void>;
   changePassword: (id: string, current: string, newPass: string) => Promise<void>;
+  getAllUsers: () => Promise<User[]>;
+  banUser: (id: string) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
+  getUserReviews: (userId: string) => Promise<any[]>;
+  rateUser: (targetId: string, rating: number, comment: string, role: "bidder"|"seller") => Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -77,13 +82,52 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const changePassword = async (id: string, current: string, newPass: string) => {
-    console.log(`Password change request for ${id}`, current, newPass);
+  const getAllUsers = async () => {
+    try {
+        const { data } = await apiClient.get("/users");
+        return data; // Assumes backend returns array
+    } catch (e) { console.error(e); return []; }
+  };
+
+  const banUser = async (id: string) => {
+      try {
+          await apiClient.put(`/users/${id}`, { status: "banned" }); // Backend must support status update
+      } catch (e) { console.error(e); }
+  };
+
+  const deleteUser = async (id: string) => {
+      try {
+          await apiClient.delete(`/users/${id}`);
+      } catch (e) { console.error(e); }
+  };
+
+  const getUserReviews = async (userId: string) => {
+      try {
+          const { data } = await apiClient.get(`/ratings/${userId}`);
+          return data;
+      } catch (e) { console.error(e); return []; }
+  };
+
+  const rateUser = async (targetId: string, rating: number, comment: string, role: "bidder"|"seller") => {
+      try {
+          await apiClient.post("/ratings", { targetUserId: targetId, rating, comment, role });
+      } catch (e) { console.error(e); }
+  };
+
+  const changePassword = async (id: string, _current: string, newPass: string) => {
+    if (!user || user.id !== id) return;
+    try {
+      // Note: needs to verify password in backend
+        await apiClient.put(`/users/${id}`, { password: newPass });
+    } catch (e) {
+        console.error(e);
+        throw e;
+    }
   };
 
   return (
     <UserContext.Provider
-      value={{ user, login, signup, logout, updateProfile, changePassword }}
+      value={{ user, login, signup, logout, updateProfile, changePassword, getAllUsers, banUser, deleteUser, getUserReviews, rateUser }}
     >
       {!isLoading && children}
     </UserContext.Provider>

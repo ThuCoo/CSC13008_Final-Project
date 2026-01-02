@@ -16,6 +16,7 @@ import userRoute from "./routes/user.js";
 import ratingRoute from "./routes/rating.js";
 import authRoute from "./routes/auth.js";
 import autoBidRoute from "./routes/autoBid.js";
+import orderRoute from "./routes/orders.js";
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use("/questions", questionRoute);
 app.use("/users", userRoute);
 app.use("/ratings", ratingRoute);
 app.use("/auth", authRoute);
+app.use("/orders", orderRoute);
 
 app.use(notFound);
 app.use(errorHandler);

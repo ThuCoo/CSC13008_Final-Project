@@ -1,50 +1,70 @@
-
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { useState } from "react";
 import { useToast } from "../hooks/use-toast";
 import { Mail, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import apiClient from "../lib/api-client";
 
 export default function ForgotPassword() {
   const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Pass
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleSendOTP = (e: React.FormEvent) => {
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    // Simulate sending email
-    toast({
-      title: "OTP Sent",
-      description: `An OTP code has been sent to ${email}`,
-    });
-    setStep(2);
-  };
-
-  const handleVerifyOTP = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp !== "123456") {
-      // Mock OTP
-      toast({
-        title: "Invalid OTP",
-        description: "Try 123456",
-        variant: "destructive",
-      });
-      return;
+    try {
+        await apiClient.post("/auth/forgot", { email });
+        toast({
+          title: "OTP Sent",
+          description: `An OTP code has been sent to ${email}`,
+        });
+        setStep(2);
+    } catch (error: any) {
+        toast({ title: "Error", description: error.response?.data?.message || "Failed to send OTP", variant: "destructive" });
     }
-    setStep(3);
   };
 
-  const handleResetPassword = (e: React.FormEvent) => {
+  const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Success",
-      description: "Password updated successfully. Please login.",
-    });
-    navigate("/login");
+    try {
+        await apiClient.post("/auth/verify", { email, code: otp });
+        setStep(3);
+    } catch (error: any) {
+        toast({
+          title: "Invalid OTP",
+          description: error.response?.data?.message || "Please check your code",
+          variant: "destructive",
+        });
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+        toast({ title: "Passwords match error", description: "Passwords do not match.", variant: "destructive" });
+        return;
+    }
+    if (newPassword.length < 8) {
+        toast({ title: "Password too short", description: "Must be at least 8 characters.", variant: "destructive" });
+        return;
+    }
+
+    try {
+        await apiClient.post("/auth/reset", { email, code: otp, newPassword });
+        toast({
+          title: "Success",
+          description: "Password updated successfully. Please login.",
+        });
+        navigate("/login");
+    } catch (error: any) {
+        toast({ title: "Reset Failed", description: error.response?.data?.message || "Could not reset password", variant: "destructive" });
+    }
   };
 
   return (
@@ -107,14 +127,26 @@ export default function ForgotPassword() {
                 <label className="text-sm font-medium">New Password</label>
                 <div className="relative mt-1">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input className="pl-9" type="password" required />
+                  <Input 
+                    className="pl-9" 
+                    type="password" 
+                    required 
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                  />
                 </div>
               </div>
               <div>
                 <label className="text-sm font-medium">Confirm Password</label>
                 <div className="relative mt-1">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input className="pl-9" type="password" required />
+                  <Input 
+                    className="pl-9" 
+                    type="password" 
+                    required 
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                  />
                 </div>
               </div>
               <Button type="submit" className="w-full">

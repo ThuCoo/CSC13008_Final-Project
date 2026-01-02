@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { useListings } from "../context/ListingsContext";
@@ -44,15 +44,8 @@ export interface User {
   totalReviews: number;
 }
 
-// Mock Reviews Data
-const MOCK_REVIEWS = [
-  { id: 1, reviewer: "John Doe", type: "bidder", rating: 1, comment: "Fast shipping, great item!", date: "2024-10-10" },
-  { id: 2, reviewer: "Alice Smith", type: "seller", rating: 1, comment: "Excellent bidder, quick payment.", date: "2024-10-12" },
-  { id: 3, reviewer: "Bob Brown", type: "bidder", rating: -1, comment: "Item description was slightly off.", date: "2024-10-15" },
-];
-
 export default function AccountSettings() {
-  const { user, updateProfile } = useUser();
+  const { user, updateProfile, getUserReviews, rateUser, changePassword } = useUser();
   const { listings, getActiveBiddingListings } = useListings();
   const { toast } = useToast();
 
@@ -69,6 +62,13 @@ export default function AccountSettings() {
 
   // Review State
   const [reviewComment, setReviewComment] = useState("");
+  const [reviews, setReviews] = useState<any[]>([]);
+
+  useEffect(() => {
+     if (user?.id) {
+         getUserReviews(user.id).then(setReviews);
+     }
+  }, [user]);
 
   if (!user) return null;
 
@@ -92,7 +92,7 @@ export default function AccountSettings() {
     toast({ title: "Profile Updated", description: "Information saved." });
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPass || newPass.length < 6 || newPass !== confirmPass) {
       toast({
@@ -102,16 +102,28 @@ export default function AccountSettings() {
       });
       return;
     }
-    toast({
-      title: "Password Changed",
-      description: "Using bcrypt encryption (simulated).",
-    });
-    setCurrentPass("");
-    setNewPass("");
-    setConfirmPass("");
+    
+    if (user?.id) {
+        try {
+            await changePassword(user.id, currentPass, newPass);
+            toast({
+              title: "Password Changed",
+              description: "Your password has been updated.",
+            });
+            setCurrentPass("");
+            setNewPass("");
+            setConfirmPass("");
+        } catch (error) {
+             toast({
+                title: "Failed",
+                description: "Could not update password.",
+                variant: "destructive",
+              });
+        }
+    }
   };
 
-  const handleRateSeller = (listingId: string, rating: 1 | -1) => {
+  const handleRateSeller = async (sellerId: string, rating: 1 | -1) => {
     if (!reviewComment) {
       toast({
         title: "Comment Required",
@@ -120,10 +132,10 @@ export default function AccountSettings() {
       });
       return;
     }
-    // Submit review
+    await rateUser(sellerId!, rating, reviewComment, "seller");
     toast({
       title: rating === 1 ? "Rated Positive (+1)" : "Rated Negative (-1)",
-      description: `Review for listing ${listingId} submitted.`,
+      description: `Review submitted.`,
     });
     setReviewComment("");
   };
@@ -338,14 +350,14 @@ export default function AccountSettings() {
                             <div className="flex gap-2 justify-end">
                               <Button
                                 variant="destructive"
-                                onClick={() => handleRateSeller(l.id, -1)}
+                                onClick={() => handleRateSeller(l.sellerId!, -1)}
                               >
                                 <ThumbsDown className="w-4 h-4 mr-2" /> -1
                                 Negative
                               </Button>
                               <Button
                                 className="bg-green-600 hover:bg-green-700"
-                                onClick={() => handleRateSeller(l.id, 1)}
+                                onClick={() => handleRateSeller(l.sellerId!, 1)}
                               >
                                 <ThumbsUp className="w-4 h-4 mr-2" /> +1
                                 Positive
@@ -372,12 +384,12 @@ export default function AccountSettings() {
                   </CardHeader>
                   <CardContent>
                       <div className="space-y-4">
-                          {MOCK_REVIEWS.map(rev => (
-                              <div key={rev.id} className="border-b pb-4 last:border-0 last:pb-0">
+                          {reviews.length === 0 ? <p className="text-slate-500">No reviews yet.</p> : reviews.map((rev, i) => (
+                              <div key={i} className="border-b pb-4 last:border-0 last:pb-0">
                                   <div className="flex justify-between items-start mb-1">
                                       <div>
-                                          <p className="font-bold text-sm">{rev.reviewer} <span className="text-xs font-normal text-slate-500">({rev.type})</span></p>
-                                          <p className="text-xs text-slate-400">{rev.date}</p>
+                                          <p className="font-bold text-sm">User #{rev.reviewerId} <span className="text-xs font-normal text-slate-500">({rev.role})</span></p>
+                                          <p className="text-xs text-slate-400">{new Date(rev.createdAt).toLocaleDateString()}</p>
                                       </div>
                                       {rev.rating === 1 ? (
                                           <span className="flex items-center text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">
