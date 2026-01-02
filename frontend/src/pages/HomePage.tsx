@@ -33,7 +33,7 @@ const features = [
 
 // Component for a single listing card
 const ListingCard = ({ listing }: { listing: Listing }) => {
-  const topBidder = listing.bids.length > 0 ? listing.bids[0].bidderName : null;
+  const topBidder = listing.bids && listing.bids.length > 0 ? listing.bids[0].bidderName : null;
 
   return (
     <Link
@@ -65,7 +65,7 @@ const ListingCard = ({ listing }: { listing: Listing }) => {
           </div>
           <div className="text-right">
             <p className="text-xs text-gray-500">Bids</p>
-            <p className="font-medium">{listing.bids.length}</p>
+            <p className="font-medium">{listing.bids?.length || 0}</p>
           </div>
         </div>
 
@@ -83,10 +83,15 @@ const ListingCard = ({ listing }: { listing: Listing }) => {
 };
 
 export default function HomePage() {
-  const { getTop5ClosingSoon, getTop5MostBids, getTop5HighestPrice } = useListings();
+  const { listings, getTop5ClosingSoon, getTop5MostBids, getTop5HighestPrice } = useListings();
   const closingSoon = getTop5ClosingSoon();
   const mostBids = getTop5MostBids();
   const highestPrice = getTop5HighestPrice();
+  
+  console.log("HomePage - Total listings:", listings.length);
+  console.log("HomePage - Closing soon:", closingSoon.length);
+  console.log("HomePage - Most bids:", mostBids.length);
+  console.log("HomePage - Highest price:", highestPrice.length);
 
   return (
     <div className="min-h-screen bg-slate-50">

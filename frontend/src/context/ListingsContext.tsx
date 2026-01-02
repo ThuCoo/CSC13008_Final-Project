@@ -105,11 +105,22 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const loadListings = async () => {
     try {
       const { data } = await apiClient.get("/listings?limit=50&page=1"); 
+      console.log("Listings API Response:", data);
       if (data && Array.isArray(data.data)) {
+        console.log(`Loaded ${data.data.length} listings`);
         setListings(data.data);
+      } else if (data && Array.isArray(data)) {
+        // Handle case where API returns array directly
+        console.log(`Loaded ${data.length} listings (direct array)`);
+        setListings(data);
+      } else {
+        console.warn("Unexpected listings response format:", data);
+        setListings([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to load listings", error);
+      console.error("Error details:", error.response?.data || error.message);
+      setListings([]);
     }
   };
 

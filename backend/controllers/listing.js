@@ -6,8 +6,14 @@ const controller = {
     const limit = req.query.limit ? Number(req.query.limit) : undefined;
     listingService
       .listAll({ page, limit })
-      .then((result) => res.json(result))
-      .catch(next);
+      .then((result) => {
+        console.log(`Listings API: Returning ${result.data?.length || 0} listings`);
+        res.json(result);
+      })
+      .catch((err) => {
+        console.error("Error in listAll controller:", err);
+        next(err);
+      });
   },
 
   listOne: function (req, res, next) {
