@@ -14,8 +14,8 @@ const route = new Router();
 // registration requires reCAPTCHA verification (can be disabled with RECAPTCHA_ENABLED=false)
 route.post(
   "/register",
-  validateQuery(registerSchema, "body"),
   recaptcha,
+  validateQuery(registerSchema, "body"),
   authController.register
 );
 route.post("/login", validateQuery(loginSchema, "body"), authController.login);

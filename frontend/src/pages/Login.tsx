@@ -141,11 +141,11 @@ export default function Login() {
           <div className="space-y-2">
             <button
               onClick={() =>
-                handleDemoLogin("buyer@example.com", "password123")
+                handleDemoLogin("bidder@example.com", "password123")
               }
               className="w-full text-left text-xs px-2 py-1 bg-rose-100 hover:bg-rose-200 rounded transition"
             >
-              Buyer
+              Bidder
             </button>
             <button
               onClick={() =>

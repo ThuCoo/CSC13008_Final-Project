@@ -3,6 +3,7 @@ import db from "../db/index.js";
 import { listings, categories, subcategories, users, bids, questions } from "../db/schema.js";
 import bidService from "./bid.js";
 import questionService from "./question.js";
+import { maskName } from "../utils/mask.js";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -52,7 +53,7 @@ async function enrichListing(listing) {
           return {
             id: String(bid.bidId),
             bidderId: String(bid.bidderId),
-            bidderName: bidder[0]?.name || 'Unknown',
+            bidderName: maskName(bidder[0]?.name || 'Unknown'),
             amount: Number(bid.amount),
             timestamp: bid.createdAt ? new Date(bid.createdAt).getTime() : Date.now(),
           };
@@ -74,7 +75,7 @@ async function enrichListing(listing) {
           return {
             id: String(q.questionId),
             userId: String(q.userId),
-            userName: user[0]?.name || 'Unknown',
+            userName: maskName(user[0]?.name || 'Unknown'),
             question: q.questionText,
             answer: q.answerText || undefined,
             timestamp: q.createdAt ? new Date(q.createdAt).getTime() : Date.now(),

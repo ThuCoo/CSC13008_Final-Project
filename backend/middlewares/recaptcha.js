@@ -1,6 +1,7 @@
 export default async function (req, res, next) {
   try {
-    if (process.env.RECAPTCHA_ENABLED !== "true") return next();
+    const enabled = String(process.env.RECAPTCHA_ENABLED).trim().toLowerCase();
+    if (enabled !== "true") return next();
 
     const token = req.body && req.body.recaptchaToken;
     if (!token)

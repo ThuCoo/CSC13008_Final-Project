@@ -73,6 +73,7 @@ interface ListingsContextType {
     bidderName: string,
     amount: number,
     bidderStats?: { positive: number; total: number },
+    maxPrice?: number,
   ) => void;
   rejectBidder: (listingId: string, bidderId: string) => void;
   getListingById: (id: string) => Listing | undefined;
@@ -172,12 +173,14 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     _bidderName: string,
     amount: number,
     _bidderStats?: { positive: number; total: number },
+    maxPrice?: number,
   ) => {
     try {
       const { data } = await apiClient.post("/bids", {
         listingId,
         bidderId,
-        amount
+        amount,
+        maxPrice
       });
       if (data.listing) {
           setListings(prev => prev.map(l => l.id === listingId ? data.listing : l));

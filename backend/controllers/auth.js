@@ -41,7 +41,7 @@ const controller = {
       if (existing)
         return res.status(400).json({ message: "Email already taken" });
 
-      const body = { email, name, address, birthday };
+      const body = { email, name, address, birthday, avatarUrl: "https://placehold.co/100x100?text=User" };
       if (password) {
         const hash = await bcrypt.hash(password, SALT_ROUNDS);
         body.passwordHash = hash;

@@ -34,7 +34,7 @@ export default function SalesHistory() {
     setOrderSteps((prev) => ({ ...prev, [id]: -1 }));
     toast({
       title: "Transaction Cancelled",
-      description: "Buyer has been automatically rated -1. ",
+      description: "Bidder has been automatically rated -1. ",
       variant: "destructive",
     });
   };
@@ -45,17 +45,17 @@ export default function SalesHistory() {
     if (currentStep === 0)
       toast({
         title: "Payment Confirmed",
-        description: "Invoice sent to buyer.",
+        description: "Invoice sent to bidder.",
       });
     if (currentStep === 1)
       toast({
         title: "Item Shipped",
-        description: "Waiting for buyer receipt.",
+        description: "Waiting for bidder receipt.",
       });
     if (currentStep === 2)
       toast({
         title: "Delivery Confirmed",
-        description: "Buyer received item. You can now leave feedback.",
+        description: "Bidder received item. You can now leave feedback.",
       });
   };
 
@@ -185,11 +185,11 @@ export default function SalesHistory() {
                           {currentStep === 2 && (
                             <div className="flex gap-2 items-center">
                                 <span className="text-sm text-amber-600 italic mr-2">
-                                  Waiting for buyer confirmation... 
+                                  Waiting for bidder confirmation... 
                                 </span>
-                                {/* Mocking Buyer Confirmation for demo purposes */}
+                                {/* Mocking Bidder Confirmation for demo purposes */}
                                 <Button variant="outline" size="sm" onClick={() => advanceOrderStep(sale.id, 2)}>
-                                    (Mock) Buyer Confirms
+                                    (Mock) Bidder Confirms
                                 </Button>
                             </div>
                           )}
@@ -197,7 +197,7 @@ export default function SalesHistory() {
                               <Dialog>
                               <DialogTrigger asChild>
                                 <Button className="bg-rose-600 hover:bg-rose-700">
-                                  <Star className="w-4 h-4 mr-2" /> Rate Buyer
+                                  <Star className="w-4 h-4 mr-2" /> Rate Bidder
                                 </Button>
                               </DialogTrigger>
                               <DialogContent>

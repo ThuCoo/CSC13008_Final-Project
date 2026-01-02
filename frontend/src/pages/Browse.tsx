@@ -34,14 +34,12 @@ export default function Browse() {
   const filteredListings = useMemo(() => {
     let result = initialCat && initialCat !== "All" ? getListingsByCategory(initialCat) : listings;
 
-    // Filter by subcategory - must match both category AND subcategory name
-    // This ensures subcategories with the same name from different categories are treated separately
+    // Filter by subcategory
     if (initialSub && initialCat && initialCat !== "All") {
       result = result.filter(l => 
         l.category === initialCat && l.subCategory === initialSub
       );
     } else if (initialSub) {
-      // If no category selected, still filter by subcategory (less precise but works)
       result = result.filter(l => l.subCategory === initialSub);
     }
 
@@ -88,7 +86,6 @@ export default function Browse() {
     if (sub) newParams.set("sub", sub);
     newParams.set("page", "1");
     setSearchParams(newParams);
-    // Clear search when changing category/subcategory
     setSearch("");
   };
 
@@ -131,16 +128,15 @@ export default function Browse() {
                     </button>
                     {/* Subcategories */}
                     <ul className="ml-4 mt-2 space-y-2 border-l-2 border-gray-100 pl-2">
-                      {cat.subcategories?.map((sub) => {
-                        // Highlight only if both category AND subcategory match
-                        const isSelected = initialCat === cat.name && initialSub === sub;
+                      {cat.subcategories?.map((sub: any) => {
+                        const isSelected = initialCat === cat.name && initialSub === sub.name;
                         return (
-                          <li key={`${cat.id}-${sub}`}>
+                          <li key={`${cat.id}-${sub.id}`}>
                             <button
-                              onClick={() => handleCategoryClick(cat.name, sub)}
+                              onClick={() => handleCategoryClick(cat.name, sub.name)}
                               className={`text-sm block w-full text-left ${isSelected ? "text-rose-600 font-bold" : "text-gray-500 hover:text-gray-900"}`}
                             >
-                              {sub}
+                              {sub.name}
                             </button>
                           </li>
                         );

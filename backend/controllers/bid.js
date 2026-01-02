@@ -2,6 +2,7 @@ import bidService from "../services/bid.js";
 import ratingService from "../services/rating.js";
 import listingService from "../services/listing.js";
 import userService from "../services/user.js";
+import autoBidService from "../services/autoBid.js";
 
 const controller = {
   listAll: function (req, res, next) {
@@ -45,9 +46,9 @@ const controller = {
       if (bidderId === listing.sellerId)
         return res.status(403).json({ message: "Cannot bid on your own listing" });
 
-      // only buyers can bid
+      // only bidders can bid
       if (bidder.role !== "bidder")
-        return res.status(403).json({ message: "Only buyers can place bids" });
+        return res.status(403).json({ message: "Only bidders can place bids" });
 
       // rejected bidders
       const rejected = listing.rejectedBidders || [];
@@ -102,21 +103,67 @@ const controller = {
 
       const row = await bidService.create(req.body);
 
-      // update listing currentBid
-      await listingService.updateCurrentBid(listingId, amount);
+      // Handle Auto-Bidding (Max Price set by current bidder)
+      if (req.body.maxPrice && Number(req.body.maxPrice) > Number(amount)) {
+          const existingAuto = await autoBidService.getByListingAndUser(listingId, bidderId);
+          if (existingAuto) {
+              await autoBidService.update(existingAuto.autoBidId, { maxBidAmount: req.body.maxPrice, isActive: true });
+          } else {
+              await autoBidService.create({
+                  listingId,
+                  userId: bidderId,
+                  maxBidAmount: req.body.maxPrice,
+                  incrementAmount: step || 10,
+                  currentBidAmount: amount
+              });
+          }
+      }
 
-      // buy now handling
+      const otherAutoBids = await autoBidService.listAll(null, listingId);
+      const competitorBids = otherAutoBids.filter(ab => 
+          ab.userId !== bidderId && 
+          ab.isActive && 
+          Number(ab.maxBidAmount) > Number(amount)
+      );
+      
+      let finalBidRow = row;
+      let note = "";
+
+      if (competitorBids.length > 0) {
+          competitorBids.sort((a, b) => Number(b.maxBidAmount) - Number(a.maxBidAmount));
+          const bestBot = competitorBids[0];
+          let counterBid = Number(amount) + Number(step);
+          if (counterBid <= Number(bestBot.maxBidAmount)) {
+               const botBid = await bidService.create({
+                   listingId,
+                   bidderId: bestBot.userId,
+                   amount: counterBid
+               });
+               await listingService.updateCurrentBid(listingId, counterBid);
+               if (autoExtendEnabled && (new Date(listing.endsAt) - new Date()) <= windowMin * 60 * 1000) {
+                  const newEnds = new Date(new Date(listing.endsAt).getTime() + extMin * 60 * 1000);
+                  const newAuto = Array.isArray(listing.autoExtendDates) ? [...listing.autoExtendDates, newEnds] : [newEnds];
+                  await listingService.update({ listingId, endsAt: newEnds, autoExtendDates: newAuto });
+                  listing.endsAt = newEnds;
+                  extended = true;
+               }
+
+               finalBidRow = botBid;
+               note = "You have been outbid by an automatic bid.";
+          }
+      } else {
+          await listingService.updateCurrentBid(listingId, amount);
+      }
+
       if (listing.buyNowPrice && Number(amount) >= Number(listing.buyNowPrice)) {
-        // create order and mark listing sold
         const orderService = await import("../services/order.js");
         await orderService.default.create({ listingId, bidderId: bidderId, sellerId: listing.sellerId, finalPrice: amount, shippingAddress: null });
-        // reflect sold status
         const updated = await listingService.listOne(listingId);
         return res.status(201).json({ bid: row, orderCreated: true, listing: updated });
       }
 
       const updated = await listingService.listOne(listingId);
-      return res.status(201).json({ bid: row, extended, listing: updated });
+      return res.status(201).json({ bid: finalBidRow, extended, listing: updated, note });
     } catch (err) {
       next(err);
     }
