@@ -58,6 +58,7 @@ type NewListingData = Omit<
 
 interface ListingsContextType {
   listings: Listing[];
+  isLoading: boolean;
   createListing: (data: NewListingData) => Promise<Listing>;
   updateListing: (id: string, data: Partial<Listing>) => void;
   deleteListing: (id: string) => void;
@@ -97,12 +98,14 @@ const ListingsContext = createContext<ListingsContextType | undefined>(
 
 export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const [listings, setListings] = useState<Listing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadListings();
   }, []);
 
   const loadListings = async () => {
+    setIsLoading(true);
     try {
       const { data } = await apiClient.get("/listings?limit=50&page=1"); 
       console.log("Listings API Response:", data);
@@ -121,6 +124,8 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
       console.error("Failed to load listings", error);
       console.error("Error details:", error.response?.data || error.message);
       setListings([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -244,6 +249,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     <ListingsContext.Provider
       value={{
         listings,
+        isLoading,
         createListing: createListing as any,
         updateListing,
         deleteListing,

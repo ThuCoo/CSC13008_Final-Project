@@ -13,11 +13,11 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Clock, Zap, ChevronRight, ChevronLeft } from "lucide-react";
 import { useListings, Listing } from "../context/ListingsContext";
 import { isNewProduct, formatAuctionTime, maskBidderName } from "../lib/utils";
-
+import { LoadingSpinner } from "../components/LoadingSpinner";
 import { useCategories } from "../context/CategoriesContext";
 
 export default function Browse() {
-  const { listings, getListingsByCategory } = useListings();
+  const { listings, isLoading, getListingsByCategory } = useListings();
   const { categories } = useCategories();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -34,7 +34,14 @@ export default function Browse() {
   const filteredListings = useMemo(() => {
     let result = initialCat && initialCat !== "All" ? getListingsByCategory(initialCat) : listings;
 
-    if (initialSub) {
+    // Filter by subcategory - must match both category AND subcategory name
+    // This ensures subcategories with the same name from different categories are treated separately
+    if (initialSub && initialCat && initialCat !== "All") {
+      result = result.filter(l => 
+        l.category === initialCat && l.subCategory === initialSub
+      );
+    } else if (initialSub) {
+      // If no category selected, still filter by subcategory (less precise but works)
       result = result.filter(l => l.subCategory === initialSub);
     }
 
@@ -81,6 +88,8 @@ export default function Browse() {
     if (sub) newParams.set("sub", sub);
     newParams.set("page", "1");
     setSearchParams(newParams);
+    // Clear search when changing category/subcategory
+    setSearch("");
   };
 
   const handlePageChange = (newPage: number) => {
@@ -122,16 +131,20 @@ export default function Browse() {
                     </button>
                     {/* Subcategories */}
                     <ul className="ml-4 mt-2 space-y-2 border-l-2 border-gray-100 pl-2">
-                      {cat.subcategories?.map((sub) => (
-                        <li key={sub}>
-                          <button
-                            onClick={() => handleCategoryClick(cat.name, sub)}
-                            className={`text-sm block w-full text-left ${initialSub === sub ? "text-rose-600 font-bold" : "text-gray-500 hover:text-gray-900"}`}
-                          >
-                            {sub}
-                          </button>
-                        </li>
-                      ))}
+                      {cat.subcategories?.map((sub) => {
+                        // Highlight only if both category AND subcategory match
+                        const isSelected = initialCat === cat.name && initialSub === sub;
+                        return (
+                          <li key={`${cat.id}-${sub}`}>
+                            <button
+                              onClick={() => handleCategoryClick(cat.name, sub)}
+                              className={`text-sm block w-full text-left ${isSelected ? "text-rose-600 font-bold" : "text-gray-500 hover:text-gray-900"}`}
+                            >
+                              {sub}
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </li>
                 ))}
@@ -141,6 +154,10 @@ export default function Browse() {
 
           {/* Right Side */}
           <div className="flex-1">
+            {isLoading ? (
+              <LoadingSpinner text="Loading products..." />
+            ) : (
+              <>
             <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
               <h1 className="text-2xl font-bold">
                 {initialCat === "All" ? "All Products" : initialCat}{" "}
@@ -177,7 +194,7 @@ export default function Browse() {
               {paginatedListings.map((l: Listing) => {
                 const isNew = isNewProduct(l.createdAt);
                 const topBidder =
-                  l.bids.length > 0 ? l.bids[0].bidderName : null;
+                  l.bids && l.bids.length > 0 ? l.bids[0].bidderName : null;
 
                 return (
                   <Link
@@ -213,7 +230,7 @@ export default function Browse() {
                           </p>
                         </div>
                         <p className="text-xs text-slate-500">
-                          {l.bids.length} bids
+                          {l.bids?.length || 0} bids
                         </p>
                       </div>
                       {topBidder && (
@@ -254,6 +271,8 @@ export default function Browse() {
               <div className="text-center py-20 text-slate-500 bg-white rounded-lg border">
                 No products found matching your criteria.
               </div>
+            )}
+              </>
             )}
           </div>
         </div>

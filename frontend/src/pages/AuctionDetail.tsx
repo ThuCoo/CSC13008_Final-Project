@@ -11,6 +11,7 @@ import { useWatchlist } from "../context/WatchlistContext";
 import { useUser } from "../context/UserContext";
 import { useToast } from "../hooks/use-toast";
 import NotFound from "./NotFound";
+import { LoadingSpinner } from "../components/LoadingSpinner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +27,7 @@ export default function AuctionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { getListingById, placeBid, getListingsByCategory, addQuestion, answerQuestion, rejectBidder } = useListings();
+  const { listings, isLoading, getListingById, placeBid, getListingsByCategory, addQuestion, answerQuestion, rejectBidder } = useListings();
   const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
   const { user } = useUser();
 
@@ -53,6 +54,14 @@ export default function AuctionDetail() {
   if (listing && listing.currentBid !== lastBidId) {
       setLastBidId(listing.currentBid);
       setBidAmount((listing.currentBid + listing.stepPrice).toString());
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <LoadingSpinner text="Loading auction details..." size="lg" />
+      </div>
+    );
   }
 
   if (!listing) return <NotFound />;

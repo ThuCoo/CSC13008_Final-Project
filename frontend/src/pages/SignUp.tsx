@@ -2,7 +2,7 @@
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, User, Chrome, MapPin } from "lucide-react";
+import { Mail, Lock, User, Chrome, Facebook, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useUser } from "../context/UserContext";
 import { useToast } from "../hooks/use-toast";
@@ -132,8 +132,8 @@ export default function SignUp() {
                    Sign up with Google
                  </Button>
                  <Button variant="outline" className="w-full flex items-center justify-center gap-2">
-                   <Mail className="w-4 h-4" />
-                   Sign up with Apple
+                   <Facebook className="w-4 h-4" />
+                   Sign up with Facebook
                  </Button>
               </div>
 

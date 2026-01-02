@@ -12,6 +12,7 @@ import {
 import { Listing } from "../context/ListingsContext";
 import { formatAuctionTime, maskBidderName } from "../lib/utils";
 import { Button } from "../components/ui/button";
+import { LoadingSpinner } from "../components/LoadingSpinner";
 
 const features = [
   {
@@ -83,7 +84,7 @@ const ListingCard = ({ listing }: { listing: Listing }) => {
 };
 
 export default function HomePage() {
-  const { listings, getTop5ClosingSoon, getTop5MostBids, getTop5HighestPrice } = useListings();
+  const { listings, isLoading, getTop5ClosingSoon, getTop5MostBids, getTop5HighestPrice } = useListings();
   const closingSoon = getTop5ClosingSoon();
   const mostBids = getTop5MostBids();
   const highestPrice = getTop5HighestPrice();
@@ -138,7 +139,7 @@ export default function HomePage() {
                   className="p-8 rounded-xl border border-border hover:border-primary transition"
                 >
                   <Icon className="w-10 h-10 mb-4 text-rose-500" />
-                  <h3 className="text-xl font-bold mb-2 text-rose-500">
+                  <h3 className="text-xl font-bold mb-2">
                     {feature.title}
                   </h3>
                   <p className="text-muted-foreground">{feature.description}</p>
@@ -153,6 +154,10 @@ export default function HomePage() {
         <h2 className="text-4xl font-bold text-center mb-16 text-rose-700">
           Starting Bidding Now!
         </h2>
+        {isLoading ? (
+          <LoadingSpinner text="Loading featured products..." size="lg" />
+        ) : (
+          <>
         {/* Section 1: Closing Soon */}
         <section>
           <div className="flex items-center gap-2 mb-6">
@@ -197,6 +202,8 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+          </>
+        )}
       </div>
     </div>
   );

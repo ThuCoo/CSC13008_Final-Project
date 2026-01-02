@@ -34,9 +34,9 @@ export default function Categories() {
               <ul className="space-y-2">
                 {cat.subcategories && cat.subcategories.length > 0 ? (
                   cat.subcategories.map((sub) => (
-                  <li key={sub}>
+                  <li key={`${cat.id}-${sub}`}>
                     <Link
-                      to={`/browse?cat=${cat.name}&sub=${sub}`}
+                      to={`/browse?cat=${encodeURIComponent(cat.name)}&sub=${encodeURIComponent(sub)}`}
                       className="text-slate-600 hover:text-rose-600 flex items-center gap-2"
                     >
                       <Folder className="w-4 h-4 text-slate-400" /> {sub}
