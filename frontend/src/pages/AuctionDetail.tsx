@@ -5,7 +5,9 @@ import { Input } from "../components/ui/input";
 import { useNavigate, Link, useParams } from "react-router-dom";
 import { Clock, Ban, MessageCircle, ArrowLeft, Heart, Star } from "lucide-react";
 import { maskBidderName, formatAuctionTime } from "../lib/utils";
-import AutoBidForm from "../components/AutoBidForm";
+
+// import AutoBidForm from "../components/AutoBidForm";
+
 import { useListings } from "../context/ListingsContext";
 import { useWatchlist } from "../context/WatchlistContext";
 import { useUser } from "../context/UserContext";
@@ -302,7 +304,7 @@ export default function AuctionDetail() {
                     </Button>
                   </form>
 
-                  {/* Auto Bid System */}
+                  {/* Auto Bid System }
                   <div className="border-t pt-6">
                     <p className="font-bold mb-2 text-sm">Auto-Bidding</p>
                     {user && (
@@ -314,6 +316,8 @@ export default function AuctionDetail() {
                       />
                     )}
                   </div>
+                  */}
+
                 </div>
               )}
 

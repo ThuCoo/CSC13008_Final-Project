@@ -9,7 +9,9 @@ import { UserProvider } from "./context/UserContext";
 import { ListingsProvider } from "./context/ListingsContext";
 import { SellerRequestsProvider } from "./context/SellerRequestsContext";
 import { WatchlistProvider } from "./context/WatchlistContext";
-import { AutoBidsProvider } from "./context/AutoBidsContext";
+
+// import { AutoBidsProvider } from "./context/AutoBidsContext";
+
 import { CategoriesProvider } from "./context/CategoriesContext";
 import { BiddingRulesProvider } from "./context/BiddingRulesContext";
 
@@ -52,7 +54,10 @@ function App() {
             <ListingsProvider>
               <SellerRequestsProvider>
                 <WatchlistProvider>
-                  <AutoBidsProvider>
+
+                  {/* Auto Bid System */}
+                  {/* <AutoBidsProvider> */}
+                  
                     <TooltipProvider>
                       <Toaster />
                       <Sonner />
@@ -133,7 +138,9 @@ function App() {
                         </div>
                       </BrowserRouter>
                     </TooltipProvider>
-                  </AutoBidsProvider>
+
+                  {/* </AutoBidsProvider> */}
+                
                 </WatchlistProvider>
               </SellerRequestsProvider>
             </ListingsProvider>

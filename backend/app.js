@@ -33,7 +33,10 @@ app.use("/listings", listingRoute);
 app.use("/subcategories", subcategoryRoute);
 app.use("/bids", bidRoute);
 app.use("/watchlists", watchlistRoute); 
-app.use("/auto-bids", autoBidRoute);
+
+// Auto Bid System
+// app.use("/auto-bids", autoBidRoute);
+
 app.use("/seller-requests", sellerRequestRoute);
 app.use("/questions", questionRoute);
 app.use("/users", userRoute);
