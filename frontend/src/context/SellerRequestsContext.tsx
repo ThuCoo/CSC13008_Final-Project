@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import apiClient from "../lib/api-client";
 
 export interface SellerRequest {
@@ -17,6 +17,7 @@ export interface SellerRequest {
 
 interface SellerRequestsContextType {
   requests: SellerRequest[];
+  loadRequests: () => Promise<void>;
   createSellerRequest: (data: Omit<SellerRequest, "id" | "status" | "createdAt" | "userName" | "userEmail">) => Promise<SellerRequest>;
   approveRequest: (requestId: string, adminId: string) => Promise<void>;
   rejectRequest: (requestId: string, adminId: string, reason: string) => Promise<void>;
@@ -28,13 +29,14 @@ const SellerRequestsContext = createContext<SellerRequestsContextType | undefine
 
 export function SellerRequestsProvider({ children }: { children: React.ReactNode }) {
   const [requests, setRequests] = useState<SellerRequest[]>([]);
-  // Load requests on mount
-  
-  useEffect(() => {
-     loadRequests();
-  }, []);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // useEffect(() => {
+  //    loadRequests();
+  // }, []);
 
   const loadRequests = async () => {
+    if (isLoaded) return;
     try {
         const { data } = await apiClient.get("/seller-requests");
         if (data && Array.isArray(data)) {
@@ -44,6 +46,7 @@ export function SellerRequestsProvider({ children }: { children: React.ReactNode
                 userId: String(r.userId),
             }));
             setRequests(mapped);
+            setIsLoaded(true);
         }
     } catch (e) {
         console.error("Failed to load seller requests", e);
@@ -96,6 +99,7 @@ export function SellerRequestsProvider({ children }: { children: React.ReactNode
     <SellerRequestsContext.Provider
       value={{
         requests,
+        loadRequests,
         createSellerRequest,
         approveRequest,
         rejectRequest,

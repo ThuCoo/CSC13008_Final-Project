@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import apiClient from "../lib/api-client";
 
 export interface Category {
@@ -14,6 +14,7 @@ export interface Category {
 interface CategoriesContextType {
   categories: Category[];
   isLoading: boolean;
+  loadCategories: () => Promise<void>;
   addCategory: (name: string, description: string, icon: string, subcategories?: { id: string; name: string }[]) => Promise<Category>;
   updateCategory: (id: string, data: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
@@ -25,12 +26,12 @@ const CategoriesContext = createContext<CategoriesContextType | undefined>(undef
 
 export function CategoriesProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [lastFetch, setLastFetch] = useState<number>(0);
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
+  // useEffect(() => {
+  //   loadCategories();
+  // }, []);
 
   const loadCategories = async () => {
     // Simple cache: don't refetch if data was fetched less than 5 minutes ago
@@ -110,6 +111,7 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
       value={{
         categories,
         isLoading,
+        loadCategories,
         addCategory,
         updateCategory,
         deleteCategory,

@@ -3,9 +3,14 @@ import { Link } from "react-router-dom";
 import { Folder } from "lucide-react";
 import { useCategories } from "../context/CategoriesContext";
 import { LoadingSpinner } from "../components/LoadingSpinner";
+import { useEffect } from "react";
 
 export default function Categories() {
-  const { categories, isLoading } = useCategories();
+  const { categories, isLoading, loadCategories } = useCategories();
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
   if (isLoading) {
     return (

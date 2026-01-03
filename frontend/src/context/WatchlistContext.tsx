@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import apiClient from "../lib/api-client";
 
 export interface WatchlistItem {
@@ -20,12 +20,14 @@ const WatchlistContext = createContext<WatchlistContextType | undefined>(undefin
 
 export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    loadWatchlist();
-  }, []);
+  // useEffect(() => {
+  //   loadWatchlist();
+  // }, []);
 
   const loadWatchlist = async () => {
+      if (isLoaded) return;
       try {
           const { data } = await apiClient.get("/watchlists");
           if (Array.isArray(data)) {
@@ -35,6 +37,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                   addedAt: new Date(item.addedAt).getTime()
               }));
               setWatchlist(mapped);
+              setIsLoaded(true);
           }
       } catch (e) {
           console.error("Failed to load watchlist", e);
@@ -42,6 +45,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addToWatchlist = async (listingId: string, userId: string) => {
+    await loadWatchlist(); 
     if (!isInWatchlist(listingId, userId)) {
         try {
             await apiClient.post("/watchlists", { listingId, userId });

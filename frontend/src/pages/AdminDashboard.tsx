@@ -45,9 +45,9 @@ import { Category } from "../context/CategoriesContext";
 
 export default function AdminDashboard() {
   const { user, getAllUsers, banUser, deleteUser } = useUser();
-  const { requests, approveRequest, rejectRequest } = useSellerRequests();
+  const { requests, loadRequests, approveRequest, rejectRequest } = useSellerRequests();
   const { listings, deleteListing } = useListings();
-  const { categories, addCategory, deleteCategory, updateCategory } = useCategories();
+  const { categories, addCategory, deleteCategory, updateCategory, loadCategories } = useCategories();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -60,6 +60,12 @@ export default function AdminDashboard() {
   const [userSearch, setUserSearch] = useState("");
   const [listingSearch, setListingSearch] = useState("");
   const [catSearch, setCatSearch] = useState("");
+
+  useEffect(() => {
+    // Load seller requests and categories on mount
+    loadRequests();
+    loadCategories();
+  }, []);
 
   useEffect(() => {
      if (user?.role === "admin") {

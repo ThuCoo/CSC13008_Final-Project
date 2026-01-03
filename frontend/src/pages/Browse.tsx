@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -18,8 +18,12 @@ import { useCategories } from "../context/CategoriesContext";
 
 export default function Browse() {
   const { listings, isLoading, getListingsByCategory } = useListings();
-  const { categories } = useCategories();
+  const { categories, loadCategories } = useCategories();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
   const initialCat = searchParams.get("cat") || "All";
   const initialSub = searchParams.get("sub") || "";

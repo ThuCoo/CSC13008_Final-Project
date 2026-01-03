@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { useUser } from "../context/UserContext";
 import { useListings } from "../context/ListingsContext";
@@ -32,9 +32,13 @@ import {
 export default function CreateListing() {
   const { user } = useUser();
   const { createListing } = useListings();
-  const { categories } = useCategories();
+  const { categories, loadCategories } = useCategories();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
   const [formData, setFormData] = useState({
     title: "",
