@@ -31,7 +31,7 @@ export default function SalesHistory() {
       }
   }, [user]);
 
-  if (!user || (user.type !== "seller" && user.role !== "seller")) return null;
+  if (!user || user.role !== "seller") return null;
 
   // Helper to map status to step index
   const getStep = (status: string) => {

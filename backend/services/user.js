@@ -32,7 +32,13 @@ const service = {
   },
   // returns full user row including passwordHash for authentication checks
   getByEmailWithHash: async function (email) {
-    const result = await db.select().from(users).where(eq(users.email, email));
+    const result = await db
+      .select({
+        ...defaultSelection,
+        passwordHash: users.passwordHash,
+      })
+      .from(users)
+      .where(eq(users.email, email));
     return result[0] || null;
   },
   create: async function (user) {

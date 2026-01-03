@@ -287,7 +287,7 @@ export default function AuctionDetail() {
                 {listing.currentBid.toLocaleString()}₫
               </p>
 
-              {!isSeller && (
+              {!isSeller && user?.role !== 'admin' && (
                 <div className="space-y-6">
                   {/* Standard Bid */}
                   <form onSubmit={handlePlaceBid}>

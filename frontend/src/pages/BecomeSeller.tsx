@@ -34,14 +34,32 @@ export default function BecomeSeller() {
 
   const existingRequest = getRequestByUserId(user.id);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    createSellerRequest({
-      userId: user.id,
-      businessName: formData.businessName,
-      businessDescription: formData.businessDescription,
-    });
-    toast({ title: "Request Submitted" });
+    
+    if (!user.id || isNaN(Number(user.id))) {
+      toast({ 
+        title: "Error", 
+        description: "Invalid user session. Please log out and log in again.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      await createSellerRequest({
+        userId: user.id,
+        businessName: formData.businessName,
+        businessDescription: formData.businessDescription,
+      });
+      toast({ title: "Request Submitted" });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit request. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

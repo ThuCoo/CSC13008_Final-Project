@@ -113,7 +113,7 @@ export default function Login() {
                 />
               </div>
             </div>
-            <Button className="w-full" disabled={isLoading}>
+            <Button className="w-full hover:cursor-pointer" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
@@ -143,7 +143,8 @@ export default function Login() {
               onClick={() =>
                 handleDemoLogin("bidder@example.com", "password123")
               }
-              className="w-full text-left text-xs px-2 py-1 bg-rose-100 hover:bg-rose-200 rounded transition"
+              disabled={isLoading}
+              className="w-full text-left text-xs px-2 py-1 bg-rose-100 hover:bg-rose-200 rounded transition hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Bidder
             </button>
@@ -151,7 +152,8 @@ export default function Login() {
               onClick={() =>
                 handleDemoLogin("seller@example.com", "password123")
               }
-              className="w-full text-left text-xs px-2 py-1 bg-rose-100 hover:bg-rose-200 rounded transition"
+              disabled={isLoading}
+              className="w-full text-left text-xs px-2 py-1 bg-rose-100 hover:bg-rose-200 rounded transition hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Seller
             </button>
@@ -159,7 +161,8 @@ export default function Login() {
               onClick={() =>
                 handleDemoLogin("admin@example.com", "password123")
               }
-              className="w-full text-left text-xs px-2 py-1 bg-rose-100 hover:bg-rose-200 rounded transition"
+              disabled={isLoading}
+              className="w-full text-left text-xs px-2 py-1 bg-rose-100 hover:bg-rose-200 rounded transition hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Admin
             </button>

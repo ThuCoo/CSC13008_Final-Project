@@ -70,7 +70,21 @@ export default function AccountSettings() {
      }
   }, [user]);
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center p-8 bg-white rounded-xl border shadow-sm max-w-md">
+          <h2 className="text-2xl font-bold mb-4">Sign in Required</h2>
+          <p className="mb-6 text-muted-foreground">
+            You need to log in to access your account settings.
+          </p>
+          <Button asChild>
+            <a href="/login">Go to Login</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Get items user is currently bidding on
   const myActiveBids = getActiveBiddingListings(user?.id || "").filter(
@@ -146,12 +160,16 @@ export default function AccountSettings() {
         <h1 className="text-3xl font-bold mb-8">Account Management</h1>
 
         <Tabs defaultValue="profile">
-          <TabsList className="mb-6 grid w-full grid-cols-5 max-w-3xl">
+          <TabsList className={`mb-6 grid w-full ${user.role === 'admin' ? 'grid-cols-2' : 'grid-cols-5'} max-w-3xl`}>
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="password">Password</TabsTrigger>
-            <TabsTrigger value="bidding">My Bids </TabsTrigger>
-            <TabsTrigger value="won">Won items</TabsTrigger>
+            {user.role !== 'admin' && (
+              <>
+                <TabsTrigger value="bidding">My Bids</TabsTrigger>
+                <TabsTrigger value="won">Won items</TabsTrigger>
             <TabsTrigger value="reviews">My Reviews</TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           {/* 1. Profile Update */}

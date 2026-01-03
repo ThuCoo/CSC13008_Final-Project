@@ -8,6 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import {
   Check,
   X,
   Trash2,
@@ -60,6 +67,7 @@ export default function AdminDashboard() {
   const [userSearch, setUserSearch] = useState("");
   const [listingSearch, setListingSearch] = useState("");
   const [catSearch, setCatSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
 
   useEffect(() => {
     // Load seller requests and categories on mount
@@ -81,10 +89,12 @@ export default function AdminDashboard() {
      }
   }, [user]);
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
-    u.email.toLowerCase().includes(userSearch.toLowerCase())
-  );
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
+      u.email.toLowerCase().includes(userSearch.toLowerCase());
+    const matchesRole = userRoleFilter === "all" || u.role === userRoleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   const filteredListings = listings.filter(l => 
     l.title.toLowerCase().includes(listingSearch.toLowerCase()) || 
@@ -274,8 +284,13 @@ export default function AdminDashboard() {
                       <div>
                         <p className="font-bold">{req.businessName}</p>
                         <p className="text-sm text-slate-500">
-                          User: {req.userName}
+                          User: {req.userName || 'Unknown'}
                         </p>
+                        {req.businessDescription && (
+                          <p className="text-sm text-slate-600 mt-1">
+                            {req.businessDescription}
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -333,7 +348,7 @@ export default function AdminDashboard() {
                   Total: {filteredUsers.length}
                 </span>
               </div>
-              <div className="p-4 border-b bg-slate-50">
+              <div className="p-4 border-b bg-slate-50 space-y-3">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
                   <Input 
@@ -343,6 +358,17 @@ export default function AdminDashboard() {
                     onChange={(e) => setUserSearch(e.target.value)}
                   />
                 </div>
+                <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Filter by role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="bidder">Bidder</SelectItem>
+                    <SelectItem value="seller">Seller</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               {filteredUsers.map((u) => (
                 <div
@@ -424,6 +450,12 @@ export default function AdminDashboard() {
           {/* Listings Tab */}
           <TabsContent value="listings" className="mt-6">
             <div className="bg-white rounded-lg border shadow-sm divide-y">
+              <div className="p-4 border-b bg-slate-50 font-medium flex justify-between">
+                <span>Manage Listings</span>
+                <span className="text-xs text-slate-500 self-center">
+                  Total: {filteredListings.length}
+                </span>
+              </div>
               <div className="p-4 bg-slate-50">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />

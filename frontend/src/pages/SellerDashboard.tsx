@@ -26,7 +26,7 @@ export default function SellerDashboard() {
   const [appendDesc, setAppendDesc] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  if (!user || user.type !== "seller") {
+  if (!user || user.role !== "seller") {
     return (
       <div className="min-h-screen bg-slate-50">
          {/* Dialog for Seller Access */}

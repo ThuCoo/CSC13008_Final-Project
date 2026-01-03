@@ -91,20 +91,31 @@ export default function Header() {
               <SquareMousePointer className="w-4 h-4" /> Browse
             </Link>
 
-            <Link
-              to={user && user.type === "seller" ? "/seller-dashboard" : "/become-seller"}
-              className="text-gray-600 hover:text-rose-700 font-medium text-sm flex items-center gap-1 hover:font-bold transition"
-            >
-              <ShoppingBag className="w-4 h-4" /> Sell
-            </Link>
-
-            {user && (
+            {user && user.role === 'admin' ? (
               <Link
-                to="/watchlist"
+                to="/admin-dashboard"
                 className="text-gray-600 hover:text-rose-700 font-medium text-sm flex items-center gap-1 hover:font-bold transition"
               >
-                <Heart className="w-4 h-4" /> Watchlist
+                <Shield className="w-4 h-4" /> Admin Dashboard
               </Link>
+            ) : (
+              <>
+                <Link
+                  to={user && user.role === "seller" ? "/seller-dashboard" : "/become-seller"}
+                  className="text-gray-600 hover:text-rose-700 font-medium text-sm flex items-center gap-1 hover:font-bold transition"
+                >
+                  <ShoppingBag className="w-4 h-4" /> Sell
+                </Link>
+
+                {user && (
+                  <Link
+                    to="/watchlist"
+                    className="text-gray-600 hover:text-rose-700 font-medium text-sm flex items-center gap-1 hover:font-bold transition"
+                  >
+                    <Heart className="w-4 h-4" /> Watchlist
+                  </Link>
+                )}
+              </>
             )}
 
             {/* Account */}
@@ -139,7 +150,7 @@ export default function Header() {
                     </Link>
 
                     {/* Admin Dashboard */}
-                    {user.type === "admin" && (
+                    {user.role === "admin" && (
                       <Link
                         to="/admin-dashboard"
                         className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-rose-50 text-rose-700 font-medium"
@@ -150,7 +161,7 @@ export default function Header() {
                     )}
 
                     {/* Seller Dashboard */}
-                    {user.type === "seller" && (
+                    {user.role === "seller" && (
                       <Link
                         to="/seller-dashboard"
                         className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-rose-50 text-rose-700 font-medium"
@@ -210,19 +221,30 @@ export default function Header() {
                   >
                     <SquareMousePointer className="w-5 h-5" /> Browse
                   </Link>
-                  <Link
-                    to={user && user.type === "seller" ? "/seller-dashboard" : "/become-seller"}
-                    className="text-gray-600 hover:text-rose-700 font-medium text-lg flex items-center gap-2 hover:font-bold transition"
-                  >
-                    <ShoppingBag className="w-5 h-5" /> Sell
-                  </Link>
-                  {user && (
+                  {user && user.role === 'admin' ? (
                     <Link
-                      to="/watchlist"
+                      to="/admin-dashboard"
                       className="text-gray-600 hover:text-rose-700 font-medium text-lg flex items-center gap-2 hover:font-bold transition"
                     >
-                      <Heart className="w-5 h-5" /> Watchlist
+                      <Shield className="w-5 h-5" /> Admin Dashboard
                     </Link>
+                  ) : (
+                    <>
+                      <Link
+                        to={user && user.role === "seller" ? "/seller-dashboard" : "/become-seller"}
+                        className="text-gray-600 hover:text-rose-700 font-medium text-lg flex items-center gap-2 hover:font-bold transition"
+                      >
+                        <ShoppingBag className="w-5 h-5" /> Sell
+                      </Link>
+                      {user && (
+                        <Link
+                          to="/watchlist"
+                          className="text-gray-600 hover:text-rose-700 font-medium text-lg flex items-center gap-2 hover:font-bold transition"
+                        >
+                          <Heart className="w-5 h-5" /> Watchlist
+                        </Link>
+                      )}
+                    </>
                   )}
                   <div className="border-t pt-4 mt-4">
                     {user ? (
@@ -244,7 +266,7 @@ export default function Header() {
                         >
                           My Account
                         </Link>
-                        {user.type === "admin" && (
+                        {user.role === "admin" && (
                           <Link
                             to="/admin-dashboard"
                             className="text-gray-600 hover:text-rose-700 font-medium text-lg flex items-center gap-2 hover:font-bold transition"
@@ -252,7 +274,7 @@ export default function Header() {
                             <Shield className="w-5 h-5" /> Admin Dashboard
                           </Link>
                         )}
-                        {user.type === "seller" && (
+                        {user.role === "seller" && (
                           <Link
                             to="/seller-dashboard"
                             className="text-gray-600 hover:text-rose-700 font-medium text-lg flex items-center gap-2 hover:font-bold transition"

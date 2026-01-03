@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import db from "../db/index.js";
-import { sellerRequests } from "../db/schema.js";
+import { sellerRequests, users } from "../db/schema.js";
 
 const defaultSelection = {
   requestId: sellerRequests.requestId,
@@ -16,7 +16,15 @@ const defaultSelection = {
 
 const service = {
   listAll: async function (userId = null, reviewedBy = null) {
-    let query = db.select(defaultSelection).from(sellerRequests);
+    let query = db
+      .select({
+        ...defaultSelection,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(sellerRequests)
+      .leftJoin(users, eq(sellerRequests.userId, users.userId));
+      
     if (userId != null) {
       query = query.where(eq(sellerRequests.userId, userId));
     }
@@ -24,7 +32,21 @@ const service = {
       query = query.where(eq(sellerRequests.reviewedBy, reviewedBy));
     }
     const result = await query;
-    return result;
+    
+    // flatten nested data
+    return result.map(row => ({
+      requestId: row.requestId,
+      userId: row.userId,
+      businessName: row.businessName,
+      businessDescription: row.businessDescription,
+      status: row.status,
+      reviewedBy: row.reviewedBy,
+      reviewedAt: row.reviewedAt,
+      rejectionReason: row.rejectionReason,
+      createdAt: row.createdAt,
+      userName: row.userName,
+      userEmail: row.userEmail,
+    }));
   },
   listOne: async function (requestId = null) {
     let query = db.select(defaultSelection).from(sellerRequests);

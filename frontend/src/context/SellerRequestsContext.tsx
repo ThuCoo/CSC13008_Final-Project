@@ -36,7 +36,6 @@ export function SellerRequestsProvider({ children }: { children: React.ReactNode
   // }, []);
 
   const loadRequests = async () => {
-    if (isLoaded) return;
     try {
         const { data } = await apiClient.get("/seller-requests");
         if (data && Array.isArray(data)) {
@@ -44,12 +43,14 @@ export function SellerRequestsProvider({ children }: { children: React.ReactNode
                 ...r,
                 id: String(r.requestId),
                 userId: String(r.userId),
+                userName: r.userName || r.userEmail?.split('@')[0] || 'Unknown',
+                userEmail: r.userEmail,
             }));
             setRequests(mapped);
             setIsLoaded(true);
         }
-    } catch (e) {
-        console.error("Failed to load seller requests", e);
+    } catch (error) {
+        console.error("Failed to load seller requests", error);
     }
   };
 

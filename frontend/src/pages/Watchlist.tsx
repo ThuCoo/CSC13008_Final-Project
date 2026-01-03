@@ -13,7 +13,21 @@ export default function Watchlist() {
   const { getListingById } = useListings();
   const { toast } = useToast();
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center p-8 bg-white rounded-xl border shadow-sm max-w-md">
+          <h2 className="text-2xl font-bold mb-4">Sign in Required</h2>
+          <p className="mb-6 text-muted-foreground">
+            You need to log in to view your watchlist.
+          </p>
+          <Button asChild>
+            <a href="/login">Go to Login</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const watchlistItems = getUserWatchlist(user.id)
     .map((id) => getListingById(id))

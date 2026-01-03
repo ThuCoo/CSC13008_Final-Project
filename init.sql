@@ -248,11 +248,11 @@ VALUES
 -- ==========================================
 -- ADDED MANUAL TESTING USERS
 -- ==========================================
-INSERT INTO users (email, password_hash, name, avatar_url, role, seller_approved, address, birthday)
+INSERT INTO users (email, password_hash, name, avatar_url, role, seller_approved, address, birthday, is_verified)
 VALUES
-('bidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Bidder', 'https://loremflickr.com/200/200/human?random=99', 'bidder', FALSE, '99 Manual St', '1995-01-01'),
-('seller@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Seller', 'https://loremflickr.com/200/200/human?random=100', 'seller', TRUE, '100 Manual Ave', '1990-01-01'),
-('admin@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Admin', 'https://loremflickr.com/200/200/human?random=101', 'admin', FALSE, '101 Manual Blvd', '1985-01-01');
+('bidder@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Bidder', 'https://loremflickr.com/200/200/human?random=99', 'bidder', FALSE, '99 Manual St', '1995-01-01', TRUE),
+('seller@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Seller', 'https://loremflickr.com/200/200/human?random=100', 'seller', TRUE, '100 Manual Ave', '1990-01-01', TRUE),
+('admin@example.com', crypt('password123', gen_salt('bf', 10)), 'Manual Admin', 'https://loremflickr.com/200/200/human?random=101', 'admin', FALSE, '101 Manual Blvd', '1985-01-01', TRUE);
 
 
 -- Seed Data: Listings
@@ -550,3 +550,90 @@ WHERE l.title IN ('Seed Listing 1', 'Seed Listing 5', 'Seed Listing 12', 'Seed L
 
 UPDATE listings SET status = 'sold'
 WHERE listing_id IN (SELECT listing_id FROM orders);
+
+-- ==========================================
+-- MANUAL DEMO ACCOUNT TEST DATA
+-- ==========================================
+
+-- Add listings for Manual Seller (seller@example.com)
+INSERT INTO listings (seller_id, title, description, category_id, subcategory_id, starting_price, current_bid, step_price, buy_now_price, status, item_condition, shipping_cost, return_policy, images, auto_extended_dates, rejected_bidders, ends_at)
+VALUES
+((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Vintage Camera', 'Beautiful vintage camera in excellent condition. Perfect for collectors or photography enthusiasts.', 
+ (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Cameras' LIMIT 1),
+ 500000, 600000, 50000, 1200000, 'active', 'used', 50000, '7-day returns',
+ '[\"https://loremflickr.com/500/500/camera?random=501\", \"https://loremflickr.com/500/500/vintage?random=502\", \"https://loremflickr.com/500/500/photography?random=503\"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '5 days'),
+
+((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Gaming Chair', 'Ergonomic gaming chair with lumbar support. Barely used, like new condition.', 
+ (SELECT category_id FROM categories WHERE name='Home & Garden'), (SELECT subcategory_id FROM subcategories WHERE name='Furniture' LIMIT 1),
+ 800000, 800000, 100000, 1500000, 'active', 'used', 150000, 'no returns',
+ '[\"https://loremflickr.com/500/500/chair?random=504\", \"https://loremflickr.com/500/500/gaming?random=505\", \"https://loremflickr.com/500/500/furniture?random=506\"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '3 days'),
+
+((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Smartwatch', 'Latest model smartwatch with fitness tracking. Brand new in box.', 
+ (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Accessories' LIMIT 1),
+ 400000, 500000, 50000, 900000, 'active', 'new', 25000, '30-day returns',
+ '[\"https://loremflickr.com/500/500/smartwatch?random=507\", \"https://loremflickr.com/500/500/tech?random=508\", \"https://loremflickr.com/500/500/wearable?random=509\"]'::jsonb,
+ '[]'::jsonb, NULL, now() + interval '7 days');
+
+-- Add bids from Manual Bidder (bidder@example.com) on seller's listings
+INSERT INTO bids (listing_id, bidder_id, amount)
+VALUES
+((SELECT listing_id FROM listings WHERE title='Demo Vintage Camera' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder@example.com'), 600000),
+((SELECT listing_id FROM listings WHERE title='Demo Smartwatch' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder@example.com'), 500000),
+((SELECT listing_id FROM listings WHERE title='Seed Listing 2' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder@example.com'), 1375000);
+
+-- Update current_bid for listings with bidder bids
+UPDATE listings SET current_bid = 1375000 WHERE title = 'Seed Listing 2';
+
+-- Add watchlist items for Manual Bidder
+INSERT INTO watchlists (listing_id, user_id)
+VALUES
+((SELECT listing_id FROM listings WHERE title='Demo Gaming Chair' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder@example.com')),
+((SELECT listing_id FROM listings WHERE title='Seed Listing 3' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder@example.com')),
+((SELECT listing_id FROM listings WHERE title='Seed Listing 7' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder@example.com')),
+((SELECT listing_id FROM listings WHERE title='Seed Listing 10' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder@example.com'));
+
+-- Add seller request for testing (pending approval for admin)
+INSERT INTO seller_requests (user_id, business_name, business_description, status)
+VALUES
+((SELECT user_id FROM users WHERE email='bidder1@example.com'), 'Test Business One', 'A test business pending approval', 'pending'),
+((SELECT user_id FROM users WHERE email='bidder2@example.com'), 'Test Business Two', 'Another test business pending approval', 'pending');
+
+-- Add ratings/reviews for Manual Seller
+INSERT INTO ratings (user_id, reviewer_id, rating, role, comment)
+VALUES
+((SELECT user_id FROM users WHERE email='seller@example.com'), (SELECT user_id FROM users WHERE email='bidder1@example.com'), 1, 'seller', 'Great seller! Fast shipping and excellent communication.'),
+((SELECT user_id FROM users WHERE email='seller@example.com'), (SELECT user_id FROM users WHERE email='bidder2@example.com'), 1, 'seller', 'Product exactly as described. Highly recommended!'),
+((SELECT user_id FROM users WHERE email='seller@example.com'), (SELECT user_id FROM users WHERE email='bidder3@example.com'), -1, 'seller', 'Item arrived damaged. Poor packaging.');
+
+-- Add questions for demo listings
+INSERT INTO questions (listing_id, questioner_id, question, answer, questioner_name)
+VALUES
+((SELECT listing_id FROM listings WHERE title='Demo Vintage Camera' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder@example.com'), 'Does this camera come with a case?', 'Yes, it includes the original leather case!', 'Manual Bidder'),
+((SELECT listing_id FROM listings WHERE title='Demo Gaming Chair' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder2@example.com'), 'What is the weight capacity?', 'Up to 150kg', 'Bidder Two'),
+((SELECT listing_id FROM listings WHERE title='Demo Smartwatch' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder3@example.com'), 'Is it waterproof?', NULL, 'Bidder Three');
+
+-- Add a completed/sold listing for Manual Seller with Manual Bidder as winner
+INSERT INTO listings (seller_id, title, description, category_id, subcategory_id, starting_price, current_bid, step_price, buy_now_price, status, item_condition, shipping_cost, return_policy, images, auto_extended_dates, rejected_bidders, ends_at)
+VALUES
+((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Headphones (SOLD)', 'Wireless noise-cancelling headphones. Auction ended.', 
+ (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Audio' LIMIT 1),
+ 300000, 450000, 50000, NULL, 'sold', 'used', 30000, '14-day returns',
+ '[\"https://loremflickr.com/500/500/headphones?random=510\", \"https://loremflickr.com/500/500/audio?random=511\", \"https://loremflickr.com/500/500/music?random=512\"]'::jsonb,
+ '[]'::jsonb, NULL, now() - interval '1 day');
+
+-- Add winning bid from Manual Bidder on sold listing
+INSERT INTO bids (listing_id, bidder_id, amount)
+VALUES
+((SELECT listing_id FROM listings WHERE title='Demo Headphones (SOLD)' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder@example.com'), 450000);
+
+-- Add order for the sold listing
+INSERT INTO orders (listing_id, bidder_id, seller_id, final_price, status, shipping_address)
+VALUES
+((SELECT listing_id FROM listings WHERE title='Demo Headphones (SOLD)' LIMIT 1), 
+ (SELECT user_id FROM users WHERE email='bidder@example.com'),
+ (SELECT user_id FROM users WHERE email='seller@example.com'),
+ 450000,
+ 'paid',
+ '99 Manual St');

@@ -55,7 +55,7 @@ export default function CreateListing() {
   const [images, setImages] = useState<string[]>([]);
   const [showExitDialog, setShowExitDialog] = useState(false);
 
-  const hasAccess = user && user.type === "seller" && user.sellerApproved;
+  const hasAccess = user && user.role === "seller" && user.sellerApproved === true;
 
   if (!hasAccess) {
     return (
@@ -234,15 +234,15 @@ export default function CreateListing() {
                 </Select>
             </div>
             <div className="space-y-2">
-              <Label>Starting Price ($)</Label>
+              <Label>Starting Price (₫)</Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₫</span>
                 <Input
                   type="number"
                   className="pl-9"
                   required
                   min="0"
-                  step="0.01"
+                  step="1000"
                   value={formData.startingPrice}
                   onChange={(e) =>
                     setFormData({ ...formData, startingPrice: e.target.value })
@@ -254,11 +254,12 @@ export default function CreateListing() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label>Step Price ($)</Label>
+              <Label>Step Price (₫)</Label>
               <Input
                 type="number"
                 required
-                min="1"
+                min="1000"
+                step="1000"
                 value={formData.stepPrice}
                 onChange={(e) =>
                   setFormData({ ...formData, stepPrice: e.target.value })
@@ -266,10 +267,11 @@ export default function CreateListing() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Buy Now Price ($) (Optional)</Label>
+              <Label>Buy Now Price (₫) (Optional)</Label>
               <Input
                 type="number"
                 min="0"
+                step="1000"
                 value={formData.buyNowPrice}
                 onChange={(e) =>
                   setFormData({ ...formData, buyNowPrice: e.target.value })
@@ -298,7 +300,7 @@ export default function CreateListing() {
           </div>
 
           <div className="space-y-2">
-            <Label>Description (WYSIWYG Supported) </Label>
+            <Label>Description</Label>
             <div className="border rounded-md">
               <div className="flex gap-2 p-2 border-b bg-slate-50">
                 <Button type="button" variant="ghost" size="sm">
