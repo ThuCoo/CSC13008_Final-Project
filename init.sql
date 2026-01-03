@@ -30,7 +30,7 @@ CREATE TABLE users (
     role user_role NOT NULL DEFAULT 'bidder',
     seller_approved BOOLEAN DEFAULT FALSE,
     address TEXT NOT NULL,
-    birthday DATE NOT NULL,
+    birthday VARCHAR(255),
     is_verified BOOLEAN DEFAULT FALSE NOT NULL,
     verified_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -182,11 +182,11 @@ ALTER TABLE bids
 
 -- Seed Data: Categories
 INSERT INTO categories (name, description, icon) VALUES
-('Electronics', 'Devices, phones, computers and accessories', 'icon-electronics'),
-('Home & Garden', 'Furniture, decor, and garden tools', 'icon-home'),
-('Clothing', 'Men and women apparel and accessories', 'icon-clothing'),
-('Sports', 'Sporting goods and outdoor equipment', 'icon-sports'),
-('Books', 'Books across many genres and formats', 'icon-books');
+('Electronics', 'Devices, phones, computers and accessories', '📱'),
+('Home & Garden', 'Furniture, decor, and garden tools', '🏡'),
+('Clothing', 'Men and women apparel and accessories', '👕'),
+('Sports', 'Sporting goods and outdoor equipment', '⚽'),
+('Books', 'Books across many genres and formats', '📚');
 
 -- Seed Data: Subcategories
 INSERT INTO subcategories (category_id, name) VALUES
