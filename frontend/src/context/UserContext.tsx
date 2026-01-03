@@ -57,7 +57,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const sendOtp = async (data: { email: string; name: string; password?: string, address?: string, birthday?: string }) => {
+  const sendOtp = async (data: { email: string; name: string; password?: string, address?: string, recaptchaToken?: string }) => {
     try {
       await apiClient.post("/auth/register", data);
       // Success - OTP has been sent, no need for success message here

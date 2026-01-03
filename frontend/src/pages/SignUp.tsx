@@ -6,6 +6,7 @@ import { Mail, Lock, User, Chrome, Facebook, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useUser } from "../context/UserContext";
 import { useToast } from "../hooks/use-toast";
+import ReCAPTCHA from "react-google-recaptcha";
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ export default function SignUp() {
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -62,6 +64,16 @@ export default function SignUp() {
   const handleInitialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
+      // Check if reCAPTCHA is completed
+      if (!recaptchaToken) {
+        toast({
+          title: "Error",
+          description: "Please complete the reCAPTCHA verification",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setIsLoading(true);
       try {
         await sendOtp({
@@ -69,6 +81,7 @@ export default function SignUp() {
           password: formData.password,
           name: formData.name,
           address: formData.address,
+          recaptchaToken,
         });
         setShowOtp(true);
         toast({
@@ -82,6 +95,8 @@ export default function SignUp() {
             error instanceof Error ? error.message : "Failed to send OTP",
           variant: "destructive",
         });
+        // Reset reCAPTCHA on error
+        setRecaptchaToken(null);
       } finally {
         setIsLoading(false);
       }
@@ -252,6 +267,17 @@ export default function SignUp() {
                     />
                   </div>
                 </div>
+
+                {/* reCAPTCHA v2 Checkbox */}
+                <div className="flex justify-center my-4">
+                  <ReCAPTCHA
+                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                    onChange={(token) => setRecaptchaToken(token)}
+                    onExpired={() => setRecaptchaToken(null)}
+                    onErrored={() => setRecaptchaToken(null)}
+                  />
+                </div>
+
                 <Button className="w-full" disabled={isLoading}>
                   {isLoading ? "Sending OTP..." : "Continue"}
                 </Button>
