@@ -2,9 +2,18 @@
 import { Link } from "react-router-dom";
 import { Folder } from "lucide-react";
 import { useCategories } from "../context/CategoriesContext";
+import { LoadingSpinner } from "../components/LoadingSpinner";
 
 export default function Categories() {
-  const { categories } = useCategories();
+  const { categories, isLoading } = useCategories();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <LoadingSpinner text="Loading categories..." size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -34,12 +43,12 @@ export default function Categories() {
               <ul className="space-y-2">
                 {cat.subcategories && cat.subcategories.length > 0 ? (
                   cat.subcategories.map((sub) => (
-                  <li key={`${cat.id}-${sub}`}>
+                  <li key={`${cat.id}-${sub.id}`}>
                     <Link
-                      to={`/browse?cat=${encodeURIComponent(cat.name)}&sub=${encodeURIComponent(sub)}`}
+                      to={`/browse?cat=${encodeURIComponent(cat.name)}&sub=${encodeURIComponent(sub.name)}`}
                       className="text-slate-600 hover:text-rose-600 flex items-center gap-2"
                     >
-                      <Folder className="w-4 h-4 text-slate-400" /> {sub}
+                      <Folder className="w-4 h-4 text-slate-400" /> {sub.name}
                     </Link>
                   </li>
                   ))

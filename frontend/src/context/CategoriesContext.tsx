@@ -13,6 +13,7 @@ export interface Category {
 
 interface CategoriesContextType {
   categories: Category[];
+  isLoading: boolean;
   addCategory: (name: string, description: string, icon: string, subcategories?: { id: string; name: string }[]) => Promise<Category>;
   updateCategory: (id: string, data: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
@@ -24,12 +25,23 @@ const CategoriesContext = createContext<CategoriesContextType | undefined>(undef
 
 export function CategoriesProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastFetch, setLastFetch] = useState<number>(0);
 
   useEffect(() => {
     loadCategories();
   }, []);
 
   const loadCategories = async () => {
+    // Simple cache: don't refetch if data was fetched less than 5 minutes ago
+    const now = Date.now();
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    if (categories.length > 0 && (now - lastFetch) < CACHE_DURATION) {
+      console.log("Using cached categories");
+      return;
+    }
+
+    setIsLoading(true);
     try {
       const { data } = await apiClient.get("/categories?limit=100");
       if (data && Array.isArray(data)) {
@@ -39,9 +51,12 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
             subcategories: c.subcategories || []
         }));
         setCategories(mapped);
+        setLastFetch(now);
       }
     } catch (error) {
        console.error("Failed to load categories", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -94,6 +109,7 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
     <CategoriesContext.Provider
       value={{
         categories,
+        isLoading,
         addCategory,
         updateCategory,
         deleteCategory,

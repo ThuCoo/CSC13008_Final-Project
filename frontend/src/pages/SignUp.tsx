@@ -9,7 +9,7 @@ import { useToast } from "../hooks/use-toast";
 
 export default function SignUp() {
   const navigate = useNavigate();
-  const { signup } = useUser();
+  const { sendOtp, verifyOtp, login } = useUser();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
@@ -63,15 +63,28 @@ export default function SignUp() {
     e.preventDefault();
     if (validateForm()) {
       setIsLoading(true);
-      // Simulate API call to send OTP
-      setTimeout(() => {
-        setIsLoading(false);
+      try {
+        await sendOtp({
+          email: formData.email,
+          password: formData.password,
+          name: formData.name,
+          address: formData.address,
+        });
         setShowOtp(true);
         toast({
           title: "OTP Sent",
           description: "Please check your email for the verification code.",
         });
-      }, 1000);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description:
+            error instanceof Error ? error.message : "Failed to send OTP",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -88,22 +101,27 @@ export default function SignUp() {
 
     setIsLoading(true);
     try {
-      await signup({
-        email: formData.email,
-        password: formData.password,
-        name: formData.name,
-        address: formData.address,
-      });
-      toast({
-        title: "Success",
-        description: "Account created successfully!",
-      });
-      navigate("/");
+      await verifyOtp(formData.email, otp);
+      
+      const loginSuccess = await login(formData.email, formData.password);
+      if (loginSuccess) {
+        toast({
+          title: "Success",
+          description: "Account verified and logged in successfully!",
+        });
+        navigate("/");
+      } else {
+        toast({
+          title: "Verified",
+          description: "Account verified. Please log in.",
+        });
+        navigate("/login");
+      }
     } catch (error) {
       toast({
         title: "Error",
         description:
-          error instanceof Error ? error.message : "Failed to create account",
+          error instanceof Error ? error.message : "Failed to verify OTP",
         variant: "destructive",
       });
     } finally {
@@ -112,7 +130,7 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-md mx-auto px-4 py-16 sm:py-24">
         <div className="bg-white rounded-xl border border-border p-8 shadow-sm">
           <h1 className="text-3xl font-bold mb-2">

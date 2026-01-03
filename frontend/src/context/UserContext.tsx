@@ -5,7 +5,8 @@ import apiClient from "../lib/api-client";
 export interface UserContextType {
   user: Omit<User, "password"> | null;
   login: (email: string, password: string) => Promise<boolean>;
-  signup: (data: { email: string; name: string; password?: string, address?: string, birthday?: string }) => Promise<void>;
+  sendOtp: (data: { email: string; name: string; password?: string, address?: string, birthday?: string }) => Promise<void>;
+  verifyOtp: (email: string, code: string) => Promise<void>;
   logout: () => void;
   updateProfile: (id: string, data: Partial<User>) => Promise<void>;
   changePassword: (id: string, current: string, newPass: string) => Promise<void>;
@@ -56,13 +57,24 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signup = async (data: { email: string; name: string; password?: string, address?: string, birthday?: string }) => {
+  const sendOtp = async (data: { email: string; name: string; password?: string, address?: string, birthday?: string }) => {
     try {
       await apiClient.post("/auth/register", data);
-      alert("Registration successful! Please check your email for the verification code.");
-    } catch (error) {
-      console.error("Signup failed", error);
-      alert("Registration failed");
+      // Success - OTP has been sent, no need for success message here
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Registration failed";
+      throw new Error(message);
+    }
+  };
+
+  const verifyOtp = async (email: string, code: string) => {
+    try {
+      await apiClient.post("/auth/verify", { email, code });
+      // After verification, automatically log the user in
+      // Note: We need the password for login, so we'll handle login separately in the component
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Verification failed";
+      throw new Error(message);
     }
   };
 
@@ -127,7 +139,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <UserContext.Provider
-      value={{ user, login, signup, logout, updateProfile, changePassword, getAllUsers, banUser, deleteUser, getUserReviews, rateUser }}
+      value={{ user, login, sendOtp, verifyOtp, logout, updateProfile, changePassword, getAllUsers, banUser, deleteUser, getUserReviews, rateUser }}
     >
       {!isLoading && children}
     </UserContext.Provider>

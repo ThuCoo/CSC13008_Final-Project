@@ -31,7 +31,7 @@ export default function Selling() {
   const { user } = useUser();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="min-h-screen bg-slate-50">
 
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -44,7 +44,7 @@ export default function Selling() {
               Reach millions of buyers and get the best prices for your items. Our auction format ensures competitive bidding that maximizes your value.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button asChild size="lg" className="text-base">
+              <Button asChild size="lg" className="text-base border hover:text-black hover:border-rose-700 hover:bg-white">
                 <Link to={user ? "/create-listing" : "/login"}>
                   {user ? "Create Your First Listing" : "Sign Up as Seller"}
                 </Link>
@@ -56,8 +56,8 @@ export default function Selling() {
               )}
             </div>
           </div>
-          <div className="bg-gradient-to-br from-primary to-secondary rounded-2xl h-96 flex items-center justify-center">
-            <Upload className="w-24 h-24 text-white opacity-50" />
+          <div className="bg-rose-500 rounded-2xl h-96 flex items-center justify-center">
+            <Upload className="w-24 h-24 opacity-50 text-white" />
           </div>
         </div>
       </section>
@@ -102,7 +102,7 @@ export default function Selling() {
         </div>
       </section>
 
-      <section className="bg-gradient-to-r from-primary to-secondary py-16">
+      <section className="bg-primary py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-bold text-white mb-4">Start Your First Auction Today</h2>
           <p className="text-xl text-white/90 mb-8">

@@ -59,10 +59,18 @@ const ListingCard = ({ listing }: { listing: Listing }) => {
 
         <div className="flex justify-between items-end mb-2">
           <div>
-            <p className="text-xs text-gray-500">Price</p>
+            <p className="text-xs text-gray-500">Current Bid</p>
             <p className="text-lg font-bold text-rose-900">
               {listing.currentBid.toLocaleString()}₫
             </p>
+            {listing.buyNowPrice && (
+              <>
+                <p className="text-xs text-gray-500 mt-1">Buy Now</p>
+                <p className="text-sm font-semibold">
+                  {listing.buyNowPrice.toLocaleString()}₫
+                </p>
+              </>
+            )}
           </div>
           <div className="text-right">
             <p className="text-xs text-gray-500">Bids</p>
@@ -101,7 +109,7 @@ export default function HomePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div>
-            <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 leading-tight text-rose-700">
+            <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
               Discover Amazing Deals at{" "}
               <span className="text-primary">Live Auctions</span>
             </h1>
@@ -111,10 +119,10 @@ export default function HomePage() {
               you want.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button asChild variant="outline" size="lg" className="text-base text-rose-700 border-rose-700 hover:bg-rose-700 hover:text-white transition">
+              <Button asChild variant="outline" size="lg" className="text-base border-rose-700 hover:bg-rose-700 hover:text-white transition">
                 <Link to="/browse">Start Bidding</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-base bg-rose-700 text-white hover:border-rose-700 hover:text-rose-700 hover:bg-white transition">
+              <Button asChild variant="outline" size="lg" className="text-base bg-rose-700 text-white hover:border-rose-700 hover:bg-white transition">
                 <Link to="/selling">Become a Seller</Link>
               </Button>
             </div>

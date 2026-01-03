@@ -224,6 +224,14 @@ export default function Browse() {
                           <p className="text-xl font-bold text-slate-900">
                             {l.currentBid.toLocaleString()}₫
                           </p>
+                          {l.buyNowPrice && (
+                            <>
+                              <p className="text-xs text-gray-500 mt-1">Buy Now</p>
+                              <p className="text-sm font-semibold text-green-600">
+                                {l.buyNowPrice.toLocaleString()}₫
+                              </p>
+                            </>
+                          )}
                         </div>
                         <p className="text-xs text-slate-500">
                           {l.bids?.length || 0} bids

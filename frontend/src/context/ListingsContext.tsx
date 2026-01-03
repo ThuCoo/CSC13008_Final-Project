@@ -106,12 +106,21 @@ const ListingsContext = createContext<ListingsContextType | undefined>(
 export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastFetch, setLastFetch] = useState<number>(0);
 
   useEffect(() => {
     loadListings();
   }, []);
 
   const loadListings = async () => {
+    // Simple cache: don't refetch if data was fetched less than 2 minutes ago
+    const now = Date.now();
+    const CACHE_DURATION = 2 * 60 * 1000;
+    if (listings.length > 0 && (now - lastFetch) < CACHE_DURATION) {
+      console.log("Using cached listings data");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { data } = await apiClient.get("/listings?limit=50&page=1"); 
@@ -119,10 +128,12 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
       if (data && Array.isArray(data.data)) {
         console.log(`Loaded ${data.data.length} listings`);
         setListings(data.data);
+        setLastFetch(now);
       } else if (data && Array.isArray(data)) {
         // Handle case where API returns array directly
         console.log(`Loaded ${data.length} listings (direct array)`);
         setListings(data);
+        setLastFetch(now);
       } else {
         console.warn("Unexpected listings response format:", data);
         setListings([]);
