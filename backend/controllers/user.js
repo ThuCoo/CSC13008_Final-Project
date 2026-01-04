@@ -108,6 +108,30 @@ const controller = {
       .then(() => res.json({}))
       .catch(next);
   },
+
+  adminResetPassword: async function (req, res, next) {
+    try {
+      if (req.user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden: Admin access only" });
+      }
+
+      const id = Number(req.params.id);
+      const user = await userService.listOne(id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const newPassword = Math.random().toString(36).slice(-8); 
+      const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+      
+      await userService.update({ ...user, passwordHash: hash, userId: id });
+      
+      const emailLib = (await import("../lib/email.js")).default;
+      await emailLib.sendPasswordResetAdminEmail(user.email, newPassword);
+      
+      res.json({ message: "Password reset and email sent", newPassword });
+    } catch (err) {
+      next(err);
+    }
+  }
 };
 
 export default controller;

@@ -3,6 +3,7 @@ import ratingService from "../services/rating.js";
 import listingService from "../services/listing.js";
 import userService from "../services/user.js";
 import autoBidService from "../services/autoBid.js";
+import emailLib from "../lib/email.js";
 
 const controller = {
   listAll: function (req, res, next) {
@@ -101,7 +102,22 @@ const controller = {
         extended = true;
       }
 
+      // identify previous high bidder
+      const bids = await bidService.listAll(listingId);
+      const prevHighBid = bids.length > 0 ? bids[0] : null;
+
       const row = await bidService.create(req.body);
+      
+      // notify current bidder of success
+      emailLib.sendBidSuccessEmail(bidder.email, listing.title, Number(amount)).catch(e => console.error("Email failed", e));
+      
+      // notify previous bidder they've been outbid
+      if (prevHighBid && prevHighBid.bidderId !== bidderId) {
+          const prevUser = await userService.listOne(prevHighBid.bidderId);
+          if (prevUser) {
+              emailLib.sendOutbidEmail(prevUser.email, listing.title, Number(amount)).catch(e => console.error("Email failed", e));
+          }
+      }
 
       // Handle Auto-Bidding (Max Price set by current bidder)
       if (req.body.maxPrice && Number(req.body.maxPrice) > Number(amount)) {
@@ -140,6 +156,16 @@ const controller = {
                    amount: counterBid
                });
                await listingService.updateCurrentBid(listingId, counterBid);
+               
+               // notify user they were outbid by bot
+               emailLib.sendOutbidEmail(bidder.email, listing.title, counterBid).catch(e => console.error("Email failed", e));
+               
+               // notify bot owner they bid successfully
+               const botUser = await userService.listOne(bestBot.userId);
+               if (botUser) {
+                   emailLib.sendBidSuccessEmail(botUser.email, listing.title, counterBid).catch(e => console.error("Email failed", e));
+               }
+
                if (autoExtendEnabled && (new Date(listing.endsAt) - new Date()) <= windowMin * 60 * 1000) {
                   const newEnds = new Date(new Date(listing.endsAt).getTime() + extMin * 60 * 1000);
                   const newAuto = Array.isArray(listing.autoExtendDates) ? [...listing.autoExtendDates, newEnds] : [newEnds];
@@ -167,7 +193,7 @@ const controller = {
     } catch (err) {
       next(err);
     }
-  }, 
+  },
 
   remove: function (req, res, next) {
     const id = Number(req.params.id);

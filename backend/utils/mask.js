@@ -1,9 +1,15 @@
 
+
 export function maskName(name) {
-  if (!name) return "*****";
-  if (name.length <= 2) return name + "***";
-  if (name.length > 4) {
-      return "*****" + name.slice(-4);
+  if (!name || name.length <= 2) return name;
+  
+  let masked = '';
+  for (let i = 0; i < name.length; i++) {
+    if (i % 2 === 0) {
+      masked += name[i];
+    } else {
+      masked += '*';
+    }
   }
-  return "*****" + name.slice(-1);
+  return masked;
 }

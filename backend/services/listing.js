@@ -35,30 +35,67 @@ async function enrichListing(listing) {
   if (!listing) return null;
 
   try {
-    const seller = await db.select({ name: users.name }).from(users).where(eq(users.userId, listing.sellerId)).limit(1);
-    const sellerName = seller[0]?.name || 'Unknown';
-    const category = await db.select({ name: categories.name }).from(categories).where(eq(categories.categoryId, listing.categoryId)).limit(1);
-    const categoryName = category[0]?.name || 'Unknown';
+    let sellerName = 'Unknown';
+    try {
+      const seller = await db.select({ name: users.name }).from(users).where(eq(users.userId, listing.sellerId)).limit(1);
+      sellerName = seller[0]?.name || 'Unknown';
+    } catch (err) {
+      console.error(`Error fetching seller ${listing.sellerId}:`, err.message);
+    }
+
+    let categoryName = 'Unknown';
+    try {
+      const category = await db.select({ name: categories.name }).from(categories).where(eq(categories.categoryId, listing.categoryId)).limit(1);
+      categoryName = category[0]?.name || 'Unknown';
+    } catch (err) {
+      console.error(`Error fetching category ${listing.categoryId}:`, err.message);
+    }
+
     let subcategoryName = null;
     if (listing.subcategoryId) {
-      const subcategory = await db.select({ name: subcategories.name }).from(subcategories).where(eq(subcategories.subcategoryId, listing.subcategoryId)).limit(1);
-      subcategoryName = subcategory[0]?.name || null;
+      try {
+        const subcategory = await db.select({ name: subcategories.name }).from(subcategories).where(eq(subcategories.subcategoryId, listing.subcategoryId)).limit(1);
+        subcategoryName = subcategory[0]?.name || null;
+      } catch (err) {
+        console.error(`Error fetching subcategory ${listing.subcategoryId}:`, err.message);
+      }
     }
+
     let enrichedBids = [];
     try {
       const bidsData = await bidService.listAll(listing.listingId, null);
+      const ratingService = (await import("./rating.js")).default;
+      
       enrichedBids = await Promise.all(bidsData.map(async (bid) => {
         try {
-          const bidder = await db.select({ name: users.name }).from(users).where(eq(users.userId, bid.bidderId)).limit(1);
+          let bidderName = 'Unknown';
+          try {
+            const bidder = await db.select({ name: users.name }).from(users).where(eq(users.userId, bid.bidderId)).limit(1);
+            bidderName = bidder[0]?.name || 'Unknown';
+          } catch (err) {
+            console.error(`Error fetching bidder ${bid.bidderId}:`, err.message);
+          }
+          
+          let bidderRating = undefined;
+          try {
+            const ratingSummary = await ratingService.summaryForUser(bid.bidderId);
+            if (ratingSummary.total > 0) {
+              bidderRating = Math.round((ratingSummary.up / ratingSummary.total) * 100);
+            }
+          } catch (ratingErr) {
+            console.error(`Error fetching rating for bidder ${bid.bidderId}:`, ratingErr.message);
+          }
+          
           return {
             id: String(bid.bidId),
             bidderId: String(bid.bidderId),
-            bidderName: maskName(bidder[0]?.name || 'Unknown'),
+            bidderName: maskName(bidderName),
             amount: Number(bid.amount),
             timestamp: bid.createdAt ? new Date(bid.createdAt).getTime() : Date.now(),
+            bidderRating,
           };
         } catch (err) {
-          console.error(`Error enriching bid ${bid.bidId}:`, err);
+          console.error(`Error enriching bid ${bid.bidId}:`, err.message);
           return null;
         }
       }));

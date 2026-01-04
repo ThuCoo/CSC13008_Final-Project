@@ -17,7 +17,7 @@ import {
 import { Checkbox } from "../components/ui/checkbox";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { Upload, DollarSign, Image as ImageIcon, Type, ArrowLeft } from "lucide-react";
+import { Upload, Image as ImageIcon, ArrowLeft } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -119,10 +119,6 @@ export default function CreateListing() {
 
     if (!formData.category) {
       newErrors.category = "Please select a category";
-    }
-
-    if (!formData.subCategory) {
-      newErrors.subCategory = "Please select a subcategory";
     }
 
     const startPrice = parseFloat(formData.startingPrice);
@@ -285,7 +281,8 @@ export default function CreateListing() {
               <div className="space-y-2">
                 <Label>Subcategory (Optional)</Label>
                 <Select
-                  disabled={!formData.category} // Disable if no main category selected
+                  value={formData.subCategory}
+                  disabled={!formData.category}
                   onValueChange={(v) => {
                     setFormData({ ...formData, subCategory: v });
                     if (errors.subCategory) {
@@ -299,13 +296,15 @@ export default function CreateListing() {
                     <SelectValue placeholder={formData.category ? "Select Subcategory" : "Select Category First"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories
+                    {formData.category && categories
                       .find((c) => c.id === formData.category)
-                      ?.subcategories?.map((sub) => (
-                        <SelectItem key={sub.id} value={sub.id}>
-                          {sub.name}
-                        </SelectItem>
-                      )) || <SelectItem value="none" disabled>No subcategories</SelectItem>}
+                      ?.subcategories?.map((sub) => {
+                        return (
+                          <SelectItem key={sub.id} value={String(sub.id)}>
+                            {sub.name}
+                          </SelectItem>
+                        );
+                      })}
                   </SelectContent>
                 </Select>
                 {errors.subCategory && (
@@ -468,17 +467,54 @@ export default function CreateListing() {
             <Label>Description</Label>
             <div className={`border rounded-md ${errors.description ? "border-red-500" : ""}`}>
               <div className={`flex gap-2 p-2 border-b bg-slate-50 ${errors.description ? "border-red-500" : ""}`}>
-                <Button type="button" variant="ghost" size="sm">
-                  <Type className="w-4 h-4" />
-                </Button>
-                <Button type="button" variant="ghost" size="sm">
+                <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                        const ta = document.getElementById("desc-ta") as HTMLTextAreaElement;
+                        const start = ta.selectionStart;
+                        const end = ta.selectionEnd;
+                        const sel = formData.description.substring(start, end);
+                        const next = formData.description.substring(0, start) + `<b>${sel}</b>` + formData.description.substring(end);
+                        setFormData({ ...formData, description: next });
+                    }}
+                >
                   <b>B</b>
                 </Button>
-                <Button type="button" variant="ghost" size="sm">
+                <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                        const ta = document.getElementById("desc-ta") as HTMLTextAreaElement;
+                        const start = ta.selectionStart;
+                        const end = ta.selectionEnd;
+                        const sel = formData.description.substring(start, end);
+                        const next = formData.description.substring(0, start) + `<i>${sel}</i>` + formData.description.substring(end);
+                        setFormData({ ...formData, description: next });
+                    }}
+                >
                   <i>I</i>
+                </Button>
+                <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                        const ta = document.getElementById("desc-ta") as HTMLTextAreaElement;
+                        const start = ta.selectionStart;
+                        const end = ta.selectionEnd;
+                        const sel = formData.description.substring(start, end);
+                        const next = formData.description.substring(0, start) + `<ul>\n  <li>${sel}</li>\n</ul>` + formData.description.substring(end);
+                        setFormData({ ...formData, description: next });
+                    }}
+                >
+                  List
                 </Button>
               </div>
               <Textarea
+                id="desc-ta"
                 className="h-40 border-0 focus-visible:ring-0"
                 placeholder="Detailed product description..."
                 required

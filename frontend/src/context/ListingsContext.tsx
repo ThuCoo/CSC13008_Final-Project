@@ -7,6 +7,7 @@ export interface Bid {
   bidderName: string;
   amount: number;
   timestamp: number;
+  bidderRating?: number;
 }
 
 export interface Question {
@@ -96,7 +97,7 @@ interface ListingsContextType {
     answer: string,
   ) => void;
   getSellerOrders: (sellerId: string) => Promise<any[]>;
-  updateOrderStatus: (orderId: string, status: string) => Promise<any>;
+  updateOrderStatus: (orderId: string, status: string, proof?: string) => Promise<any>;
 }
 
 const ListingsContext = createContext<ListingsContextType | undefined>(
@@ -265,16 +266,16 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
      } catch(e) { console.error(e) }
   };
 
-  const getSellerOrders = async (_sellerId: string) => { // sellerId ignored as backend uses token
+  const getSellerOrders = async (_sellerId: string) => {
     try {
         const { data } = await apiClient.get("/orders/seller");
         return data; 
     } catch(e) { console.error(e); return []; }
   };
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
+  const updateOrderStatus = async (orderId: string, status: string, proof?: string) => {
       try {
-          const { data } = await apiClient.put(`/orders/${orderId}/status`, { status });
+          const { data } = await apiClient.put(`/orders/${orderId}/status`, { status, proof });
           return data;
       } catch(e) { console.error(e); throw e; }
   };

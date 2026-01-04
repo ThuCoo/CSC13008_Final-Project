@@ -47,6 +47,11 @@ const ListingCard = ({ listing }: { listing: Listing }) => {
            alt={listing.title}
            className="w-full h-full object-cover"
         />
+        {(Date.now() - new Date(listing.createdAt).getTime()) < 30 * 60 * 1000 && (
+           <div className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
+             New
+           </div>
+        )}
         <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
           <Clock className="w-3 h-3" /> {formatAuctionTime(listing.endsAt)}
         </div>

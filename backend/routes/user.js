@@ -23,5 +23,6 @@ route.put(
   userController.update
 );
 route.delete("/:id", validateQuery(idParams, "params"), userController.remove);
+route.post("/:id/reset-password", jwtAuth, userController.adminResetPassword);
 
 export default route;

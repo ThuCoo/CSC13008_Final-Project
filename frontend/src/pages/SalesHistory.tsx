@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from "../components/ui/dialog";
 import { Textarea } from "../components/ui/textarea";
+import OrderFulfillmentWizard from "../components/OrderFulfillment";
 
 export default function SalesHistory() {
   const { user, rateUser } = useUser();
@@ -57,20 +58,6 @@ export default function SalesHistory() {
     });
   };
 
-  const advanceOrderStep = async (id: string, currentStatus: string) => {
-    let nextStatus = currentStatus;
-    let msg = "";
-    
-    if (currentStatus === "paid") { nextStatus = "shipped"; msg = "Item Shipped"; }
-    else if (currentStatus === "shipped") { nextStatus = "delivered"; msg = "Delivery Confirmed"; } // Ideally bidder does this
-    else if (currentStatus === "delivered") { nextStatus = "completed"; msg = "Order Completed"; }
-
-    if (nextStatus !== currentStatus) {
-        await updateOrderStatus(id, nextStatus);
-        setOrders(prev => prev.map(o => o.id === id ? { ...o, status: nextStatus } : o));
-        toast({ title: msg });
-    }
-  };
 
   const handleRateBidder = async (orderId: string, rating: 1 | -1, bidderId?: string) => {
     if (!reviewComment) {
@@ -141,28 +128,17 @@ export default function SalesHistory() {
                     </div>
 
                     <div className="mt-4 border-t pt-4">
-                      {/* Workflow Steps */}
-                      <div className="flex flex-wrap items-center gap-2 mb-4 text-sm font-medium">
-                         Status: {sale.status}
-                      </div>
+                      <OrderFulfillmentWizard 
+                        order={sale}
+                        userRole="seller"
+                        onUpdate={async (id: string, status: string, proof?: string) => {
+                            await updateOrderStatus(id, status, proof);
+                            setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+                        }}
+                      />
 
                       {currentStep !== -1 && currentStep < 4 && (
-                        <div className="flex gap-3">
-                          {currentStep === 0 && ( // Paid -> Shipped
-                            <Button onClick={() => advanceOrderStep(sale.id, 'paid')}>
-                              Mark Shipped
-                            </Button>
-                          )}
-                          {currentStep === 1 && ( // Shipped -> Delivered
-                            <div className="flex gap-2 items-center">
-                                <span className="text-sm text-amber-600 italic mr-2">
-                                  Waiting for bidder receipt...
-                                </span>
-                                <Button variant="outline" size="sm" onClick={() => advanceOrderStep(sale.id, 'shipped')}>
-                                    (Mock) Bidder Confirms Receipt
-                                </Button>
-                            </div>
-                          )}
+                        <div className="flex gap-3 justify-end mt-4">
                           {currentStep === 2 && ( // Delivered -> Rate -> Completed
                               <Dialog>
                               <DialogTrigger asChild>

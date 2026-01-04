@@ -37,10 +37,10 @@ const service = {
     }));
   },
 
-  updateStatus: async function (orderId, status) {
+  updateStatus: async function (orderId, data) {
       const result = await db
           .update(orders)
-          .set({ status })
+          .set(data)
           .where(eq(orders.id, orderId))
           .returning();
       return result[0];

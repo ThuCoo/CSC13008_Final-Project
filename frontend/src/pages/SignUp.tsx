@@ -10,7 +10,7 @@ import ReCAPTCHA from "react-google-recaptcha";
 
 export default function SignUp() {
   const navigate = useNavigate();
-  const { sendOtp, verifyOtp, login } = useUser();
+  const { sendOtp, resendOtp, verifyOtp, login } = useUser();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
@@ -326,8 +326,19 @@ export default function SignUp() {
                   Didn't receive code?{" "}
                   <button
                     type="button"
-                    className="text-primary hover:underline"
-                    onClick={() => toast({ title: "Code Resent" })}
+                    className="text-primary hover:underline disabled:opacity-50"
+                    disabled={isLoading}
+                    onClick={async () => {
+                        setIsLoading(true);
+                        try {
+                            await resendOtp(formData.email);
+                            toast({ title: "Code Resent", description: "Please check your email for the new code." });
+                        } catch (error: any) {
+                            toast({ title: "Error", description: error.message, variant: "destructive" });
+                        } finally {
+                            setIsLoading(false);
+                        }
+                    }}
                   >
                     Resend
                   </button>

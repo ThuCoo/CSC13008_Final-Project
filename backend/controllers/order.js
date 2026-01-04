@@ -14,9 +14,13 @@ const controller = {
   updateStatus: async function (req, res, next) {
       try {
           const id = Number(req.params.id);
-          const { status } = req.body;
-          // Valid statuses: paid, shipped, delivered, completed, cancelled
-          const updated = await orderService.updateStatus(id, status);
+          const { status, proof } = req.body;
+          const data = { status };
+          if (proof) {
+              if (status === "paid") data.paymentProof = proof;
+              if (status === "shipped") data.shippingProof = proof;
+          }
+          const updated = await orderService.updateStatus(id, data);
           res.json(updated);
       } catch (err) {
           next(err);

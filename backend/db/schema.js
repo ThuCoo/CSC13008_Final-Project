@@ -153,5 +153,7 @@ export const orders = pgTable("orders", {
   finalPrice: decimal("final_price").notNull(),
   status: varchar("status").notNull(),
   shippingAddress: text("shipping_address"),
+  paymentProof: text("payment_proof"),
+  shippingProof: text("shipping_proof"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

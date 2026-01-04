@@ -6,6 +6,7 @@ export interface UserContextType {
   user: Omit<User, "password"> | null;
   login: (email: string, password: string) => Promise<boolean>;
   sendOtp: (data: { email: string; name: string; password?: string, address?: string, birthday?: string, recaptchaToken?: string }) => Promise<void>;
+  resendOtp: (email: string, purpose?: string) => Promise<void>;
   verifyOtp: (email: string, code: string) => Promise<void>;
   logout: () => void;
   updateProfile: (id: string, data: Partial<User>) => Promise<void>;
@@ -62,6 +63,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       await apiClient.post("/auth/register", data);
     } catch (error: any) {
       const message = error.response?.data?.message || "Registration failed";
+      throw new Error(message);
+    }
+  };
+
+  const resendOtp = async (email: string, purpose: string = "verify") => {
+    try {
+      await apiClient.post("/auth/resend", { email, purpose });
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Failed to resend code";
       throw new Error(message);
     }
   };
@@ -135,7 +145,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <UserContext.Provider
-      value={{ user, login, sendOtp, verifyOtp, logout, updateProfile, changePassword, getAllUsers, banUser, deleteUser, getUserReviews, rateUser }}
+      value={{ user, login, sendOtp, resendOtp, verifyOtp, logout, updateProfile, changePassword, getAllUsers, banUser, deleteUser, getUserReviews, rateUser }}
     >
       {!isLoading && children}
     </UserContext.Provider>

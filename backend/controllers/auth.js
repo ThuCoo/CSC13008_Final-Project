@@ -121,6 +121,19 @@ const controller = {
       next(err);
     }
   },
+  resendOtp: async function (req, res, next) {
+    try {
+      const { email, purpose = "verify" } = req.body;
+      const user = await userService.listOne(null, email);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const otp = await otpService.createOtp(user.userId, purpose);
+      await emailLib.sendOtpEmail(user.email, otp.code, purpose);
+      res.json({ message: "Verification code resent" });
+    } catch (err) {
+      next(err);
+    }
+  },
 };
 
 export default controller;

@@ -5,8 +5,9 @@ import { Input } from "../components/ui/input";
 import { useNavigate, Link, useParams } from "react-router-dom";
 import { Clock, Ban, MessageCircle, ArrowLeft, Heart, Star } from "lucide-react";
 import { maskBidderName, formatAuctionTime } from "../lib/utils";
+import { Badge } from "../components/ui/badge";
 
-// import AutoBidForm from "../components/AutoBidForm";
+import AutoBidForm from "../components/AutoBidForm";
 
 import { useListings } from "../context/ListingsContext";
 import { useWatchlist } from "../context/WatchlistContext";
@@ -29,7 +30,7 @@ export default function AuctionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { listings, isLoading, getListingById, placeBid, getListingsByCategory, addQuestion, answerQuestion, rejectBidder } = useListings();
+  const { isLoading, getListingById, placeBid, getListingsByCategory, addQuestion, answerQuestion, rejectBidder } = useListings();
   const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
   const { user, getUserReviews } = useUser();
 
@@ -67,7 +68,7 @@ export default function AuctionDetail() {
       setSelectedImage(listing.images[0] || "");
   }
 
-  // Reactive Bid Update: Update input when current bid changes
+  // Update input when current bid changes
   const [lastBidId, setLastBidId] = useState(listing?.currentBid || 0);
   if (listing && listing.currentBid !== lastBidId) {
       setLastBidId(listing.currentBid);
@@ -143,6 +144,8 @@ export default function AuctionDetail() {
     }
   };
 
+  const isHighBidder = user && listing.bids.length > 0 && listing.bids[0].bidderId === user.id;
+
   return (
     <div className="min-h-screen bg-slate-50">
 
@@ -214,6 +217,11 @@ export default function AuctionDetail() {
               <p className="text-slate-500 flex gap-2 items-center mb-6">
                 <Clock className="w-4 h-4" />{" "}
                 {formatAuctionTime(listing.endsAt)}
+                {isHighBidder && (
+                    <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 ml-2">
+                        You are the high bidder
+                    </Badge>
+                )}
               </p>
               <div
                 className="prose"
@@ -304,7 +312,7 @@ export default function AuctionDetail() {
                     </Button>
                   </form>
 
-                  {/* Auto Bid System }
+                  {/* Auto Bid System */}
                   <div className="border-t pt-6">
                     <p className="font-bold mb-2 text-sm">Auto-Bidding</p>
                     {user && (
@@ -316,7 +324,6 @@ export default function AuctionDetail() {
                       />
                     )}
                   </div>
-                  */}
 
                 </div>
               )}
@@ -335,7 +342,12 @@ export default function AuctionDetail() {
                             <p className="font-medium">
                             {maskBidderName(bid.bidderName)}
                             </p>
-                           {/*  Removed Bidder Rating for now to avoid complexity */}
+                            {bid.bidderRating !== undefined && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                                <span className="text-slate-600">{bid.bidderRating}%</span>
+                              </div>
+                            )}
                         </div>
                         <p className="text-xs text-slate-500">
                           {new Date(bid.timestamp).toLocaleTimeString()}
@@ -367,29 +379,70 @@ export default function AuctionDetail() {
             <h3 className="text-2xl font-bold mb-6">Related Products </h3>
             {relatedProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {relatedProducts.map((rel) => (
-                  <Link
-                    key={rel.id}
-                    to={`/auction/${rel.id}`}
-                    className="bg-white border rounded-lg overflow-hidden hover:shadow-md transition"
-                  >
-                    <div className="h-32 bg-gray-200 relative">
-                       <img
-                         src={rel.images && rel.images.length > 0 ? rel.images[0] : "https://placehold.co/400x300?text=No+Image"}
-                         alt={rel.title}
-                         className="w-full h-full object-cover"
-                       />
-                    </div>
-                    <div className="p-3">
-                      <h4 className="font-bold truncate text-sm">
-                        {rel.title}
-                      </h4>
-                      <p className="text-rose-600 font-bold text-sm">
-                        {rel.currentBid.toLocaleString()}₫
-                      </p>
-                    </div>
-                  </Link>
-                ))}
+                {relatedProducts.map((rel) => {
+                  const topBidder = rel.bids && rel.bids.length > 0 ? rel.bids[0].bidderName : null;
+                  const isNew = (Date.now() - new Date(rel.createdAt).getTime()) < 30 * 60 * 1000;
+                  
+                  return (
+                    <Link
+                      key={rel.id}
+                      to={`/auction/${rel.id}`}
+                      className="bg-white border rounded-xl overflow-hidden hover:shadow-lg transition group"
+                    >
+                      <div className="h-40 relative bg-gray-200">
+                        <img
+                          src={rel.images && rel.images.length > 0 ? rel.images[0] : "https://placehold.co/400x300?text=No+Image"}
+                          alt={rel.title}
+                          className="w-full h-full object-cover"
+                        />
+                        {isNew && (
+                          <div className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
+                            New
+                          </div>
+                        )}
+                        <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {formatAuctionTime(rel.endsAt)}
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-bold truncate mb-1 group-hover:text-rose-600">
+                          {rel.title}
+                        </h3>
+                        <p className="text-xs text-gray-500 mb-2">{rel.category}</p>
+
+                        <div className="flex justify-between items-end mb-2">
+                          <div>
+                            <p className="text-xs text-gray-500">Current Bid</p>
+                            <p className="text-lg font-bold text-rose-900">
+                              {rel.currentBid.toLocaleString()}₫
+                            </p>
+                            {rel.buyNowPrice && (
+                              <>
+                                <p className="text-xs text-gray-500 mt-1">Buy Now</p>
+                                <p className="text-sm font-semibold">
+                                  {rel.buyNowPrice.toLocaleString()}₫
+                                </p>
+                              </>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-gray-500">Bids</p>
+                            <p className="font-medium">{rel.bids?.length || 0}</p>
+                          </div>
+                        </div>
+
+                        {topBidder && (
+                          <p className="text-xs text-gray-500 pt-2 border-t mt-2">
+                            Top Bidder:{" "}
+                            <span className="font-medium text-gray-700">
+                              {maskBidderName(topBidder)}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-slate-500">No related products found.</p>

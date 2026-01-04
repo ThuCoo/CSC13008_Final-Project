@@ -22,11 +22,28 @@ const controller = {
       .catch(next);
   },
 
-  create: function (req, res, next) {
-    questionService
-      .create(req.body)
-      .then((row) => res.status(201).json(row))
-      .catch(next);
+  create: async function (req, res, next) {
+    try {
+        const { listingId, questionText } = req.body;
+        const row = await questionService.create(req.body);
+        
+        // Notify seller
+        const listingService = (await import("../services/listing.js")).default;
+        const userService = (await import("../services/user.js")).default;
+        const emailLib = (await import("../lib/email.js")).default;
+        
+        const listing = await listingService.listOne(listingId);
+        if (listing) {
+            const seller = await userService.listOne(listing.sellerId);
+            if (seller) {
+                emailLib.sendQuestionEmail(seller.email, listing.title, questionText).catch(console.error);
+            }
+        }
+        
+        res.status(201).json(row);
+    } catch(err) {
+        next(err);
+    }
   },
 
   answer: async function (req, res, next) {

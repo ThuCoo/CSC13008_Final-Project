@@ -27,6 +27,15 @@ export function formatAuctionTime(endsAt: number): string {
 }
 
 export function maskBidderName(name: string): string {
-  if (name.length <= 2) return name;
-  return name.slice(0, 1) + "***" + name.slice(-1);
+  if (!name || name.length <= 2) return name;
+  
+  let masked = '';
+  for (let i = 0; i < name.length; i++) {
+    if (i % 2 === 0) {
+      masked += name[i];
+    } else {
+      masked += '*';
+    }
+  }
+  return masked;
 }
