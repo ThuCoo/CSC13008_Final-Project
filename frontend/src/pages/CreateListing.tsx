@@ -45,15 +45,18 @@ export default function CreateListing() {
     description: "",
     category: "",
     subCategory: "",
-    startingPrice: "0",
-    stepPrice: "50",
+    startingPrice: "1000",
+    stepPrice: "1000",
     buyNowPrice: "",
     shippingCost: "0",
+    duration: "3",
+    condition: "New",
     autoExtend: true,
   });
 
   const [images, setImages] = useState<string[]>([]);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const hasAccess = user && user.role === "seller" && user.sellerApproved === true;
 
@@ -99,13 +102,68 @@ export default function CreateListing() {
     }
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.title.trim()) {
+      newErrors.title = "Title is required";
+    } else if (formData.title.length < 10) {
+      newErrors.title = "Title must be at least 10 characters";
+    }
+
+    if (!formData.description.trim()) {
+      newErrors.description = "Description is required";
+    } else if (formData.description.length < 50) {
+      newErrors.description = "Description must be at least 50 characters";
+    }
+
+    if (!formData.category) {
+      newErrors.category = "Please select a category";
+    }
+
+    if (!formData.subCategory) {
+      newErrors.subCategory = "Please select a subcategory";
+    }
+
+    const startPrice = parseFloat(formData.startingPrice);
+    if (!formData.startingPrice || isNaN(startPrice) || startPrice < 1000) {
+      newErrors.startingPrice = "Starting price must be at least 1,000₫";
+    }
+
+    const stepPrice = parseFloat(formData.stepPrice);
+    if (!formData.stepPrice || isNaN(stepPrice) || stepPrice < 1000) {
+      newErrors.stepPrice = "Step price must be at least 1,000₫";
+    }
+
+    if (formData.buyNowPrice) {
+      const buyPrice = parseFloat(formData.buyNowPrice);
+      if (isNaN(buyPrice) || buyPrice < 1000) {
+        newErrors.buyNowPrice = "Buy now price must be at least 1,000₫";
+      } else if (buyPrice <= startPrice) {
+        newErrors.buyNowPrice = "Buy now price must be greater than starting price";
+      }
+    }
+
+    if (images.length < 3) {
+      newErrors.images = "Please upload at least 3 images";
+    }
+
+    const shipping = parseFloat(formData.shippingCost);
+    if (!formData.shippingCost || isNaN(shipping) || shipping < 0) {
+      newErrors.shippingCost = "Shipping cost must be 0 or greater";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (images.length < 3) {
+    if (!validateForm()) {
       toast({
         title: "Validation Error",
-        description: "Please upload at least 3 images for your product.",
+        description: "Please fix the errors in the form before submitting.",
         variant: "destructive",
       });
       return;
@@ -123,12 +181,12 @@ export default function CreateListing() {
         categories: [],
         startingPrice: parseFloat(formData.startingPrice),
         shippingCost: parseFloat(formData.shippingCost),
-        itemCondition: "New",
+        itemCondition: formData.condition,
         returnPolicy: "No Returns",
         images: images,
-        condition: "New",
+        condition: formData.condition,
         returns: "No Returns",
-        endsAt: Date.now() + 3 * 24 * 60 * 60 * 1000,
+        endsAt: Date.now() + parseInt(formData.duration) * 24 * 60 * 60 * 1000,
         stepPrice: parseFloat(formData.stepPrice),
         buyNowPrice: formData.buyNowPrice
           ? parseFloat(formData.buyNowPrice)
@@ -188,17 +246,28 @@ export default function CreateListing() {
               onChange={(e) =>
                 setFormData({ ...formData, title: e.target.value })
               }
+              className={errors.title ? "border-red-500 focus-visible:ring-red-500" : ""}
             />
+            {errors.title && (
+              <p className="text-sm text-red-500">{errors.title}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Category</Label>
                 <Select
-                  onValueChange={(v) => setFormData({ ...formData, category: v })}
+                  onValueChange={(v) => {
+                    setFormData({ ...formData, category: v, subCategory: "" });
+                    if (errors.category) {
+                      const newErrors = { ...errors };
+                      delete newErrors.category;
+                      setErrors(newErrors);
+                    }
+                  }}
                   required
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={errors.category ? "border-red-500 focus:ring-red-500" : ""}>
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -209,17 +278,24 @@ export default function CreateListing() {
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.category && (
+                  <p className="text-sm text-red-500">{errors.category}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Subcategory (Optional)</Label>
                 <Select
-                  disabled={!formData.category} // Disable if no main cat selected
-                  value={formData.subCategory}
-                  onValueChange={(v) =>
-                    setFormData({ ...formData, subCategory: v })
-                  }
+                  disabled={!formData.category} // Disable if no main category selected
+                  onValueChange={(v) => {
+                    setFormData({ ...formData, subCategory: v });
+                    if (errors.subCategory) {
+                      const newErrors = { ...errors };
+                      delete newErrors.subCategory;
+                      setErrors(newErrors);
+                    }
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={errors.subCategory ? "border-red-500 focus:ring-red-500" : ""}>
                     <SelectValue placeholder={formData.category ? "Select Subcategory" : "Select Category First"} />
                   </SelectTrigger>
                   <SelectContent>
@@ -232,6 +308,9 @@ export default function CreateListing() {
                       )) || <SelectItem value="none" disabled>No subcategories</SelectItem>}
                   </SelectContent>
                 </Select>
+                {errors.subCategory && (
+                  <p className="text-sm text-red-500">{errors.subCategory}</p>
+                )}
             </div>
             <div className="space-y-2">
               <Label>Starting Price (₫)</Label>
@@ -239,7 +318,7 @@ export default function CreateListing() {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₫</span>
                 <Input
                   type="number"
-                  className="pl-9"
+                  className={`pl-9 ${errors.startingPrice ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                   required
                   min="0"
                   step="1000"
@@ -249,6 +328,37 @@ export default function CreateListing() {
                   }
                 />
               </div>
+              {errors.startingPrice && (
+                <p className="text-sm text-red-500">{errors.startingPrice}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Auction Duration (Days)</Label>
+              <Select
+                value={formData.duration}
+                onValueChange={(v) => {
+                  setFormData({ ...formData, duration: v });
+                  if (errors.duration) {
+                    const newErrors = { ...errors };
+                    delete newErrors.duration;
+                    setErrors(newErrors);
+                  }
+                }}
+              >
+                <SelectTrigger className={errors.duration ? "border-red-500 focus:ring-red-500" : ""}>
+                  <SelectValue placeholder="Select Duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 Day</SelectItem>
+                  <SelectItem value="3">3 Days</SelectItem>
+                  <SelectItem value="5">5 Days</SelectItem>
+                  <SelectItem value="7">7 Days</SelectItem>
+                  <SelectItem value="10">10 Days</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.duration && (
+                <p className="text-sm text-red-500">{errors.duration}</p>
+              )}
             </div>
           </div>
 
@@ -264,7 +374,11 @@ export default function CreateListing() {
                 onChange={(e) =>
                   setFormData({ ...formData, stepPrice: e.target.value })
                 }
+                className={errors.stepPrice ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
+              {errors.stepPrice && (
+                <p className="text-sm text-red-500">{errors.stepPrice}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Buy Now Price (₫) (Optional)</Label>
@@ -276,7 +390,58 @@ export default function CreateListing() {
                 onChange={(e) =>
                   setFormData({ ...formData, buyNowPrice: e.target.value })
                 }
+                className={errors.buyNowPrice ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
+              {errors.buyNowPrice && (
+                <p className="text-sm text-red-500">{errors.buyNowPrice}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Shipping Cost (₫)</Label>
+              <div className="relative">
+                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₫</span>
+                 <Input
+                   type="number"
+                   className={`pl-9 ${errors.shippingCost ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                   value={formData.shippingCost}
+                   onChange={(e) =>
+                     setFormData({ ...formData, shippingCost: e.target.value })
+                   }
+                   min="0"
+                   step="1000"
+                 />
+              </div>
+              {errors.shippingCost && (
+                <p className="text-sm text-red-500">{errors.shippingCost}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Item Condition</Label>
+              <Select
+                value={formData.condition}
+                onValueChange={(v) => {
+                  setFormData({ ...formData, condition: v });
+                  if (errors.condition) {
+                    const newErrors = { ...errors };
+                    delete newErrors.condition;
+                    setErrors(newErrors);
+                  }
+                }}
+              >
+                <SelectTrigger className={errors.condition ? "border-red-500 focus:ring-red-500" : ""}>
+                  <SelectValue placeholder="Select Condition" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="New">New</SelectItem>
+                  <SelectItem value="Like New">Like New</SelectItem>
+                  <SelectItem value="Used - Excellent">Used - Excellent</SelectItem>
+                  <SelectItem value="Used - Good">Used - Good</SelectItem>
+                  <SelectItem value="Used - Fair">Used - Fair</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.condition && (
+                <p className="text-sm text-red-500">{errors.condition}</p>
+              )}
             </div>
           </div>
 
@@ -301,8 +466,8 @@ export default function CreateListing() {
 
           <div className="space-y-2">
             <Label>Description</Label>
-            <div className="border rounded-md">
-              <div className="flex gap-2 p-2 border-b bg-slate-50">
+            <div className={`border rounded-md ${errors.description ? "border-red-500" : ""}`}>
+              <div className={`flex gap-2 p-2 border-b bg-slate-50 ${errors.description ? "border-red-500" : ""}`}>
                 <Button type="button" variant="ghost" size="sm">
                   <Type className="w-4 h-4" />
                 </Button>
@@ -323,6 +488,9 @@ export default function CreateListing() {
                 }
               />
             </div>
+            {errors.description && (
+              <p className="text-sm text-red-500">{errors.description}</p>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -348,7 +516,7 @@ export default function CreateListing() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 p-4 border-2 border-dashed rounded-lg bg-slate-50 min-h-[120px]">
+            <div className={`grid grid-cols-3 gap-4 p-4 border-2 border-dashed rounded-lg bg-slate-50 min-h-[120px] ${errors.images ? "border-red-500 bg-red-50/10" : ""}`}>
               {images.length === 0 ? (
                 <div className="col-span-3 flex flex-col items-center justify-center text-muted-foreground">
                   <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
@@ -378,6 +546,9 @@ export default function CreateListing() {
                 ))
               )}
             </div>
+            {errors.images && (
+              <p className="text-sm text-red-500 mt-2">{errors.images}</p>
+            )}
           </div>
 
           <Button type="submit" size="lg" className="w-full text-lg">

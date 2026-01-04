@@ -11,7 +11,6 @@ import recaptcha from "../middlewares/recaptcha.js";
 import { loginSchema } from "../schemas/auth.js";
 
 const route = new Router();
-// registration requires reCAPTCHA verification (can be disabled with RECAPTCHA_ENABLED=false)
 route.post(
   "/register",
   recaptcha,
@@ -30,5 +29,6 @@ route.post(
   authController.forgot
 );
 route.post("/reset", validateQuery(resetSchema, "body"), authController.reset);
+route.post("/resend", authController.resendOtp);
 
 export default route;

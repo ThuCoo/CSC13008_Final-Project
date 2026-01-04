@@ -15,6 +15,7 @@ export default function Login() {
     email: "",
     password: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -22,16 +23,30 @@ export default function Login() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+    if (errors[e.target.name]) {
+      const newErrors = { ...errors };
+      delete newErrors[e.target.name];
+      setErrors(newErrors);
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.email) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.email || !formData.password) {
-      toast({
-        title: "Error",
-        description: "Please enter your email and password",
-        variant: "destructive",
-      });
+    if (!validateForm()) {
       return;
     }
     setIsLoading(true);
@@ -89,14 +104,17 @@ export default function Login() {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="email"
-                  placeholder="you..example.com"
-                  className="pl-10"
+                  placeholder="you@example.com"
+                  className={`pl-10 ${errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
                   disabled={isLoading}
                 />
               </div>
+              {errors.email && (
+                <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Password</label>
@@ -105,13 +123,16 @@ export default function Login() {
                 <Input
                   type="password"
                   placeholder="Enter your password"
-                  className="pl-10"
+                  className={`pl-10 ${errors.password ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   disabled={isLoading}
                 />
               </div>
+              {errors.password && (
+                <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+              )}
             </div>
             <Button className="w-full hover:cursor-pointer" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}

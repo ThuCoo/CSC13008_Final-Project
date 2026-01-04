@@ -22,6 +22,7 @@ export default function SignUp() {
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,36 +30,44 @@ export default function SignUp() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+    if (errors[e.target.name]) {
+      const newErrors = { ...errors };
+      delete newErrors[e.target.name];
+      setErrors(newErrors);
+    }
   };
 
   const validateForm = () => {
-    if (!formData.name || !formData.email || !formData.password || !formData.address) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive",
-      });
-      return false;
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = "Full name is required";
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords do not match",
-        variant: "destructive",
-      });
-      return false;
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
     }
 
-    if (formData.password.length < 8) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 8 characters",
-        variant: "destructive",
-      });
-      return false;
+    if (!formData.address.trim()) {
+      newErrors.address = "Address is required";
     }
-    return true;
+
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    }
+
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleInitialSubmit = async (e: React.FormEvent) => {
@@ -191,13 +200,16 @@ export default function SignUp() {
                     <Input
                       type="text"
                       placeholder="John Doe"
-                      className="pl-10"
+                      className={`pl-10 ${errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
                       disabled={isLoading}
                     />
                   </div>
+                  {errors.name && (
+                    <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">
@@ -208,13 +220,16 @@ export default function SignUp() {
                     <Input
                       type="email"
                       placeholder="you@example.com"
-                      className="pl-10"
+                      className={`pl-10 ${errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
                       disabled={isLoading}
                     />
                   </div>
+                  {errors.email && (
+                    <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">
@@ -225,13 +240,16 @@ export default function SignUp() {
                     <Input
                       type="text"
                       placeholder="123 Main St, City"
-                      className="pl-10"
+                      className={`pl-10 ${errors.address ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                       name="address"
                       value={formData.address}
                       onChange={handleChange}
                       disabled={isLoading}
                     />
                   </div>
+                  {errors.address && (
+                    <p className="text-xs text-red-500 mt-1">{errors.address}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">
@@ -242,13 +260,16 @@ export default function SignUp() {
                     <Input
                       type="password"
                       placeholder="Create a password"
-                      className="pl-10"
+                      className={`pl-10 ${errors.password ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                       name="password"
                       value={formData.password}
                       onChange={handleChange}
                       disabled={isLoading}
                     />
                   </div>
+                  {errors.password && (
+                    <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">
@@ -259,13 +280,16 @@ export default function SignUp() {
                     <Input
                       type="password"
                       placeholder="Confirm your password"
-                      className="pl-10"
+                      className={`pl-10 ${errors.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       disabled={isLoading}
                     />
                   </div>
+                  {errors.confirmPassword && (
+                    <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
+                  )}
                 </div>
 
                 {/* reCAPTCHA v2 Checkbox */}

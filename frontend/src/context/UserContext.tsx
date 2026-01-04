@@ -5,7 +5,7 @@ import apiClient from "../lib/api-client";
 export interface UserContextType {
   user: Omit<User, "password"> | null;
   login: (email: string, password: string) => Promise<boolean>;
-  sendOtp: (data: { email: string; name: string; password?: string, address?: string, birthday?: string }) => Promise<void>;
+  sendOtp: (data: { email: string; name: string; password?: string, address?: string, birthday?: string, recaptchaToken?: string }) => Promise<void>;
   verifyOtp: (email: string, code: string) => Promise<void>;
   logout: () => void;
   updateProfile: (id: string, data: Partial<User>) => Promise<void>;
@@ -60,7 +60,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const sendOtp = async (data: { email: string; name: string; password?: string, address?: string, recaptchaToken?: string }) => {
     try {
       await apiClient.post("/auth/register", data);
-      // Success - OTP has been sent, no need for success message here
     } catch (error: any) {
       const message = error.response?.data?.message || "Registration failed";
       throw new Error(message);
@@ -70,8 +69,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const verifyOtp = async (email: string, code: string) => {
     try {
       await apiClient.post("/auth/verify", { email, code });
-      // After verification, automatically log the user in
-      // Note: We need the password for login, so we'll handle login separately in the component
     } catch (error: any) {
       const message = error.response?.data?.message || "Verification failed";
       throw new Error(message);
@@ -97,13 +94,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const getAllUsers = async () => {
     try {
         const { data } = await apiClient.get("/users");
-        return data; // Assumes backend returns array
+        return data;
     } catch (e) { console.error(e); return []; }
   };
 
   const banUser = async (id: string) => {
       try {
-          await apiClient.put(`/users/${id}`, { status: "banned" }); // Backend must support status update
+          await apiClient.put(`/users/${id}`, { status: "banned" });
       } catch (e) { console.error(e); }
   };
 
@@ -129,7 +126,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const changePassword = async (id: string, _current: string, newPass: string) => {
     if (!user || user.id !== id) return;
     try {
-      // Note: needs to verify password in backend
         await apiClient.put(`/users/${id}`, { password: newPass });
     } catch (e) {
         console.error(e);

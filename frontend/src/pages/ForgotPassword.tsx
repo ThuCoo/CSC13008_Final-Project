@@ -12,18 +12,48 @@ export default function ForgotPassword() {
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const validateStep1 = () => {
+    const newErrors: Record<string, string> = {};
+    if (!email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep3 = () => {
+    const newErrors: Record<string, string> = {};
+    if (!newPassword) {
+      newErrors.newPassword = "New password is required";
+    } else if (newPassword.length < 8) {
+      newErrors.newPassword = "Password must be at least 8 characters";
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+    } else if (newPassword !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!validateStep1()) return;
     try {
         await apiClient.post("/auth/forgot", { email });
         toast({
           title: "OTP Sent",
           description: `An OTP code has been sent to ${email}`,
         });
+        setErrors({});
         setStep(2);
     } catch (error: any) {
         toast({ title: "Error", description: error.response?.data?.message || "Failed to send OTP", variant: "destructive" });
@@ -46,14 +76,7 @@ export default function ForgotPassword() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-        toast({ title: "Passwords match error", description: "Passwords do not match.", variant: "destructive" });
-        return;
-    }
-    if (newPassword.length < 8) {
-        toast({ title: "Password too short", description: "Must be at least 8 characters.", variant: "destructive" });
-        return;
-    }
+    if (!validateStep3()) return;
 
     try {
         await apiClient.post("/auth/reset", { email, code: otp, newPassword });
@@ -84,13 +107,23 @@ export default function ForgotPassword() {
                 <div className="relative mt-1">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
-                    className="pl-9"
+                    className={`pl-9 ${errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errors.email) {
+                        const newErrors = { ...errors };
+                        delete newErrors.email;
+                        setErrors(newErrors);
+                      }
+                    }}
                     required
                   />
                 </div>
+                {errors.email && (
+                  <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+                )}
               </div>
               <Button type="submit" className="w-full">
                 Send OTP
@@ -128,26 +161,46 @@ export default function ForgotPassword() {
                 <div className="relative mt-1">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input 
-                    className="pl-9" 
+                    className={`pl-9 ${errors.newPassword ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     type="password" 
                     required 
                     value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
+                    onChange={e => {
+                      setNewPassword(e.target.value);
+                      if (errors.newPassword) {
+                        const newErrors = { ...errors };
+                        delete newErrors.newPassword;
+                        setErrors(newErrors);
+                      }
+                    }}
                   />
                 </div>
+                {errors.newPassword && (
+                  <p className="text-xs text-red-500 mt-1">{errors.newPassword}</p>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium">Confirm Password</label>
                 <div className="relative mt-1">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input 
-                    className="pl-9" 
+                    className={`pl-9 ${errors.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     type="password" 
                     required 
                     value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
+                    onChange={e => {
+                      setConfirmPassword(e.target.value);
+                      if (errors.confirmPassword) {
+                        const newErrors = { ...errors };
+                        delete newErrors.confirmPassword;
+                        setErrors(newErrors);
+                      }
+                    }}
                   />
                 </div>
+                {errors.confirmPassword && (
+                  <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
+                )}
               </div>
               <Button type="submit" className="w-full">
                 Update Password
