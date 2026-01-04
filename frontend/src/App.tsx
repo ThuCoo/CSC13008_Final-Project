@@ -54,93 +54,91 @@ function App() {
             <ListingsProvider>
               <SellerRequestsProvider>
                 <WatchlistProvider>
-
                   {/* Auto Bid System */}
                   {/* <AutoBidsProvider> */}
-                  
-                    <TooltipProvider>
-                      <Toaster />
-                      <Sonner />
-                      <BrowserRouter>
-                        <ScrollToTop />
-                      <Header/>
-                        <div className="flex flex-col min-h-screen">
-                          <div className="flex-grow">
-                            <Routes>
-                              {/* Public Routes */}
-                              <Route path="/" element={<HomePage />} />
-                              <Route path="/browse" element={<Browse />} />
-                              <Route
-                                path="/categories"
-                                element={<Categories />}
-                              />
-                              <Route
-                                path="/auction/:id"
-                                element={<AuctionDetail />}
-                              />
-                              <Route path="/selling" element={<Selling />} />
-                              <Route path="/support" element={<Support />} />
-                              <Route path="/terms" element={<Terms />} />
-                              <Route path="/privacy" element={<Privacy />} />
-                              <Route path="/cookie-policy" element={<CookiePolicy />} />
 
-                              {/* Auth Routes */}
-                              <Route path="/login" element={<Login />} />
-                              <Route path="/signup" element={<SignUp />} />
-                              <Route
-                                path="/forgot-password"
-                                element={<ForgotPassword />}
-                              />
+                  <TooltipProvider>
+                    <Toaster />
+                    <Sonner />
+                    <BrowserRouter>
+                      <ScrollToTop />
+                      <Header />
+                      <div className="flex flex-col min-h-screen">
+                        <div className="grow">
+                          <Routes>
+                            {/* Public Routes */}
+                            <Route path="/" element={<HomePage />} />
+                            <Route path="/browse" element={<Browse />} />
+                            <Route
+                              path="/categories"
+                              element={<Categories />}
+                            />
+                            <Route
+                              path="/auction/:id"
+                              element={<AuctionDetail />}
+                            />
+                            <Route path="/selling" element={<Selling />} />
+                            <Route path="/support" element={<Support />} />
+                            <Route path="/terms" element={<Terms />} />
+                            <Route path="/privacy" element={<Privacy />} />
+                            <Route
+                              path="/cookie-policy"
+                              element={<CookiePolicy />}
+                            />
 
-                              {/* Protected / User Routes */}
-                              <Route
-                                path="/account-settings"
-                                element={<AccountSettings />}
-                              />
-                              <Route
-                                path="/watchlist"
-                                element={<Watchlist />}
-                              />
-                              <Route
-                                path="/contact-seller/:id"
-                                element={<ContactSeller />}
-                              />
-                              <Route
-                                path="/become-seller"
-                                element={<BecomeSeller />}
-                              />
+                            {/* Auth Routes */}
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/signup" element={<SignUp />} />
+                            <Route
+                              path="/forgot-password"
+                              element={<ForgotPassword />}
+                            />
 
-                              {/* Seller Routes */}
-                              <Route
-                                path="/create-listing"
-                                element={<CreateListing />}
-                              />
-                              <Route
-                                path="/seller-dashboard"
-                                element={<SellerDashboard />}
-                              />
-                              <Route
-                                path="/sales-history"
-                                element={<SalesHistory />}
-                              />
+                            {/* Protected / User Routes */}
+                            <Route
+                              path="/account-settings"
+                              element={<AccountSettings />}
+                            />
+                            <Route path="/watchlist" element={<Watchlist />} />
+                            <Route
+                              path="/contact-seller/:id"
+                              element={<ContactSeller />}
+                            />
+                            <Route
+                              path="/become-seller"
+                              element={<BecomeSeller />}
+                            />
 
-                              {/* Admin Routes */}
-                              <Route
-                                path="/admin-dashboard"
-                                element={<AdminDashboard />}
-                              />
+                            {/* Seller Routes */}
+                            <Route
+                              path="/create-listing"
+                              element={<CreateListing />}
+                            />
+                            <Route
+                              path="/seller-dashboard"
+                              element={<SellerDashboard />}
+                            />
+                            <Route
+                              path="/sales-history"
+                              element={<SalesHistory />}
+                            />
 
-                              {/* 404 */}
-                              <Route path="*" element={<NotFound />} />
-                            </Routes>
-                          </div>
-                          <Footer />
+                            {/* Admin Routes */}
+                            <Route
+                              path="/admin-dashboard"
+                              element={<AdminDashboard />}
+                            />
+
+                            {/* 404 */}
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
                         </div>
-                      </BrowserRouter>
-                    </TooltipProvider>
+                        <Footer />
+                      </div>
+                    </BrowserRouter>
+                  </TooltipProvider>
 
                   {/* </AutoBidsProvider> */}
-                
                 </WatchlistProvider>
               </SellerRequestsProvider>
             </ListingsProvider>

@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import apiClient from "../lib/api-client";
 
 export interface Bid {
@@ -74,34 +81,39 @@ interface ListingsContextType {
     bidderName: string,
     amount: number,
     bidderStats?: { positive: number; total: number },
-    maxPrice?: number,
+    maxPrice?: number
   ) => void;
   rejectBidder: (listingId: string, bidderId: string) => void;
   getListingById: (id: string) => Listing | undefined;
   getSellerListings: (sellerId: string) => Listing[];
   getActiveBiddingListings: (bidderId: string) => Listing[];
-  extendAuctionIfNoBids: (id: string) => boolean;
+  extendAuctionIfNoBids: () => boolean;
   getListingsByCategory: (category: string) => Listing[];
   getTop5ClosingSoon: () => Listing[];
   getTop5MostBids: () => Listing[];
   getTop5HighestPrice: () => Listing[];
-  addQuestion: (
-    listingId: string,
-    question: string,
-    userId: string,
-    userName: string,
-  ) => void;
-  answerQuestion: (
-    listingId: string,
-    questionId: string,
-    answer: string,
-  ) => void;
-  getSellerOrders: (sellerId: string) => Promise<any[]>;
-  updateOrderStatus: (orderId: string, status: string, proof?: string) => Promise<any>;
+  addQuestion: (listingId: string, question: string, userId: string) => void;
+  answerQuestion: (questionId: string, answer: string) => void;
+  getSellerOrders: (sellerId: string) => Promise<
+    Array<{
+      id: string;
+      status: string;
+      [key: string]: unknown;
+    }>
+  >;
+  updateOrderStatus: (
+    orderId: string,
+    status: string,
+    proof?: string
+  ) => Promise<{
+    id: string;
+    status: string;
+    [key: string]: unknown;
+  }>;
 }
 
 const ListingsContext = createContext<ListingsContextType | undefined>(
-  undefined,
+  undefined
 );
 
 export function ListingsProvider({ children }: { children: React.ReactNode }) {
@@ -109,22 +121,18 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [lastFetch, setLastFetch] = useState<number>(0);
 
-  useEffect(() => {
-    loadListings();
-  }, []);
-
-  const loadListings = async () => {
+  const loadListings = useCallback(async () => {
     // Simple cache: don't refetch if data was fetched less than 2 minutes ago
     const now = Date.now();
     const CACHE_DURATION = 2 * 60 * 1000;
-    if (listings.length > 0 && (now - lastFetch) < CACHE_DURATION) {
+    if (listings.length > 0 && now - lastFetch < CACHE_DURATION) {
       console.log("Using cached listings data");
       return;
     }
 
     setIsLoading(true);
     try {
-      const { data } = await apiClient.get("/listings?limit=50&page=1"); 
+      const { data } = await apiClient.get("/listings?limit=50&page=1");
       console.log("Listings API Response:", data);
       if (data && Array.isArray(data.data)) {
         console.log(`Loaded ${data.data.length} listings`);
@@ -139,14 +147,27 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         console.warn("Unexpected listings response format:", data);
         setListings([]);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to load listings", error);
-      console.error("Error details:", error.response?.data || error.message);
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { data?: unknown };
+          message?: string;
+        };
+        console.error(
+          "Error details:",
+          axiosError.response?.data || axiosError.message
+        );
+      }
       setListings([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [listings.length, lastFetch]);
+
+  useEffect(() => {
+    void loadListings();
+  }, [loadListings]);
 
   const createListing = async (data: NewListingData) => {
     try {
@@ -160,25 +181,27 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateListing = async (id: string, data: Partial<Listing>) => {
-     try {
-       await apiClient.put(`/listings/${id}`, data);
-       setListings(prev => prev.map(l => l.id === id ? { ...l, ...data } as Listing : l));
-     } catch (error) {
-       console.error("Failed to update listing", error);
-     }
+    try {
+      await apiClient.put(`/listings/${id}`, data);
+      setListings((prev) =>
+        prev.map((l) => (l.id === id ? ({ ...l, ...data } as Listing) : l))
+      );
+    } catch (error) {
+      console.error("Failed to update listing", error);
+    }
   };
 
   const deleteListing = async (id: string) => {
     try {
       await apiClient.delete(`/listings/${id}`);
-      setListings(prev => prev.filter(l => l.id !== id));
+      setListings((prev) => prev.filter((l) => l.id !== id));
     } catch (error) {
       console.error("Failed to delete listing", error);
     }
   };
 
   const endListing = async (id: string) => {
-     await updateListing(id, { status: "ended" });
+    await updateListing(id, { status: "ended" });
   };
 
   const placeBid = async (
@@ -187,41 +210,51 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     _bidderName: string,
     amount: number,
     _bidderStats?: { positive: number; total: number },
-    maxPrice?: number,
+    maxPrice?: number
   ) => {
     try {
       const { data } = await apiClient.post("/bids", {
         listingId,
         bidderId,
         amount,
-        maxPrice
+        maxPrice,
       });
       if (data.listing) {
-          setListings(prev => prev.map(l => l.id === listingId ? data.listing : l));
+        setListings((prev) =>
+          prev.map((l) => (l.id === listingId ? data.listing : l))
+        );
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to place bid", error);
-      throw new Error(error.response?.data?.message || "Failed to place bid");
+      const message =
+        error && typeof error === "object" && "response" in error
+          ? (error as { response?: { data?: { message?: string } } }).response
+              ?.data?.message
+          : "Failed to place bid";
+      throw new Error(message || "Failed to place bid");
     }
   };
 
   const rejectBidder = async (listingId: string, bidderId: string) => {
-     const listing = listings.find(l => l.id === listingId);
-     if (!listing) return;
-     const currentRejected = listing.rejectedBidders || [];
-     if (!currentRejected.includes(bidderId)) {
-         await updateListing(listingId, { rejectedBidders: [...currentRejected, bidderId] });
-     }
+    const listing = listings.find((l) => l.id === listingId);
+    if (!listing) return;
+    const currentRejected = listing.rejectedBidders || [];
+    if (!currentRejected.includes(bidderId)) {
+      await updateListing(listingId, {
+        rejectedBidders: [...currentRejected, bidderId],
+      });
+    }
   };
 
   const getListingById = (id: string) => listings.find((l) => l.id === id);
-  const getSellerListings = (id: string) => listings.filter((l) => l.sellerId === id);
+  const getSellerListings = (id: string) =>
+    listings.filter((l) => l.sellerId === id);
   const getActiveBiddingListings = (id: string) =>
-          listings.filter((l) => l.bids?.some((b) => b.bidderId === id));
-  const extendAuctionIfNoBids = (_id: string) => false; 
+    listings.filter((l) => l.bids?.some((b) => b.bidderId === id));
+  const extendAuctionIfNoBids = () => false;
   const getListingsByCategory = (cat: string) =>
-          listings.filter((l) => l.category === cat);
-  
+    listings.filter((l) => l.category === cat);
+
   const getTop5ClosingSoon = () => {
     return listings
       .filter((l) => l.status === "active" && l.endsAt > Date.now())
@@ -232,7 +265,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const getTop5MostBids = () => {
     return listings
       .filter((l) => l.status === "active")
-      .sort((a, b) => (b.bids?.length||0) - (a.bids?.length||0))
+      .sort((a, b) => (b.bids?.length || 0) - (a.bids?.length || 0))
       .slice(0, 5);
   };
 
@@ -246,38 +279,52 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const addQuestion = async (
     listingId: string,
     questionText: string,
-    userId: string,
-    _userName: string,
+    userId: string
   ) => {
     try {
-        await apiClient.post("/questions", { listingId, userId, questionText });
-        loadListings(); 
-    } catch(e) { console.error(e) }
+      await apiClient.post("/questions", { listingId, userId, questionText });
+      void loadListings();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const answerQuestion = async (
-    _listingId: string,
-    questionId: string,
-    answer: string,
-  ) => {
-     try {
-         await apiClient.put(`/questions/${questionId}`, { answerText: answer });
-         loadListings();
-     } catch(e) { console.error(e) }
-  };
-
-  const getSellerOrders = async (_sellerId: string) => {
+  const answerQuestion = async (questionId: string, answer: string) => {
     try {
-        const { data } = await apiClient.get("/orders/seller");
-        return data; 
-    } catch(e) { console.error(e); return []; }
+      await apiClient.post(`/questions/${questionId}/answer`, { answer });
+      void loadListings();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const updateOrderStatus = async (orderId: string, status: string, proof?: string) => {
-      try {
-          const { data } = await apiClient.put(`/orders/${orderId}/status`, { status, proof });
-          return data;
-      } catch(e) { console.error(e); throw e; }
+  const getSellerOrders = async (sellerId: string) => {
+    try {
+      const { data } = await apiClient.get(
+        `/orders/seller?sellerId=${sellerId}`
+      );
+      return data;
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  };
+
+  const updateOrderStatus = async (
+    orderId: string,
+    status: string,
+    proof?: string
+  ) => {
+    try {
+      const { data } = await apiClient.put(`/orders/${orderId}/status`, {
+        status,
+        proof,
+      });
+      return data;
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
   };
 
   return (
@@ -285,7 +332,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
       value={{
         listings,
         isLoading,
-        createListing: createListing as any,
+        createListing,
         updateListing,
         deleteListing,
         endListing,

@@ -1,4 +1,3 @@
-
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -39,7 +38,7 @@ export default function SignUp() {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.name.trim()) {
       newErrors.name = "Full name is required";
     }
@@ -126,7 +125,7 @@ export default function SignUp() {
     setIsLoading(true);
     try {
       await verifyOtp(formData.email, otp);
-      
+
       const loginSuccess = await login(formData.email, formData.password);
       if (loginSuccess) {
         toast({
@@ -169,14 +168,20 @@ export default function SignUp() {
           {!showOtp ? (
             <>
               <div className="mb-6">
-                 <Button variant="outline" className="w-full mb-3 flex items-center justify-center gap-2">
-                   <Chrome className="w-4 h-4" />
-                   Sign up with Google
-                 </Button>
-                 <Button variant="outline" className="w-full flex items-center justify-center gap-2">
-                   <Facebook className="w-4 h-4" />
-                   Sign up with Facebook
-                 </Button>
+                <Button
+                  variant="outline"
+                  className="w-full mb-3 flex items-center justify-center gap-2"
+                >
+                  <Chrome className="w-4 h-4" />
+                  Sign up with Google
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  <Facebook className="w-4 h-4" />
+                  Sign up with Facebook
+                </Button>
               </div>
 
               <div className="relative mb-6">
@@ -200,7 +205,11 @@ export default function SignUp() {
                     <Input
                       type="text"
                       placeholder="John Doe"
-                      className={`pl-10 ${errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                      className={`pl-10 ${
+                        errors.name
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }`}
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
@@ -220,7 +229,11 @@ export default function SignUp() {
                     <Input
                       type="email"
                       placeholder="you@example.com"
-                      className={`pl-10 ${errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                      className={`pl-10 ${
+                        errors.email
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }`}
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
@@ -240,7 +253,11 @@ export default function SignUp() {
                     <Input
                       type="text"
                       placeholder="123 Main St, City"
-                      className={`pl-10 ${errors.address ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                      className={`pl-10 ${
+                        errors.address
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }`}
                       name="address"
                       value={formData.address}
                       onChange={handleChange}
@@ -248,7 +265,9 @@ export default function SignUp() {
                     />
                   </div>
                   {errors.address && (
-                    <p className="text-xs text-red-500 mt-1">{errors.address}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.address}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -260,7 +279,11 @@ export default function SignUp() {
                     <Input
                       type="password"
                       placeholder="Create a password"
-                      className={`pl-10 ${errors.password ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                      className={`pl-10 ${
+                        errors.password
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }`}
                       name="password"
                       value={formData.password}
                       onChange={handleChange}
@@ -268,7 +291,9 @@ export default function SignUp() {
                     />
                   </div>
                   {errors.password && (
-                    <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.password}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -280,7 +305,11 @@ export default function SignUp() {
                     <Input
                       type="password"
                       placeholder="Confirm your password"
-                      className={`pl-10 ${errors.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                      className={`pl-10 ${
+                        errors.confirmPassword
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }`}
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleChange}
@@ -288,7 +317,9 @@ export default function SignUp() {
                     />
                   </div>
                   {errors.confirmPassword && (
-                    <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.confirmPassword}
+                    </p>
                   )}
                 </div>
 
@@ -310,15 +341,15 @@ export default function SignUp() {
           ) : (
             <form className="space-y-6" onSubmit={handleVerifyOtp}>
               <div className="flex justify-center">
-                 <div className="flex gap-2 items-center justify-center">
-                    <Input
-                        className="text-center text-2xl tracking-widest w-40"
-                        maxLength={6}
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                        placeholder="000000"
-                    />
-                 </div>
+                <div className="flex gap-2 items-center justify-center">
+                  <Input
+                    className="text-center text-2xl tracking-widest w-40"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="000000"
+                  />
+                </div>
               </div>
 
               <div className="text-center text-sm">
@@ -329,15 +360,26 @@ export default function SignUp() {
                     className="text-primary hover:underline disabled:opacity-50"
                     disabled={isLoading}
                     onClick={async () => {
-                        setIsLoading(true);
-                        try {
-                            await resendOtp(formData.email);
-                            toast({ title: "Code Resent", description: "Please check your email for the new code." });
-                        } catch (error: any) {
-                            toast({ title: "Error", description: error.message, variant: "destructive" });
-                        } finally {
-                            setIsLoading(false);
-                        }
+                      setIsLoading(true);
+                      try {
+                        await resendOtp(formData.email);
+                        toast({
+                          title: "Code Resent",
+                          description:
+                            "Please check your email for the new code.",
+                        });
+                      } catch (error: unknown) {
+                        toast({
+                          title: "Error",
+                          description:
+                            error instanceof Error
+                              ? error.message
+                              : "Failed to resend code",
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setIsLoading(false);
+                      }
                     }}
                   >
                     Resend
@@ -348,10 +390,10 @@ export default function SignUp() {
               <Button className="w-full" disabled={isLoading}>
                 {isLoading ? "Verifying..." : "Verify & Create Account"}
               </Button>
-              
-              <Button 
-                variant="ghost" 
-                className="w-full" 
+
+              <Button
+                variant="ghost"
+                className="w-full"
                 type="button"
                 onClick={() => setShowOtp(false)}
               >

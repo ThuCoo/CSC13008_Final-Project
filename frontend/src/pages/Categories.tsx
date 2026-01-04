@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Folder } from "lucide-react";
 import { useCategories } from "../context/CategoriesContext";
@@ -9,8 +8,8 @@ export default function Categories() {
   const { categories, isLoading, loadCategories } = useCategories();
 
   useEffect(() => {
-    loadCategories();
-  }, []);
+    void loadCategories();
+  }, [loadCategories]);
 
   if (isLoading) {
     return (
@@ -22,7 +21,6 @@ export default function Categories() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-
       <div className="max-w-7xl mx-auto px-4 py-12">
         <h1 className="text-3xl font-bold mb-8 text-center text-slate-900">
           All Categories
@@ -48,17 +46,21 @@ export default function Categories() {
               <ul className="space-y-2">
                 {cat.subcategories && cat.subcategories.length > 0 ? (
                   cat.subcategories.map((sub) => (
-                  <li key={`${cat.id}-${sub.id}`}>
-                    <Link
-                      to={`/browse?cat=${encodeURIComponent(cat.name)}&sub=${encodeURIComponent(sub.name)}`}
-                      className="text-slate-600 hover:text-rose-600 flex items-center gap-2"
-                    >
-                      <Folder className="w-4 h-4 text-slate-400" /> {sub.name}
-                    </Link>
-                  </li>
+                    <li key={`${cat.id}-${sub.id}`}>
+                      <Link
+                        to={`/browse?cat=${encodeURIComponent(
+                          cat.name
+                        )}&sub=${encodeURIComponent(sub.name)}`}
+                        className="text-slate-600 hover:text-rose-600 flex items-center gap-2"
+                      >
+                        <Folder className="w-4 h-4 text-slate-400" /> {sub.name}
+                      </Link>
+                    </li>
                   ))
                 ) : (
-                  <li className="text-sm text-gray-400 italic">No subcategories</li>
+                  <li className="text-sm text-gray-400 italic">
+                    No subcategories
+                  </li>
                 )}
               </ul>
             </div>

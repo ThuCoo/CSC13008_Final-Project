@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useUser } from "../context/UserContext";
@@ -6,7 +5,12 @@ import { useListings } from "../context/ListingsContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -45,7 +49,8 @@ export interface User {
 }
 
 export default function AccountSettings() {
-  const { user, updateProfile, getUserReviews, rateUser, changePassword } = useUser();
+  const { user, updateProfile, getUserReviews, rateUser, changePassword } =
+    useUser();
   const { listings, getActiveBiddingListings } = useListings();
   const { toast } = useToast();
 
@@ -62,13 +67,22 @@ export default function AccountSettings() {
 
   // Review State
   const [reviewComment, setReviewComment] = useState("");
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<
+    Array<{
+      rating: number;
+      comment: string;
+      reviewerId?: number;
+      role?: string;
+      createdAt?: string;
+      [key: string]: unknown;
+    }>
+  >([]);
 
   useEffect(() => {
-     if (user?.id) {
-         getUserReviews(user.id).then(setReviews);
-     }
-  }, [user]);
+    if (user?.id) {
+      void getUserReviews(user.id).then(setReviews);
+    }
+  }, [user, getUserReviews]);
 
   if (!user) {
     return (
@@ -88,14 +102,12 @@ export default function AccountSettings() {
 
   // Get items user is currently bidding on
   const myActiveBids = getActiveBiddingListings(user?.id || "").filter(
-    (l) => l.status === "active",
+    (l) => l.status === "active"
   );
 
   const wonItems = listings.filter(
     (l) =>
-      l.status === "sold" &&
-      l.bids.length > 0 &&
-      l.bids[0].bidderId === user.id,
+      l.status === "sold" && l.bids.length > 0 && l.bids[0].bidderId === user.id
   );
 
   const handleUpdateProfile = (e: React.FormEvent) => {
@@ -116,24 +128,24 @@ export default function AccountSettings() {
       });
       return;
     }
-    
+
     if (user?.id) {
-        try {
-            await changePassword(user.id, currentPass, newPass);
-            toast({
-              title: "Password Changed",
-              description: "Your password has been updated.",
-            });
-            setCurrentPass("");
-            setNewPass("");
-            setConfirmPass("");
-        } catch (error) {
-             toast({
-                title: "Failed",
-                description: "Could not update password.",
-                variant: "destructive",
-              });
-        }
+      try {
+        await changePassword(user.id, currentPass, newPass);
+        toast({
+          title: "Password Changed",
+          description: "Your password has been updated.",
+        });
+        setCurrentPass("");
+        setNewPass("");
+        setConfirmPass("");
+      } catch {
+        toast({
+          title: "Failed",
+          description: "Could not update password.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -160,14 +172,18 @@ export default function AccountSettings() {
         <h1 className="text-3xl font-bold mb-8">Account Management</h1>
 
         <Tabs defaultValue="profile">
-          <TabsList className={`mb-6 grid w-full ${user.role === 'admin' ? 'grid-cols-2' : 'grid-cols-5'} max-w-3xl`}>
+          <TabsList
+            className={`mb-6 grid w-full ${
+              user.role === "admin" ? "grid-cols-2" : "grid-cols-5"
+            } max-w-3xl`}
+          >
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="password">Password</TabsTrigger>
-            {user.role !== 'admin' && (
+            {user.role !== "admin" && (
               <>
                 <TabsTrigger value="bidding">My Bids</TabsTrigger>
                 <TabsTrigger value="won">Won items</TabsTrigger>
-            <TabsTrigger value="reviews">My Reviews</TabsTrigger>
+                <TabsTrigger value="reviews">My Reviews</TabsTrigger>
               </>
             )}
           </TabsList>
@@ -368,7 +384,9 @@ export default function AccountSettings() {
                             <div className="flex gap-2 justify-end">
                               <Button
                                 variant="destructive"
-                                onClick={() => handleRateSeller(l.sellerId!, -1)}
+                                onClick={() =>
+                                  handleRateSeller(l.sellerId!, -1)
+                                }
                               >
                                 <ThumbsDown className="w-4 h-4 mr-2" /> -1
                                 Negative
@@ -393,38 +411,58 @@ export default function AccountSettings() {
 
           {/* 4. My Reviews */}
           <TabsContent value="reviews">
-              <Card>
-                  <CardHeader>
-                      <CardTitle className="flex gap-2"><MessageSquare className="w-5 h-5"/> My Reviews</CardTitle>
-                      <CardDescription>
-                          See what others have said about you.
-                      </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                      <div className="space-y-4">
-                          {reviews.length === 0 ? <p className="text-slate-500">No reviews yet.</p> : reviews.map((rev, i) => (
-                              <div key={i} className="border-b pb-4 last:border-0 last:pb-0">
-                                  <div className="flex justify-between items-start mb-1">
-                                      <div>
-                                          <p className="font-bold text-sm">User #{rev.reviewerId} <span className="text-xs font-normal text-slate-500">({rev.role})</span></p>
-                                          <p className="text-xs text-slate-400">{new Date(rev.createdAt).toLocaleDateString()}</p>
-                                      </div>
-                                      {rev.rating === 1 ? (
-                                          <span className="flex items-center text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">
-                                              <ThumbsUp className="w-3 h-3 mr-1" /> Positive
-                                          </span>
-                                      ) : (
-                                          <span className="flex items-center text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded">
-                                              <ThumbsDown className="w-3 h-3 mr-1" /> Negative
-                                          </span>
-                                      )}
-                                  </div>
-                                  <p className="text-slate-700 text-sm">"{rev.comment}"</p>
-                              </div>
-                          ))}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex gap-2">
+                  <MessageSquare className="w-5 h-5" /> My Reviews
+                </CardTitle>
+                <CardDescription>
+                  See what others have said about you.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {reviews.length === 0 ? (
+                    <p className="text-slate-500">No reviews yet.</p>
+                  ) : (
+                    reviews.map((rev, i) => (
+                      <div
+                        key={i}
+                        className="border-b pb-4 last:border-0 last:pb-0"
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <div>
+                            <p className="font-bold text-sm">
+                              User #{rev.reviewerId}{" "}
+                              <span className="text-xs font-normal text-slate-500">
+                                ({rev.role})
+                              </span>
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {rev.createdAt
+                                ? new Date(rev.createdAt).toLocaleDateString()
+                                : "N/A"}
+                            </p>
+                          </div>
+                          {rev.rating === 1 ? (
+                            <span className="flex items-center text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">
+                              <ThumbsUp className="w-3 h-3 mr-1" /> Positive
+                            </span>
+                          ) : (
+                            <span className="flex items-center text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded">
+                              <ThumbsDown className="w-3 h-3 mr-1" /> Negative
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-slate-700 text-sm">
+                          "{rev.comment}"
+                        </p>
                       </div>
-                  </CardContent>
-              </Card>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

@@ -48,29 +48,41 @@ export default function ForgotPassword() {
     e.preventDefault();
     if (!validateStep1()) return;
     try {
-        await apiClient.post("/auth/forgot", { email });
-        toast({
-          title: "OTP Sent",
-          description: `An OTP code has been sent to ${email}`,
-        });
-        setErrors({});
-        setStep(2);
-    } catch (error: any) {
-        toast({ title: "Error", description: error.response?.data?.message || "Failed to send OTP", variant: "destructive" });
+      await apiClient.post("/auth/forgot", { email });
+      toast({
+        title: "OTP Sent",
+        description: `An OTP code has been sent to ${email}`,
+      });
+      setErrors({});
+      setStep(2);
+    } catch (error: unknown) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error && "response" in error
+            ? (error as { response?: { data?: { message?: string } } }).response
+                ?.data?.message || "Failed to send OTP"
+            : "Failed to send OTP",
+        variant: "destructive",
+      });
     }
   };
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-        await apiClient.post("/auth/verify", { email, code: otp });
-        setStep(3);
-    } catch (error: any) {
-        toast({
-          title: "Invalid OTP",
-          description: error.response?.data?.message || "Please check your code",
-          variant: "destructive",
-        });
+      await apiClient.post("/auth/verify", { email, code: otp });
+      setStep(3);
+    } catch (error: unknown) {
+      toast({
+        title: "Invalid OTP",
+        description:
+          error instanceof Error && "response" in error
+            ? (error as { response?: { data?: { message?: string } } }).response
+                ?.data?.message || "Please check your code"
+            : "Please check your code",
+        variant: "destructive",
+      });
     }
   };
 
@@ -79,20 +91,27 @@ export default function ForgotPassword() {
     if (!validateStep3()) return;
 
     try {
-        await apiClient.post("/auth/reset", { email, code: otp, newPassword });
-        toast({
-          title: "Success",
-          description: "Password updated successfully. Please login.",
-        });
-        navigate("/login");
-    } catch (error: any) {
-        toast({ title: "Reset Failed", description: error.response?.data?.message || "Could not reset password", variant: "destructive" });
+      await apiClient.post("/auth/reset", { email, code: otp, newPassword });
+      toast({
+        title: "Success",
+        description: "Password updated successfully. Please login.",
+      });
+      navigate("/login");
+    } catch (error: unknown) {
+      toast({
+        title: "Reset Failed",
+        description:
+          error instanceof Error && "response" in error
+            ? (error as { response?: { data?: { message?: string } } }).response
+                ?.data?.message || "Could not reset password"
+            : "Could not reset password",
+        variant: "destructive",
+      });
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
-
       <div className="max-w-md mx-auto px-4 py-20">
         <div className="bg-white p-8 rounded-xl border shadow-sm">
           <h1 className="text-2xl font-bold mb-2">Reset Password</h1>
@@ -107,7 +126,11 @@ export default function ForgotPassword() {
                 <div className="relative mt-1">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
-                    className={`pl-9 ${errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                    className={`pl-9 ${
+                      errors.email
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }`}
                     type="email"
                     value={email}
                     onChange={(e) => {
@@ -160,12 +183,16 @@ export default function ForgotPassword() {
                 <label className="text-sm font-medium">New Password</label>
                 <div className="relative mt-1">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input 
-                    className={`pl-9 ${errors.newPassword ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                    type="password" 
-                    required 
+                  <Input
+                    className={`pl-9 ${
+                      errors.newPassword
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }`}
+                    type="password"
+                    required
                     value={newPassword}
-                    onChange={e => {
+                    onChange={(e) => {
                       setNewPassword(e.target.value);
                       if (errors.newPassword) {
                         const newErrors = { ...errors };
@@ -176,19 +203,25 @@ export default function ForgotPassword() {
                   />
                 </div>
                 {errors.newPassword && (
-                  <p className="text-xs text-red-500 mt-1">{errors.newPassword}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.newPassword}
+                  </p>
                 )}
               </div>
               <div>
                 <label className="text-sm font-medium">Confirm Password</label>
                 <div className="relative mt-1">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input 
-                    className={`pl-9 ${errors.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                    type="password" 
-                    required 
+                  <Input
+                    className={`pl-9 ${
+                      errors.confirmPassword
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }`}
+                    type="password"
+                    required
                     value={confirmPassword}
-                    onChange={e => {
+                    onChange={(e) => {
                       setConfirmPassword(e.target.value);
                       if (errors.confirmPassword) {
                         const newErrors = { ...errors };
@@ -199,7 +232,9 @@ export default function ForgotPassword() {
                   />
                 </div>
                 {errors.confirmPassword && (
-                  <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.confirmPassword}
+                  </p>
                 )}
               </div>
               <Button type="submit" className="w-full">

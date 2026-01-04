@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState } from "react";
 import apiClient from "../lib/api-client";
 
@@ -15,16 +16,27 @@ interface CategoriesContextType {
   categories: Category[];
   isLoading: boolean;
   loadCategories: () => Promise<void>;
-  addCategory: (name: string, description: string, icon: string, subcategories?: { id: string; name: string }[]) => Promise<Category>;
+  addCategory: (
+    name: string,
+    description: string,
+    icon: string,
+    subcategories?: { id: string; name: string }[]
+  ) => Promise<Category>;
   updateCategory: (id: string, data: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   getCategoryById: (id: string) => Category | undefined;
   getCategoryByName: (name: string) => Category | undefined;
 }
 
-const CategoriesContext = createContext<CategoriesContextType | undefined>(undefined);
+const CategoriesContext = createContext<CategoriesContextType | undefined>(
+  undefined
+);
 
-export function CategoriesProvider({ children }: { children: React.ReactNode }) {
+export function CategoriesProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastFetch, setLastFetch] = useState<number>(0);
@@ -37,7 +49,7 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
     // Simple cache: don't refetch if data was fetched less than 5 minutes ago
     const now = Date.now();
     const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-    if (categories.length > 0 && (now - lastFetch) < CACHE_DURATION) {
+    if (categories.length > 0 && now - lastFetch < CACHE_DURATION) {
       console.log("Using cached categories");
       return;
     }
@@ -46,16 +58,25 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
     try {
       const { data } = await apiClient.get("/categories?limit=100");
       if (data && Array.isArray(data)) {
-        const mapped = data.map((c: any) => ({
+        const mapped = data.map(
+          (c: {
+            categoryId: number;
+            name: string;
+            description: string;
+            icon: string;
+            subcategories?: { id: string; name: string }[];
+            createdAt: number;
+          }) => ({
             ...c,
             id: String(c.categoryId),
-            subcategories: c.subcategories || []
-        }));
+            subcategories: c.subcategories || [],
+          })
+        );
         setCategories(mapped);
         setLastFetch(now);
       }
     } catch (error) {
-       console.error("Failed to load categories", error);
+      console.error("Failed to load categories", error);
     } finally {
       setIsLoading(false);
     }
@@ -64,37 +85,46 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
   const addCategory = async (
     name: string,
     description: string,
-    icon: string,
-    _subcategories: { id: string; name: string }[] = []
+    icon: string
   ): Promise<Category> => {
-     try {
-       const { data } = await apiClient.post("/categories", { name, description, icon });
-       const newCat = { ...data, id: String(data.categoryId), subcategories: [] }; 
-       setCategories(prev => [...prev, newCat]);
-       return newCat;
-     } catch (error) {
-       console.error("Failed to add category", error);
-       throw error;
-     }
+    try {
+      const { data } = await apiClient.post("/categories", {
+        name,
+        description,
+        icon,
+      });
+      const newCat = {
+        ...data,
+        id: String(data.categoryId),
+        subcategories: [],
+      };
+      setCategories((prev) => [...prev, newCat]);
+      return newCat;
+    } catch (error) {
+      console.error("Failed to add category", error);
+      throw error;
+    }
   };
 
   const updateCategory = async (id: string, data: Partial<Category>) => {
     try {
-        await apiClient.put(`/categories/${id}`, data);
-        setCategories(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+      await apiClient.put(`/categories/${id}`, data);
+      setCategories((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, ...data } : c))
+      );
     } catch (error) {
-        console.error("Failed to update category", error);
-        throw error;
+      console.error("Failed to update category", error);
+      throw error;
     }
   };
 
   const deleteCategory = async (id: string) => {
     try {
-        await apiClient.delete(`/categories/${id}`);
-        setCategories(prev => prev.filter(c => c.id !== id));
+      await apiClient.delete(`/categories/${id}`);
+      setCategories((prev) => prev.filter((c) => c.id !== id));
     } catch (error) {
-        console.error("Failed to delete category", error);
-        throw error;
+      console.error("Failed to delete category", error);
+      throw error;
     }
   };
 
@@ -103,7 +133,9 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
   };
 
   const getCategoryByName = (name: string): Category | undefined => {
-    return categories.find((cat) => cat.name.toLowerCase() === name.toLowerCase());
+    return categories.find(
+      (cat) => cat.name.toLowerCase() === name.toLowerCase()
+    );
   };
 
   return (

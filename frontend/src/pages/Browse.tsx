@@ -22,8 +22,8 @@ export default function Browse() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    loadCategories();
-  }, []);
+    void loadCategories();
+  }, [loadCategories]);
 
   const initialCat = searchParams.get("cat") || "All";
   const initialSub = searchParams.get("sub") || "";
@@ -36,19 +36,24 @@ export default function Browse() {
 
   // Derive filtered listings
   const filteredListings = useMemo(() => {
-    let result = initialCat && initialCat !== "All" ? getListingsByCategory(initialCat) : listings;
+    let result =
+      initialCat && initialCat !== "All"
+        ? getListingsByCategory(initialCat)
+        : listings;
 
     // Filter by subcategory
     if (initialSub && initialCat && initialCat !== "All") {
-      result = result.filter(l => 
-        l.category === initialCat && l.subCategory === initialSub
+      result = result.filter(
+        (l) => l.category === initialCat && l.subCategory === initialSub
       );
     } else if (initialSub) {
-      result = result.filter(l => l.subCategory === initialSub);
+      result = result.filter((l) => l.subCategory === initialSub);
     }
 
     if (search) {
-      result = result.filter(l => l.title.toLowerCase().includes(search.toLowerCase()));
+      result = result.filter((l) =>
+        l.title.toLowerCase().includes(search.toLowerCase())
+      );
     }
 
     // Sort logic
@@ -66,7 +71,10 @@ export default function Browse() {
   // Pagination
   const itemsPerPage = 6;
   const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
-  const paginatedListings = filteredListings.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const paginatedListings = filteredListings.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
 
   const handleSearchChange = (val: string) => {
     setSearch(val);
@@ -95,20 +103,19 @@ export default function Browse() {
 
   const handlePageChange = (newPage: number) => {
     if (newPage > 0 && newPage <= totalPages) {
-       const newParams = new URLSearchParams(searchParams);
-       newParams.set("page", String(newPage));
-       setSearchParams(newParams);
-       window.scrollTo(0, 0);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set("page", String(newPage));
+      setSearchParams(newParams);
+      window.scrollTo(0, 0);
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
-
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
           {/* Left Sidebar */}
-          <div className="w-full md:w-64 flex-shrink-0">
+          <div className="w-full md:w-64 shrink-0">
             <div className="bg-white p-4 rounded-lg border shadow-sm sticky top-24">
               <h3 className="font-bold text-lg mb-4 text-rose-900 border-b pb-2">
                 Categories
@@ -117,7 +124,11 @@ export default function Browse() {
                 <li>
                   <button
                     onClick={() => handleCategoryClick("All")}
-                    className={`text-sm font-medium ${initialCat === "All" ? "text-rose-600 font-bold" : "text-gray-600"}`}
+                    className={`text-sm font-medium ${
+                      initialCat === "All"
+                        ? "text-rose-600 font-bold"
+                        : "text-gray-600"
+                    }`}
                   >
                     All Categories
                   </button>
@@ -126,25 +137,38 @@ export default function Browse() {
                   <li key={cat.id}>
                     <button
                       onClick={() => handleCategoryClick(cat.name)}
-                      className={`text-sm font-medium block w-full text-left ${initialCat === cat.name && !initialSub ? "text-rose-600 font-bold" : "text-gray-700"}`}
+                      className={`text-sm font-medium block w-full text-left ${
+                        initialCat === cat.name && !initialSub
+                          ? "text-rose-600 font-bold"
+                          : "text-gray-700"
+                      }`}
                     >
                       {cat.name}
                     </button>
                     {/* Subcategories */}
                     <ul className="ml-4 mt-2 space-y-2 border-l-2 border-gray-100 pl-2">
-                      {cat.subcategories?.map((sub: any) => {
-                        const isSelected = initialCat === cat.name && initialSub === sub.name;
-                        return (
-                          <li key={`${cat.id}-${sub.id}`}>
-                            <button
-                              onClick={() => handleCategoryClick(cat.name, sub.name)}
-                              className={`text-sm block w-full text-left ${isSelected ? "text-rose-600 font-bold" : "text-gray-500 hover:text-gray-900"}`}
-                            >
-                              {sub.name}
-                            </button>
-                          </li>
-                        );
-                      })}
+                      {cat.subcategories?.map(
+                        (sub: { id: string; name: string }) => {
+                          const isSelected =
+                            initialCat === cat.name && initialSub === sub.name;
+                          return (
+                            <li key={`${cat.id}-${sub.id}`}>
+                              <button
+                                onClick={() =>
+                                  handleCategoryClick(cat.name, sub.name)
+                                }
+                                className={`text-sm block w-full text-left ${
+                                  isSelected
+                                    ? "text-rose-600 font-bold"
+                                    : "text-gray-500 hover:text-gray-900"
+                                }`}
+                              >
+                                {sub.name}
+                              </button>
+                            </li>
+                          );
+                        }
+                      )}
                     </ul>
                   </li>
                 ))}
@@ -158,128 +182,138 @@ export default function Browse() {
               <LoadingSpinner text="Loading products..." />
             ) : (
               <>
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-              <h1 className="text-2xl font-bold">
-                {initialCat === "All" ? "All Products" : initialCat}{" "}
-                {initialSub && `> ${initialSub}`}
-              </h1>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Input
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="max-w-[200px]"
-                />
-                <Select value={sort} onValueChange={handleSortChange}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Sort" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ending_desc">
-                      Time: Ending Soon
-                    </SelectItem>
-                    <SelectItem value="price_asc">
-                      Price: Low to High
-                    </SelectItem>
-                    <SelectItem value="price_high">
-                      Price: High to Low
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                  <h1 className="text-2xl font-bold">
+                    {initialCat === "All" ? "All Products" : initialCat}{" "}
+                    {initialSub && `> ${initialSub}`}
+                  </h1>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Input
+                      placeholder="Search..."
+                      value={search}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      className="max-w-[200px]"
+                    />
+                    <Select value={sort} onValueChange={handleSortChange}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Sort" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ending_desc">
+                          Time: Ending Soon
+                        </SelectItem>
+                        <SelectItem value="price_asc">
+                          Price: Low to High
+                        </SelectItem>
+                        <SelectItem value="price_high">
+                          Price: High to Low
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-            {/* Product Grid */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {paginatedListings.map((l: Listing) => {
-                const isNew = isNewProduct(l.createdAt);
-                const topBidder =
-                  l.bids && l.bids.length > 0 ? l.bids[0].bidderName : null;
+                {/* Product Grid */}
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                  {paginatedListings.map((l: Listing) => {
+                    const isNew = isNewProduct(l.createdAt);
+                    const topBidder =
+                      l.bids && l.bids.length > 0 ? l.bids[0].bidderName : null;
 
-                return (
-                  <Link
-                    key={l.id}
-                    to={`/auction/${l.id}`}
-                    className={`bg-white border rounded-xl overflow-hidden hover:shadow-lg transition group ${isNew ? "ring-2 ring-rose-400" : ""}`}
-                  >
-                    <div className="h-48 relative bg-gray-200">
-                      <img
-                         src={l.images && l.images.length > 0 ? l.images[0] : "https://placehold.co/400x300?text=No+Image"}
-                         alt={l.title}
-                         className="w-full h-full object-cover"
-                      />
-                      {isNew && (
-                        <span className="absolute top-2 left-2 bg-rose-600 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
-                          <Zap className="w-3 h-3" /> NEW
-                        </span>
-                      )}
-                      <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                        <Clock className="w-3 h-3" />{" "}
-                        {formatAuctionTime(l.endsAt)}
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-bold truncate mb-1 group-hover:text-rose-600">
-                        {l.title}
-                      </h3>
-                      <div className="flex justify-between items-end mb-2">
-                        <div>
-                          <p className="text-xs text-slate-500">Current Bid</p>
-                          <p className="text-xl font-bold text-slate-900">
-                            {l.currentBid.toLocaleString()}₫
-                          </p>
-                          {l.buyNowPrice && (
-                            <>
-                              <p className="text-xs text-gray-500 mt-1">Buy Now</p>
-                              <p className="text-sm font-semibold text-green-600">
-                                {l.buyNowPrice.toLocaleString()}₫
+                    return (
+                      <Link
+                        key={l.id}
+                        to={`/auction/${l.id}`}
+                        className={`bg-white border rounded-xl overflow-hidden hover:shadow-lg transition group ${
+                          isNew ? "ring-2 ring-rose-400" : ""
+                        }`}
+                      >
+                        <div className="h-48 relative bg-gray-200">
+                          <img
+                            src={
+                              l.images && l.images.length > 0
+                                ? l.images[0]
+                                : "https://placehold.co/400x300?text=No+Image"
+                            }
+                            alt={l.title}
+                            className="w-full h-full object-cover"
+                          />
+                          {isNew && (
+                            <span className="absolute top-2 left-2 bg-rose-600 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+                              <Zap className="w-3 h-3" /> NEW
+                            </span>
+                          )}
+                          <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                            <Clock className="w-3 h-3" />{" "}
+                            {formatAuctionTime(l.endsAt)}
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-bold truncate mb-1 group-hover:text-rose-600">
+                            {l.title}
+                          </h3>
+                          <div className="flex justify-between items-end mb-2">
+                            <div>
+                              <p className="text-xs text-slate-500">
+                                Current Bid
                               </p>
-                            </>
+                              <p className="text-xl font-bold text-slate-900">
+                                {l.currentBid.toLocaleString()}₫
+                              </p>
+                              {l.buyNowPrice && (
+                                <>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Buy Now
+                                  </p>
+                                  <p className="text-sm font-semibold text-green-600">
+                                    {l.buyNowPrice.toLocaleString()}₫
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500">
+                              {l.bids?.length || 0} bids
+                            </p>
+                          </div>
+                          {topBidder && (
+                            <p className="text-xs text-gray-500 border-t pt-2">
+                              Holder: {maskBidderName(topBidder)}
+                            </p>
                           )}
                         </div>
-                        <p className="text-xs text-slate-500">
-                          {l.bids?.length || 0} bids
-                        </p>
-                      </div>
-                      {topBidder && (
-                        <p className="text-xs text-gray-500 border-t pt-2">
-                          Holder: {maskBidderName(topBidder)}
-                        </p>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+                      </Link>
+                    );
+                  })}
+                </div>
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-4 py-8">
-                <Button
-                  variant="outline"
-                  onClick={() => handlePageChange(page - 1)}
-                  disabled={page === 1}
-                >
-                  <ChevronLeft className="w-4 h-4 mr-2" /> Previous
-                </Button>
-                <span className="text-sm font-medium">
-                  Page {page} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  onClick={() => handlePageChange(page + 1)}
-                  disabled={page === totalPages}
-                >
-                  Next <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            )}
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-4 py-8">
+                    <Button
+                      variant="outline"
+                      onClick={() => handlePageChange(page - 1)}
+                      disabled={page === 1}
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+                    </Button>
+                    <span className="text-sm font-medium">
+                      Page {page} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      onClick={() => handlePageChange(page + 1)}
+                      disabled={page === totalPages}
+                    >
+                      Next <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                )}
 
-            {paginatedListings.length === 0 && (
-              <div className="text-center py-20 text-slate-500 bg-white rounded-lg border">
-                No products found matching your criteria.
-              </div>
-            )}
+                {paginatedListings.length === 0 && (
+                  <div className="text-center py-20 text-slate-500 bg-white rounded-lg border">
+                    No products found matching your criteria.
+                  </div>
+                )}
               </>
             )}
           </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 
 import { useUser } from "../context/UserContext";
@@ -6,7 +5,13 @@ import { useListings } from "../context/ListingsContext";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { TrendingUp, ThumbsUp, ThumbsDown, Star, ArrowLeft } from "lucide-react";
+import {
+  TrendingUp,
+  ThumbsUp,
+  ThumbsDown,
+  Star,
+  ArrowLeft,
+} from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import {
   Dialog,
@@ -23,34 +28,51 @@ export default function SalesHistory() {
   const { getSellerOrders, updateOrderStatus } = useListings();
   const { toast } = useToast();
 
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<
+    Array<{
+      id: string;
+      status: string;
+      listingTitle?: string;
+      bidderName?: string;
+      bidderId?: string;
+      [key: string]: unknown;
+    }>
+  >([]);
   const [reviewComment, setReviewComment] = useState("");
 
   useEffect(() => {
-      if (user?.role === "seller" || user?.type === "seller") {
-          getSellerOrders(user.id).then(setOrders);
-      }
-  }, [user]);
+    if (user?.role === "seller" || user?.type === "seller") {
+      void getSellerOrders(user.id).then(setOrders);
+    }
+  }, [user, getSellerOrders]);
 
   if (!user || user.role !== "seller") return null;
 
   // Helper to map status to step index
   const getStep = (status: string) => {
-      switch(status) {
-          case 'paid': return 0;
-          case 'shipped': return 1;
-          case 'delivered': return 2; // Bidder received
-          case 'completed': return 4; // Rated
-          case 'cancelled': return -1;
-          default: return 0;
-      }
+    switch (status) {
+      case "paid":
+        return 0;
+      case "shipped":
+        return 1;
+      case "delivered":
+        return 2; // Bidder received
+      case "completed":
+        return 4; // Rated
+      case "cancelled":
+        return -1;
+      default:
+        return 0;
+    }
   };
 
   const sales = orders || []; // fallback
 
   const handleCancelTransaction = async (id: string) => {
     await updateOrderStatus(id, "cancelled");
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: "cancelled" } : o));
+    setOrders((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, status: "cancelled" } : o))
+    );
     toast({
       title: "Transaction Cancelled",
       description: "Order marked as cancelled.",
@@ -58,19 +80,28 @@ export default function SalesHistory() {
     });
   };
 
-
-  const handleRateBidder = async (orderId: string, rating: 1 | -1, bidderId?: string) => {
+  const handleRateBidder = async (
+    orderId: string,
+    rating: 1 | -1,
+    bidderId?: string
+  ) => {
     if (!reviewComment) {
-        toast({ title: "Comment Required", description: "Please write a review", variant: "destructive" });
-        return;
+      toast({
+        title: "Comment Required",
+        description: "Please write a review",
+        variant: "destructive",
+      });
+      return;
     }
 
     if (bidderId) {
-        await rateUser(bidderId, rating, reviewComment, "bidder");
+      await rateUser(bidderId, rating, reviewComment, "bidder");
     }
-    
+
     await updateOrderStatus(orderId, "completed");
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "completed" } : o));
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: "completed" } : o))
+    );
     toast({ title: "Bidder Rated", description: "Transaction completed." });
     setReviewComment("");
   };
@@ -79,7 +110,11 @@ export default function SalesHistory() {
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => window.history.back()}
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -100,15 +135,17 @@ export default function SalesHistory() {
               return (
                 <Card key={sale.id}>
                   <CardHeader className="bg-slate-50 border-b flex flex-row justify-between items-center py-3">
-                    <span className="font-bold text-lg">{sale.listingTitle}</span>
+                    <span className="font-bold text-lg">
+                      {sale.listingTitle}
+                    </span>
                     <Badge
                       variant={currentStep === -1 ? "destructive" : "default"}
                     >
                       {currentStep === -1
                         ? "Cancelled"
                         : currentStep >= 4
-                          ? "Completed"
-                          : sale.status.toUpperCase()}
+                        ? "Completed"
+                        : sale.status.toUpperCase()}
                     </Badge>
                   </CardHeader>
                   <CardContent className="p-6">
@@ -128,19 +165,27 @@ export default function SalesHistory() {
                     </div>
 
                     <div className="mt-4 border-t pt-4">
-                      <OrderFulfillmentWizard 
+                      <OrderFulfillmentWizard
                         order={sale}
                         userRole="seller"
-                        onUpdate={async (id: string, status: string, proof?: string) => {
-                            await updateOrderStatus(id, status, proof);
-                            setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+                        onUpdate={async (
+                          id: string,
+                          status: string,
+                          proof?: string
+                        ) => {
+                          await updateOrderStatus(id, status, proof);
+                          setOrders((prev) =>
+                            prev.map((o) =>
+                              o.id === id ? { ...o, status } : o
+                            )
+                          );
                         }}
                       />
 
                       {currentStep !== -1 && currentStep < 4 && (
                         <div className="flex gap-3 justify-end mt-4">
                           {currentStep === 2 && ( // Delivered -> Rate -> Completed
-                              <Dialog>
+                            <Dialog>
                               <DialogTrigger asChild>
                                 <Button className="bg-rose-600 hover:bg-rose-700">
                                   <Star className="w-4 h-4 mr-2" /> Rate Bidder
@@ -148,24 +193,40 @@ export default function SalesHistory() {
                               </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
-                                  <DialogTitle>Rate Bidder: {winner}</DialogTitle>
+                                  <DialogTitle>
+                                    Rate Bidder: {winner}
+                                  </DialogTitle>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
                                   <Textarea
                                     placeholder="How was the transaction?"
                                     value={reviewComment}
-                                    onChange={(e) => setReviewComment(e.target.value)}
+                                    onChange={(e) =>
+                                      setReviewComment(e.target.value)
+                                    }
                                   />
                                   <div className="flex gap-2 justify-end">
                                     <Button
                                       variant="destructive"
-                                      onClick={() => handleRateBidder(sale.id, -1, sale.bidderId)}
+                                      onClick={() =>
+                                        handleRateBidder(
+                                          sale.id,
+                                          -1,
+                                          sale.bidderId
+                                        )
+                                      }
                                     >
                                       <ThumbsDown className="w-4 h-4 mr-2" /> -1
                                     </Button>
                                     <Button
                                       className="bg-rose-600 hover:bg-rose-700"
-                                      onClick={() => handleRateBidder(sale.id, 1, sale.bidderId)}
+                                      onClick={() =>
+                                        handleRateBidder(
+                                          sale.id,
+                                          1,
+                                          sale.bidderId
+                                        )
+                                      }
                                     >
                                       <ThumbsUp className="w-4 h-4 mr-2" /> +1
                                     </Button>

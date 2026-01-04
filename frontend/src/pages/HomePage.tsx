@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { useListings } from "../context/ListingsContext";
 import {
@@ -34,7 +33,11 @@ const features = [
 
 // Component for a single listing card
 const ListingCard = ({ listing }: { listing: Listing }) => {
-  const topBidder = listing.bids && listing.bids.length > 0 ? listing.bids[0].bidderName : null;
+  const topBidder =
+    listing.bids && listing.bids.length > 0 ? listing.bids[0].bidderName : null;
+  const createdTime = new Date(listing.createdAt).getTime();
+  const thirtyMinutesAgo = new Date().getTime() - 30 * 60 * 1000;
+  const isNew = createdTime > thirtyMinutesAgo;
 
   return (
     <Link
@@ -43,14 +46,18 @@ const ListingCard = ({ listing }: { listing: Listing }) => {
     >
       <div className="h-40 relative bg-gray-200">
         <img
-           src={listing.images && listing.images.length > 0 ? listing.images[0] : "https://placehold.co/400x300?text=No+Image"}
-           alt={listing.title}
-           className="w-full h-full object-cover"
+          src={
+            listing.images && listing.images.length > 0
+              ? listing.images[0]
+              : "https://placehold.co/400x300?text=No+Image"
+          }
+          alt={listing.title}
+          className="w-full h-full object-cover"
         />
-        {(Date.now() - new Date(listing.createdAt).getTime()) < 30 * 60 * 1000 && (
-           <div className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
-             New
-           </div>
+        {isNew && (
+          <div className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
+            New
+          </div>
         )}
         <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
           <Clock className="w-3 h-3" /> {formatAuctionTime(listing.endsAt)}
@@ -97,11 +104,17 @@ const ListingCard = ({ listing }: { listing: Listing }) => {
 };
 
 export default function HomePage() {
-  const { listings, isLoading, getTop5ClosingSoon, getTop5MostBids, getTop5HighestPrice } = useListings();
+  const {
+    listings,
+    isLoading,
+    getTop5ClosingSoon,
+    getTop5MostBids,
+    getTop5HighestPrice,
+  } = useListings();
   const closingSoon = getTop5ClosingSoon();
   const mostBids = getTop5MostBids();
   const highestPrice = getTop5HighestPrice();
-  
+
   console.log("HomePage - Total listings:", listings.length);
   console.log("HomePage - Closing soon:", closingSoon.length);
   console.log("HomePage - Most bids:", mostBids.length);
@@ -109,8 +122,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-
-
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div>
@@ -124,10 +135,20 @@ export default function HomePage() {
               you want.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button asChild variant="outline" size="lg" className="text-base border-rose-700 hover:bg-rose-700 hover:text-white transition">
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="text-base border-rose-700 hover:bg-rose-700 hover:text-white transition"
+              >
                 <Link to="/browse">Start Bidding</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-base bg-rose-700 text-white hover:border-rose-700 hover:bg-white transition">
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="text-base bg-rose-700 text-white hover:border-rose-700 hover:bg-white transition"
+              >
                 <Link to="/selling">Become a Seller</Link>
               </Button>
             </div>
@@ -152,9 +173,7 @@ export default function HomePage() {
                   className="p-8 rounded-xl border border-border hover:border-primary transition"
                 >
                   <Icon className="w-10 h-10 mb-4 text-rose-500" />
-                  <h3 className="text-xl font-bold mb-2">
-                    {feature.title}
-                  </h3>
+                  <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
                   <p className="text-muted-foreground">{feature.description}</p>
                 </div>
               );
@@ -171,50 +190,50 @@ export default function HomePage() {
           <LoadingSpinner text="Loading featured products..." size="lg" />
         ) : (
           <>
-        {/* Section 1: Closing Soon */}
-        <section>
-          <div className="flex items-center gap-2 mb-6">
-            <Clock className="w-6 h-6 text-rose-600" />
-            <h2 className="text-2xl font-bold text-gray-900">
-              Closing Soon
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {closingSoon.map((l) => (
-              <ListingCard key={l.id} listing={l} />
-            ))}
-          </div>
-        </section>
+            {/* Section 1: Closing Soon */}
+            <section>
+              <div className="flex items-center gap-2 mb-6">
+                <Clock className="w-6 h-6 text-rose-600" />
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Closing Soon
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {closingSoon.map((l) => (
+                  <ListingCard key={l.id} listing={l} />
+                ))}
+              </div>
+            </section>
 
-        {/* Section 2: Most Bids */}
-        <section>
-          <div className="flex items-center gap-2 mb-6">
-            <TrendingUp className="w-6 h-6 text-rose-600" />
-            <h2 className="text-2xl font-bold text-gray-900">
-              Most Active Auctions
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {mostBids.map((l) => (
-              <ListingCard key={l.id} listing={l} />
-            ))}
-          </div>
-        </section>
+            {/* Section 2: Most Bids */}
+            <section>
+              <div className="flex items-center gap-2 mb-6">
+                <TrendingUp className="w-6 h-6 text-rose-600" />
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Most Active Auctions
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {mostBids.map((l) => (
+                  <ListingCard key={l.id} listing={l} />
+                ))}
+              </div>
+            </section>
 
-        {/* Section 3: Highest Price */}
-        <section>
-          <div className="flex items-center gap-2 mb-6">
-            <DollarSign className="w-6 h-6 text-rose-600" />
-            <h2 className="text-2xl font-bold text-gray-900">
-              Highest Priced Items
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {highestPrice.map((l) => (
-              <ListingCard key={l.id} listing={l} />
-            ))}
-          </div>
-        </section>
+            {/* Section 3: Highest Price */}
+            <section>
+              <div className="flex items-center gap-2 mb-6">
+                <DollarSign className="w-6 h-6 text-rose-600" />
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Highest Priced Items
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {highestPrice.map((l) => (
+                  <ListingCard key={l.id} listing={l} />
+                ))}
+              </div>
+            </section>
           </>
         )}
       </div>

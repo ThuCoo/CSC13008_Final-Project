@@ -1,4 +1,3 @@
-
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -55,11 +54,10 @@ export default function Login() {
       if (!success) throw new Error("Invalid credentials");
       toast({ title: "Success", description: "Logged in successfully!" });
       navigate("/");
-    } catch (error) {
+    } catch (err) {
       toast({
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to log in",
+        description: err instanceof Error ? err.message : "Failed to log in",
         variant: "destructive",
       });
     } finally {
@@ -74,7 +72,7 @@ export default function Login() {
       if (!success) throw new Error("Demo login failed");
       toast({ title: "Success", description: `Logged in as ${email}` });
       navigate("/");
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to log in",
@@ -87,7 +85,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-
       <div className="max-w-md mx-auto px-4 py-16 sm:py-24">
         <div className="bg-white rounded-xl border border-border p-8 shadow-sm">
           <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
@@ -105,7 +102,11 @@ export default function Login() {
                 <Input
                   type="email"
                   placeholder="you@example.com"
-                  className={`pl-10 ${errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  className={`pl-10 ${
+                    errors.email
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }`}
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
@@ -123,7 +124,11 @@ export default function Login() {
                 <Input
                   type="password"
                   placeholder="Enter your password"
-                  className={`pl-10 ${errors.password ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  className={`pl-10 ${
+                    errors.password
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }`}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
@@ -134,7 +139,10 @@ export default function Login() {
                 <p className="text-xs text-red-500 mt-1">{errors.password}</p>
               )}
             </div>
-            <Button className="w-full hover:cursor-pointer" disabled={isLoading}>
+            <Button
+              className="w-full hover:cursor-pointer"
+              disabled={isLoading}
+            >
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState } from "react";
 
 export interface RejectedBidder {
@@ -29,7 +30,9 @@ interface BiddingRulesContextType {
   ) => { valid: boolean; message: string };
 }
 
-const BiddingRulesContext = createContext<BiddingRulesContextType | undefined>(undefined);
+const BiddingRulesContext = createContext<BiddingRulesContextType | undefined>(
+  undefined
+);
 
 const INITIAL_REJECTED_BIDDERS: RejectedBidder[] = [];
 
@@ -44,27 +47,40 @@ const DEFAULT_BID_INCREMENTS: BidIncrement[] = [
   { rangeMin: 5000, rangeMax: Infinity, increment: 50 },
 ];
 
-export function BiddingRulesProvider({ children }: { children: React.ReactNode }) {
-  const [rejectedBidders, setRejectedBidders] = useState<RejectedBidder[]>(() => {
-    const stored = localStorage.getItem("auctionhub_rejected_bidders");
-    if (!stored) return INITIAL_REJECTED_BIDDERS;
-    return JSON.parse(stored);
-  });
+export function BiddingRulesProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [rejectedBidders, setRejectedBidders] = useState<RejectedBidder[]>(
+    () => {
+      const stored = localStorage.getItem("auctionhub_rejected_bidders");
+      if (!stored) return INITIAL_REJECTED_BIDDERS;
+      return JSON.parse(stored);
+    }
+  );
 
   const [bidIncrements] = useState<BidIncrement[]>(DEFAULT_BID_INCREMENTS);
 
   const saveRejectedBidders = (newRejected: RejectedBidder[]) => {
     setRejectedBidders(newRejected);
-    localStorage.setItem("auctionhub_rejected_bidders", JSON.stringify(newRejected));
+    localStorage.setItem(
+      "auctionhub_rejected_bidders",
+      JSON.stringify(newRejected)
+    );
   };
 
-  const rejectBidder = (listingId: string, bidderId: string, reason: string) => {
+  const rejectBidder = (
+    listingId: string,
+    bidderId: string,
+    reason: string
+  ) => {
     if (!isBidderRejected(listingId, bidderId)) {
       const newRejected: RejectedBidder = {
         listingId,
         bidderId,
         reason,
-        createdAt: Date.now(),
+        createdAt: new Date().getTime(),
       };
       saveRejectedBidders([...rejectedBidders, newRejected]);
     }
@@ -83,7 +99,9 @@ export function BiddingRulesProvider({ children }: { children: React.ReactNode }
     );
   };
 
-  const getRejectedBiddersForListing = (listingId: string): RejectedBidder[] => {
+  const getRejectedBiddersForListing = (
+    listingId: string
+  ): RejectedBidder[] => {
     return rejectedBidders.filter((r) => r.listingId === listingId);
   };
 
@@ -145,7 +163,9 @@ export function BiddingRulesProvider({ children }: { children: React.ReactNode }
 export function useBiddingRules() {
   const context = useContext(BiddingRulesContext);
   if (context === undefined) {
-    throw new Error("useBiddingRules must be used within a BiddingRulesProvider");
+    throw new Error(
+      "useBiddingRules must be used within a BiddingRulesProvider"
+    );
   }
   return context;
 }

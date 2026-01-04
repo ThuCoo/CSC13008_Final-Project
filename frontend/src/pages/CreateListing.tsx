@@ -37,8 +37,8 @@ export default function CreateListing() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadCategories();
-  }, []);
+    void loadCategories();
+  }, [loadCategories]);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -58,28 +58,29 @@ export default function CreateListing() {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const hasAccess = user && user.role === "seller" && user.sellerApproved === true;
+  const hasAccess =
+    user && user.role === "seller" && user.sellerApproved === true;
 
   if (!hasAccess) {
     return (
       <div className="min-h-screen bg-slate-50">
-         {/* Dialog for Seller Access */}
-         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 text-center space-y-4">
-              <h2 className="text-2xl font-bold">Seller Access Required</h2>
-              <p className="text-muted-foreground">
-                You must be an approved seller to create listings.
-              </p>
-              <div className="flex justify-center gap-4">
-                 <Button variant="outline" onClick={() => navigate("/")}>
-                   Back to Home
-                 </Button>
-                 <Button onClick={() => navigate("/become-seller")}>
-                   Become a Seller
-                 </Button>
-              </div>
+        {/* Dialog for Seller Access */}
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 text-center space-y-4">
+            <h2 className="text-2xl font-bold">Seller Access Required</h2>
+            <p className="text-muted-foreground">
+              You must be an approved seller to create listings.
+            </p>
+            <div className="flex justify-center gap-4">
+              <Button variant="outline" onClick={() => navigate("/")}>
+                Back to Home
+              </Button>
+              <Button onClick={() => navigate("/become-seller")}>
+                Become a Seller
+              </Button>
             </div>
-         </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -87,18 +88,26 @@ export default function CreateListing() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      const promises = files.map(file => {
-          return new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(file);
-          });
+      const promises = files.map((file) => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
       });
 
-      Promise.all(promises).then(base64Images => {
+      Promise.all(promises)
+        .then((base64Images) => {
           setImages([...images, ...base64Images]);
-      }).catch(() => toast({ title: "Error uploading images", description: "Could not process files", variant: "destructive" }));
+        })
+        .catch(() =>
+          toast({
+            title: "Error uploading images",
+            description: "Could not process files",
+            variant: "destructive",
+          })
+        );
     }
   };
 
@@ -136,7 +145,8 @@ export default function CreateListing() {
       if (isNaN(buyPrice) || buyPrice < 1000) {
         newErrors.buyNowPrice = "Buy now price must be at least 1,000₫";
       } else if (buyPrice <= startPrice) {
-        newErrors.buyNowPrice = "Buy now price must be greater than starting price";
+        newErrors.buyNowPrice =
+          "Buy now price must be greater than starting price";
       }
     }
 
@@ -172,7 +182,9 @@ export default function CreateListing() {
         title: formData.title,
         description: formData.description,
         categoryId: parseInt(formData.category),
-        subcategoryId: formData.subCategory ? parseInt(formData.subCategory) : undefined,
+        subcategoryId: formData.subCategory
+          ? parseInt(formData.subCategory)
+          : undefined,
         category: "Dummy",
         categories: [],
         startingPrice: parseFloat(formData.startingPrice),
@@ -187,7 +199,6 @@ export default function CreateListing() {
         buyNowPrice: formData.buyNowPrice
           ? parseFloat(formData.buyNowPrice)
           : undefined,
-
       });
 
       toast({
@@ -195,7 +206,7 @@ export default function CreateListing() {
         description: "Auction listing published successfully!",
       });
       navigate("/seller-dashboard");
-    } catch (e) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to create listing",
@@ -205,12 +216,12 @@ export default function CreateListing() {
   };
 
   const handleBack = () => {
-    const isDirty = 
-      formData.title || 
-      formData.description || 
-      formData.startingPrice !== "0" || 
+    const isDirty =
+      formData.title ||
+      formData.description ||
+      formData.startingPrice !== "0" ||
       images.length > 0;
-      
+
     if (isDirty) {
       setShowExitDialog(true);
     } else {
@@ -220,13 +231,12 @@ export default function CreateListing() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-8">
-            <Button variant="ghost" size="icon" onClick={handleBack}>
-                <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="text-3xl font-bold">Create New Listing</h1>
+          <Button variant="ghost" size="icon" onClick={handleBack}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="text-3xl font-bold">Create New Listing</h1>
         </div>
 
         <form
@@ -242,7 +252,9 @@ export default function CreateListing() {
               onChange={(e) =>
                 setFormData({ ...formData, title: e.target.value })
               }
-              className={errors.title ? "border-red-500 focus-visible:ring-red-500" : ""}
+              className={
+                errors.title ? "border-red-500 focus-visible:ring-red-500" : ""
+              }
             />
             {errors.title && (
               <p className="text-sm text-red-500">{errors.title}</p>
@@ -252,51 +264,68 @@ export default function CreateListing() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Category</Label>
-                <Select
-                  onValueChange={(v) => {
-                    setFormData({ ...formData, category: v, subCategory: "" });
-                    if (errors.category) {
-                      const newErrors = { ...errors };
-                      delete newErrors.category;
-                      setErrors(newErrors);
-                    }
-                  }}
-                  required
+              <Select
+                onValueChange={(v) => {
+                  setFormData({ ...formData, category: v, subCategory: "" });
+                  if (errors.category) {
+                    const newErrors = { ...errors };
+                    delete newErrors.category;
+                    setErrors(newErrors);
+                  }
+                }}
+                required
+              >
+                <SelectTrigger
+                  className={
+                    errors.category ? "border-red-500 focus:ring-red-500" : ""
+                  }
                 >
-                  <SelectTrigger className={errors.category ? "border-red-500 focus:ring-red-500" : ""}>
-                    <SelectValue placeholder="Select Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.category && (
-                  <p className="text-sm text-red-500">{errors.category}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label>Subcategory (Optional)</Label>
-                <Select
-                  value={formData.subCategory}
-                  disabled={!formData.category}
-                  onValueChange={(v) => {
-                    setFormData({ ...formData, subCategory: v });
-                    if (errors.subCategory) {
-                      const newErrors = { ...errors };
-                      delete newErrors.subCategory;
-                      setErrors(newErrors);
-                    }
-                  }}
+                  <SelectValue placeholder="Select Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.category && (
+                <p className="text-sm text-red-500">{errors.category}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Subcategory (Optional)</Label>
+              <Select
+                value={formData.subCategory}
+                disabled={!formData.category}
+                onValueChange={(v) => {
+                  setFormData({ ...formData, subCategory: v });
+                  if (errors.subCategory) {
+                    const newErrors = { ...errors };
+                    delete newErrors.subCategory;
+                    setErrors(newErrors);
+                  }
+                }}
+              >
+                <SelectTrigger
+                  className={
+                    errors.subCategory
+                      ? "border-red-500 focus:ring-red-500"
+                      : ""
+                  }
                 >
-                  <SelectTrigger className={errors.subCategory ? "border-red-500 focus:ring-red-500" : ""}>
-                    <SelectValue placeholder={formData.category ? "Select Subcategory" : "Select Category First"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formData.category && categories
+                  <SelectValue
+                    placeholder={
+                      formData.category
+                        ? "Select Subcategory"
+                        : "Select Category First"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.category &&
+                    categories
                       .find((c) => c.id === formData.category)
                       ?.subcategories?.map((sub) => {
                         return (
@@ -305,19 +334,25 @@ export default function CreateListing() {
                           </SelectItem>
                         );
                       })}
-                  </SelectContent>
-                </Select>
-                {errors.subCategory && (
-                  <p className="text-sm text-red-500">{errors.subCategory}</p>
-                )}
+                </SelectContent>
+              </Select>
+              {errors.subCategory && (
+                <p className="text-sm text-red-500">{errors.subCategory}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Starting Price (₫)</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₫</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                  ₫
+                </span>
                 <Input
                   type="number"
-                  className={`pl-9 ${errors.startingPrice ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  className={`pl-9 ${
+                    errors.startingPrice
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }`}
                   required
                   min="0"
                   step="1000"
@@ -344,7 +379,11 @@ export default function CreateListing() {
                   }
                 }}
               >
-                <SelectTrigger className={errors.duration ? "border-red-500 focus:ring-red-500" : ""}>
+                <SelectTrigger
+                  className={
+                    errors.duration ? "border-red-500 focus:ring-red-500" : ""
+                  }
+                >
                   <SelectValue placeholder="Select Duration" />
                 </SelectTrigger>
                 <SelectContent>
@@ -373,7 +412,11 @@ export default function CreateListing() {
                 onChange={(e) =>
                   setFormData({ ...formData, stepPrice: e.target.value })
                 }
-                className={errors.stepPrice ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className={
+                  errors.stepPrice
+                    ? "border-red-500 focus-visible:ring-red-500"
+                    : ""
+                }
               />
               {errors.stepPrice && (
                 <p className="text-sm text-red-500">{errors.stepPrice}</p>
@@ -389,7 +432,11 @@ export default function CreateListing() {
                 onChange={(e) =>
                   setFormData({ ...formData, buyNowPrice: e.target.value })
                 }
-                className={errors.buyNowPrice ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className={
+                  errors.buyNowPrice
+                    ? "border-red-500 focus-visible:ring-red-500"
+                    : ""
+                }
               />
               {errors.buyNowPrice && (
                 <p className="text-sm text-red-500">{errors.buyNowPrice}</p>
@@ -398,17 +445,23 @@ export default function CreateListing() {
             <div className="space-y-2">
               <Label>Shipping Cost (₫)</Label>
               <div className="relative">
-                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₫</span>
-                 <Input
-                   type="number"
-                   className={`pl-9 ${errors.shippingCost ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                   value={formData.shippingCost}
-                   onChange={(e) =>
-                     setFormData({ ...formData, shippingCost: e.target.value })
-                   }
-                   min="0"
-                   step="1000"
-                 />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                  ₫
+                </span>
+                <Input
+                  type="number"
+                  className={`pl-9 ${
+                    errors.shippingCost
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }`}
+                  value={formData.shippingCost}
+                  onChange={(e) =>
+                    setFormData({ ...formData, shippingCost: e.target.value })
+                  }
+                  min="0"
+                  step="1000"
+                />
               </div>
               {errors.shippingCost && (
                 <p className="text-sm text-red-500">{errors.shippingCost}</p>
@@ -427,13 +480,19 @@ export default function CreateListing() {
                   }
                 }}
               >
-                <SelectTrigger className={errors.condition ? "border-red-500 focus:ring-red-500" : ""}>
+                <SelectTrigger
+                  className={
+                    errors.condition ? "border-red-500 focus:ring-red-500" : ""
+                  }
+                >
                   <SelectValue placeholder="Select Condition" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="New">New</SelectItem>
                   <SelectItem value="Like New">Like New</SelectItem>
-                  <SelectItem value="Used - Excellent">Used - Excellent</SelectItem>
+                  <SelectItem value="Used - Excellent">
+                    Used - Excellent
+                  </SelectItem>
                   <SelectItem value="Used - Good">Used - Good</SelectItem>
                   <SelectItem value="Used - Fair">Used - Fair</SelectItem>
                 </SelectContent>
@@ -465,50 +524,73 @@ export default function CreateListing() {
 
           <div className="space-y-2">
             <Label>Description</Label>
-            <div className={`border rounded-md ${errors.description ? "border-red-500" : ""}`}>
-              <div className={`flex gap-2 p-2 border-b bg-slate-50 ${errors.description ? "border-red-500" : ""}`}>
-                <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                        const ta = document.getElementById("desc-ta") as HTMLTextAreaElement;
-                        const start = ta.selectionStart;
-                        const end = ta.selectionEnd;
-                        const sel = formData.description.substring(start, end);
-                        const next = formData.description.substring(0, start) + `<b>${sel}</b>` + formData.description.substring(end);
-                        setFormData({ ...formData, description: next });
-                    }}
+            <div
+              className={`border rounded-md ${
+                errors.description ? "border-red-500" : ""
+              }`}
+            >
+              <div
+                className={`flex gap-2 p-2 border-b bg-slate-50 ${
+                  errors.description ? "border-red-500" : ""
+                }`}
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const ta = document.getElementById(
+                      "desc-ta"
+                    ) as HTMLTextAreaElement;
+                    const start = ta.selectionStart;
+                    const end = ta.selectionEnd;
+                    const sel = formData.description.substring(start, end);
+                    const next =
+                      formData.description.substring(0, start) +
+                      `<b>${sel}</b>` +
+                      formData.description.substring(end);
+                    setFormData({ ...formData, description: next });
+                  }}
                 >
                   <b>B</b>
                 </Button>
-                <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                        const ta = document.getElementById("desc-ta") as HTMLTextAreaElement;
-                        const start = ta.selectionStart;
-                        const end = ta.selectionEnd;
-                        const sel = formData.description.substring(start, end);
-                        const next = formData.description.substring(0, start) + `<i>${sel}</i>` + formData.description.substring(end);
-                        setFormData({ ...formData, description: next });
-                    }}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const ta = document.getElementById(
+                      "desc-ta"
+                    ) as HTMLTextAreaElement;
+                    const start = ta.selectionStart;
+                    const end = ta.selectionEnd;
+                    const sel = formData.description.substring(start, end);
+                    const next =
+                      formData.description.substring(0, start) +
+                      `<i>${sel}</i>` +
+                      formData.description.substring(end);
+                    setFormData({ ...formData, description: next });
+                  }}
                 >
                   <i>I</i>
                 </Button>
-                <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                        const ta = document.getElementById("desc-ta") as HTMLTextAreaElement;
-                        const start = ta.selectionStart;
-                        const end = ta.selectionEnd;
-                        const sel = formData.description.substring(start, end);
-                        const next = formData.description.substring(0, start) + `<ul>\n  <li>${sel}</li>\n</ul>` + formData.description.substring(end);
-                        setFormData({ ...formData, description: next });
-                    }}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const ta = document.getElementById(
+                      "desc-ta"
+                    ) as HTMLTextAreaElement;
+                    const start = ta.selectionStart;
+                    const end = ta.selectionEnd;
+                    const sel = formData.description.substring(start, end);
+                    const next =
+                      formData.description.substring(0, start) +
+                      `<ul>\n  <li>${sel}</li>\n</ul>` +
+                      formData.description.substring(end);
+                    setFormData({ ...formData, description: next });
+                  }}
                 >
                   List
                 </Button>
@@ -533,26 +615,32 @@ export default function CreateListing() {
             <div className="flex justify-between items-center">
               <Label>Product Images (Min. 3) </Label>
               <div className="flex gap-2">
-                 <Input
-                   type="file"
-                   id="image-upload"
-                   multiple
-                   accept="image/*"
-                   className="hidden"
-                   onChange={handleImageUpload}
-                 />
-                 <Button
-                   type="button"
-                   variant="outline"
-                   size="sm"
-                   onClick={() => document.getElementById('image-upload')?.click()}
-                 >
-                   <Upload className="w-4 h-4 mr-2" /> Upload Images
-                 </Button>
+                <Input
+                  type="file"
+                  id="image-upload"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    document.getElementById("image-upload")?.click()
+                  }
+                >
+                  <Upload className="w-4 h-4 mr-2" /> Upload Images
+                </Button>
               </div>
             </div>
 
-            <div className={`grid grid-cols-3 gap-4 p-4 border-2 border-dashed rounded-lg bg-slate-50 min-h-[120px] ${errors.images ? "border-red-500 bg-red-50/10" : ""}`}>
+            <div
+              className={`grid grid-cols-3 gap-4 p-4 border-2 border-dashed rounded-lg bg-slate-50 min-h-[120px] ${
+                errors.images ? "border-red-500 bg-red-50/10" : ""
+              }`}
+            >
               {images.length === 0 ? (
                 <div className="col-span-3 flex flex-col items-center justify-center text-muted-foreground">
                   <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
@@ -603,7 +691,10 @@ export default function CreateListing() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => navigate(-1)} className="bg-rose-600 hover:bg-rose-700">
+            <AlertDialogAction
+              onClick={() => navigate(-1)}
+              className="bg-rose-600 hover:bg-rose-700"
+            >
               Discard & Leave
             </AlertDialogAction>
           </AlertDialogFooter>
