@@ -3,7 +3,6 @@ import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import {
   Gavel,
-  Search,
   LogOut,
   Heart,
   ShoppingBag,
@@ -12,7 +11,6 @@ import {
   LayoutDashboard,
   SquareMousePointer,
 } from "lucide-react";
-import { Input } from "./ui/input";
 import { useUser } from "../context/UserContext";
 import { useToast } from "./ui/use-toast";
 import { useState } from "react";
@@ -22,21 +20,6 @@ export default function Header() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const handleSearch = () => {
-    if (searchTerm.trim()) {
-      navigate(`/browse?q=${encodeURIComponent(searchTerm)}`);
-    } else {
-      navigate("/browse");
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
 
   const handleLogout = () => {
     logout();
@@ -58,25 +41,8 @@ export default function Header() {
             <span>eBid</span>
           </Link>
 
-          {/* Search Bar */}
-          <div className="hidden md:flex flex-1 mx-8 max-w-md">
-            <div className="relative w-full">
-              <Input
-                placeholder="Search items..."
-                className="pr-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-              <Search
-                 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-400 font-bold cursor-pointer hover:text-rose-600"
-                 onClick={handleSearch}
-              />
-            </div>
-          </div>
-
           {/* Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-6 ml-auto">
             <Link
               to="/categories"
               className="text-gray-600 hover:text-rose-700 font-medium text-sm flex items-center gap-1 hover:font-bold transition"
@@ -91,7 +57,7 @@ export default function Header() {
               <SquareMousePointer className="w-4 h-4" /> Browse
             </Link>
 
-            {user && user.role === 'admin' ? (
+            {user && user.role === "admin" ? (
               <Link
                 to="/admin-dashboard"
                 className="text-gray-600 hover:text-rose-700 font-medium text-sm flex items-center gap-1 hover:font-bold transition"
@@ -101,7 +67,11 @@ export default function Header() {
             ) : (
               <>
                 <Link
-                  to={user && user.role === "seller" ? "/seller-dashboard" : "/become-seller"}
+                  to={
+                    user && user.role === "seller"
+                      ? "/seller-dashboard"
+                      : "/become-seller"
+                  }
                   className="text-gray-600 hover:text-rose-700 font-medium text-sm flex items-center gap-1 hover:font-bold transition"
                 >
                   <ShoppingBag className="w-4 h-4" /> Sell
@@ -221,7 +191,7 @@ export default function Header() {
                   >
                     <SquareMousePointer className="w-5 h-5" /> Browse
                   </Link>
-                  {user && user.role === 'admin' ? (
+                  {user && user.role === "admin" ? (
                     <Link
                       to="/admin-dashboard"
                       className="text-gray-600 hover:text-rose-700 font-medium text-lg flex items-center gap-2 hover:font-bold transition"
@@ -231,7 +201,11 @@ export default function Header() {
                   ) : (
                     <>
                       <Link
-                        to={user && user.role === "seller" ? "/seller-dashboard" : "/become-seller"}
+                        to={
+                          user && user.role === "seller"
+                            ? "/seller-dashboard"
+                            : "/become-seller"
+                        }
                         className="text-gray-600 hover:text-rose-700 font-medium text-lg flex items-center gap-2 hover:font-bold transition"
                       >
                         <ShoppingBag className="w-5 h-5" /> Sell
@@ -279,7 +253,8 @@ export default function Header() {
                             to="/seller-dashboard"
                             className="text-gray-600 hover:text-rose-700 font-medium text-lg flex items-center gap-2 hover:font-bold transition"
                           >
-                            <LayoutDashboard className="w-5 h-5" /> Seller Dashboard
+                            <LayoutDashboard className="w-5 h-5" /> Seller
+                            Dashboard
                           </Link>
                         )}
                         <Button
@@ -299,7 +274,10 @@ export default function Header() {
                         >
                           <Link to="/login">Login</Link>
                         </Button>
-                        <Button asChild className="w-full bg-rose-700 text-white">
+                        <Button
+                          asChild
+                          className="w-full bg-rose-700 text-white"
+                        >
                           <Link to="/signup">Sign Up</Link>
                         </Button>
                       </div>
