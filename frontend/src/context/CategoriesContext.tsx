@@ -108,7 +108,7 @@ export function CategoriesProvider({
 
   const updateCategory = async (id: string, data: Partial<Category>) => {
     try {
-      await apiClient.put(`/categories/${id}`, data);
+      await apiClient.put(`/categories/${Number(id)}`, data);
       setCategories((prev) =>
         prev.map((c) => (c.id === id ? { ...c, ...data } : c))
       );
@@ -120,7 +120,7 @@ export function CategoriesProvider({
 
   const deleteCategory = async (id: string) => {
     try {
-      await apiClient.delete(`/categories/${id}`);
+      await apiClient.delete(`/categories/${Number(id)}`);
       setCategories((prev) => prev.filter((c) => c.id !== id));
     } catch (error) {
       console.error("Failed to delete category", error);

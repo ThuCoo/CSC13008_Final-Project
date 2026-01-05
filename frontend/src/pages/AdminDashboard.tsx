@@ -10,6 +10,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "../components/ui/tabs";
+import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
@@ -56,7 +57,8 @@ import { Badge } from "../components/ui/badge";
 import { Category } from "../context/CategoriesContext";
 
 export default function AdminDashboard() {
-  const { user, getAllUsers, banUser, deleteUser } = useUser();
+  const { user, getAllUsers, banUser, deleteUser, resetUserPassword } =
+    useUser();
   const { requests, loadRequests, approveRequest, rejectRequest } =
     useSellerRequests();
   const { listings, deleteListing } = useListings();
@@ -90,12 +92,24 @@ export default function AdminDashboard() {
   const [listingSearch, setListingSearch] = useState("");
   const [catSearch, setCatSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("requests");
+
+  const [requestsLoaded, setRequestsLoaded] = useState(false);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   useEffect(() => {
-    // Load seller requests and categories on mount
-    void loadRequests();
-    void loadCategories();
-  }, [loadRequests, loadCategories]);
+    if (activeTab === "requests" && !requestsLoaded) {
+      void loadRequests();
+      setRequestsLoaded(true);
+    }
+  }, [activeTab, requestsLoaded, loadRequests]);
+
+  useEffect(() => {
+    if (activeTab === "categories" && !categoriesLoaded) {
+      void loadCategories();
+      setCategoriesLoaded(true);
+    }
+  }, [activeTab, categoriesLoaded, loadCategories]);
 
   useEffect(() => {
     if (user?.role === "admin") {
@@ -173,6 +187,23 @@ export default function AdminDashboard() {
       title: "User Deleted",
       description: "Account removed permanently",
     });
+  };
+
+  const handleResetPassword = (id: string, userName: string) => {
+    resetUserPassword(id)
+      .then(() => {
+        toast({
+          title: "Password Reset",
+          description: `A new password has been sent to ${userName}'s email.`,
+        });
+      })
+      .catch(() => {
+        toast({
+          title: "Error",
+          description: "Failed to reset password.",
+          variant: "destructive",
+        });
+      });
   };
 
   const EditCategoryDialog = ({
@@ -307,7 +338,11 @@ export default function AdminDashboard() {
           </h1>
         </div>
 
-        <Tabs defaultValue="requests">
+        <Tabs
+          defaultValue="requests"
+          value={activeTab}
+          onValueChange={setActiveTab}
+        >
           <TabsList className="grid w-full h-full grid-cols-2 md:grid-cols-4 max-w-2xl">
             <TabsTrigger value="requests">Seller Requests</TabsTrigger>
             <TabsTrigger value="users">Manage Users</TabsTrigger>{" "}
@@ -316,101 +351,93 @@ export default function AdminDashboard() {
           </TabsList>
           {/* Seller Requests Tab */}
           <TabsContent value="requests" className="mt-6">
-            <div className="bg-white rounded-lg border shadow-sm">
-              <div className="p-4 border-b bg-slate-50 font-medium">
-                Pending Approvals
-              </div>
+            <h2 className="text-xl font-bold mb-4">Seller Requests</h2>
+            <div className="space-y-4">
               {requests.filter((r) => r.status === "pending").length === 0 ? (
-                <div className="p-8 text-center text-slate-500">
+                <p className="text-muted-foreground p-4">
                   No pending requests.
-                </div>
+                </p>
               ) : (
                 requests
                   .filter((r) => r.status === "pending")
                   .map((req) => (
-                    <div
-                      key={req.id}
-                      className="p-4 flex items-center justify-between border-b last:border-0"
-                    >
-                      <div>
-                        <p className="font-bold">{req.businessName}</p>
-                        <p className="text-sm text-slate-500">
-                          User: {req.userName || "Unknown"}
-                        </p>
-                        {req.businessDescription && (
-                          <p className="text-sm text-slate-600 mt-1">
-                            {req.businessDescription}
+                    <Card key={req.id}>
+                      <CardContent className="p-6 flex items-center justify-between">
+                        <div>
+                          <p className="font-bold">{req.businessName}</p>
+                          <p className="text-sm text-slate-500">
+                            User: {req.userName || "Unknown"}
                           </p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="bg-green-600"
-                          onClick={() => {
-                            approveRequest(req.id, user.id);
-                            toast({
-                              title: "Approved",
-                              description: "User is now a seller",
-                            });
-                          }}
-                        >
-                          <Check className="w-4 h-4 mr-1" /> Approve
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="destructive">
-                              <X className="w-4 h-4 mr-1" /> Reject
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Reject Seller Request?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will reject the user's application to
-                                become a seller.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                onClick={() =>
-                                  rejectRequest(
-                                    req.id,
-                                    user.id,
-                                    "Admin Rejected"
-                                  )
-                                }
-                              >
-                                Reject
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
+                          {req.businessDescription && (
+                            <p className="text-sm text-slate-600 mt-1">
+                              {req.businessDescription}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-green-600"
+                            onClick={() => {
+                              approveRequest(req.id, user.id);
+                              toast({
+                                title: "Approved",
+                                description: "User is now a seller",
+                              });
+                            }}
+                          >
+                            <Check className="w-4 h-4 mr-1" /> Approve
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="destructive">
+                                <X className="w-4 h-4 mr-1" /> Reject
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Reject Seller Request?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will reject the user's application to
+                                  become a seller.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() =>
+                                    rejectRequest(
+                                      req.id,
+                                      user.id,
+                                      "Admin Rejected"
+                                    )
+                                  }
+                                >
+                                  Reject
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))
               )}
             </div>
           </TabsContent>
           {/* User Management Tab */}
           <TabsContent value="users" className="mt-6">
-            <div className="bg-white rounded-lg border shadow-sm">
-              <div className="p-4 border-b bg-slate-50 font-medium flex justify-between">
-                <span>System Users</span>
-                <span className="text-xs text-slate-500 self-center">
-                  Total: {filteredUsers.length}
-                </span>
-              </div>
-              <div className="p-4 border-b bg-slate-50 space-y-3">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+            <h2 className="text-xl font-bold mb-4">Manage Users</h2>
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
-                    placeholder="Search users by name or email..."
-                    className="pl-9 bg-white"
+                    placeholder="Search users..."
+                    className="pl-9"
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                   />
@@ -430,300 +457,356 @@ export default function AdminDashboard() {
                   </SelectContent>
                 </Select>
               </div>
-              {filteredUsers.map((u) => (
-                <div
-                  key={u.id}
-                  className="p-4 flex items-center justify-between border-b last:border-0"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
-                      <UserIcon className="w-5 h-5 text-slate-500" />
-                    </div>
-                    <div>
-                      <UserDetailDialog user={u} />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {u.status === "banned" ? (
-                      <span className="text-rose-600 font-bold text-sm mr-2">
-                        BANNED
-                      </span>
-                    ) : (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            Ban
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Ban User?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This user will be unable to log in or perform
-                              actions.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              onClick={() => handleBanUser(u.id)}
-                            >
-                              Ban User
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-rose-500 hover:bg-rose-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete User?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. The user account will
-                            be permanently removed.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={() => handleDeleteUser(u.id)}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </TabsContent>
-          {/* Listings Tab */}
-          <TabsContent value="listings" className="mt-6">
-            <div className="bg-white rounded-lg border shadow-sm divide-y">
-              <div className="p-4 border-b bg-slate-50 font-medium flex justify-between">
-                <span>Manage Listings</span>
-                <span className="text-xs text-slate-500 self-center">
-                  Total: {filteredListings.length}
-                </span>
-              </div>
-              <div className="p-4 bg-slate-50">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-                  <Input
-                    placeholder="Search listings by title or seller..."
-                    className="pl-9 bg-white"
-                    value={listingSearch}
-                    onChange={(e) => setListingSearch(e.target.value)}
-                  />
-                </div>
-              </div>
-              {filteredListings.length === 0 ? (
-                <div className="p-8 text-center text-slate-500">
-                  No listings found.
-                </div>
+              {filteredUsers.length === 0 ? (
+                <p className="text-muted-foreground p-4">
+                  {userSearch
+                    ? "No users match your search."
+                    : "No users found."}
+                </p>
               ) : (
-                filteredListings.map((l) => (
-                  <div
-                    key={l.id}
-                    className="p-4 flex justify-between items-center"
-                  >
-                    <div
-                      className="flex flex-col cursor-pointer"
-                      onClick={() => navigate(`/auction/${l.id}`)}
-                    >
-                      <span className="font-medium text-rose-600 hover:underline">
-                        {l.title}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        Seller: {l.sellerName}
-                      </span>
-                    </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-rose-600"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" /> Remove
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Listing?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will remove the listing permanently from the
-                            platform.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={() => {
-                              deleteListing(l.id);
-                              toast({ title: "Listing Removed" });
-                            }}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                ))
-              )}
-            </div>
-          </TabsContent>
-          {/* Categories Tab */}
-          <TabsContent value="categories" className="mt-6">
-            <div className="bg-white rounded-lg border shadow-sm p-6">
-              <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <Input
-                  placeholder="New Category Name"
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                />
-                <Input
-                  placeholder="Icon (emoji or text)"
-                  className="w-24 md:w-32"
-                  value={newCatIcon}
-                  onChange={(e) => setNewCatIcon(e.target.value)}
-                />
-                <Input
-                  placeholder="Subcategories (seperate by comma)"
-                  value={newCatSubs}
-                  onChange={(e) => setNewCatSubs(e.target.value)}
-                />
-                <Button
-                  onClick={() => {
-                    const subs = newCatSubs
-                      .split(",")
-                      .map((Is) => Is.trim())
-                      .filter(Boolean);
-                    addCategory(
-                      newCatName,
-                      "Desc",
-                      newCatIcon || "📦",
-                      subs.map((s) => ({ id: "0", name: s }))
-                    );
-                    setNewCatName("");
-                    setNewCatSubs("");
-                    setNewCatIcon("");
-                    toast({ title: "Category Added" });
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" /> Add
-                </Button>
-              </div>
-              <div className="mb-4 relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-                <Input
-                  placeholder="Search categories..."
-                  className="pl-9 bg-white"
-                  value={catSearch}
-                  onChange={(e) => setCatSearch(e.target.value)}
-                />
-              </div>
-              <div className="grid md:grid-cols-2 gap-4">
-                {filteredCategories.map((cat) => (
-                  <div
-                    key={cat.id}
-                    className="flex justify-between items-center p-3 border rounded"
-                  >
-                    <div className="flex flex-col">
-                      <EditCategoryDialog
-                        category={cat}
-                        trigger={
-                          <span className="font-medium cursor-pointer hover:underline text-rose-600 w-fit">
-                            {cat.name}
-                          </span>
-                        }
-                      />
-                      {cat.subcategories && cat.subcategories.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {cat.subcategories.map((sub) => (
-                            <Badge
-                              key={sub.id}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {sub.name}
-                            </Badge>
-                          ))}
+                filteredUsers.map((u) => (
+                  <Card key={u.id}>
+                    <CardContent className="p-6 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
+                          <UserIcon className="w-5 h-5 text-slate-500" />
                         </div>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <EditCategoryDialog category={cat} />
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <Trash2 className="w-4 h-4 text-slate-400" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          {listings.some(
-                            (l) =>
-                              l.category === cat.name ||
-                              l.categories.includes(cat.name)
-                          ) ? (
-                            <>
+                        <div>
+                          <UserDetailDialog user={u} />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="hover:text-primary hover:bg-rose-50"
+                              title="Reset Password"
+                            >
+                              Reset Password
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Reset User Password?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                A new temporary password will be generated and
+                                sent to {u.name}'s email address. They will be
+                                notified to change it after logging in.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  handleResetPassword(u.id, u.name)
+                                }
+                              >
+                                Reset Password
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                        {u.status === "banned" ? (
+                          <span className="text-rose-600 font-bold text-sm mr-2">
+                            BANNED
+                          </span>
+                        ) : (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="hover:text-primary hover:bg-rose-50"
+                                size="sm"
+                              >
+                                Ban
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Cannot Delete Category
-                                </AlertDialogTitle>
+                                <AlertDialogTitle>Ban User?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This category contains active products. Please
-                                  remove the products first.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Close</AlertDialogCancel>
-                              </AlertDialogFooter>
-                            </>
-                          ) : (
-                            <>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Delete Category?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete{" "}
-                                  <strong>{cat.name}</strong>?
+                                  This user will be unable to log in or perform
+                                  actions.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  onClick={() =>
-                                    handleDeleteCategory(cat.id, cat.name)
-                                  }
+                                  onClick={() => handleBanUser(u.id)}
                                 >
-                                  Delete
+                                  Ban User
                                 </AlertDialogAction>
                               </AlertDialogFooter>
-                            </>
-                          )}
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-primary hover:bg-rose-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete User?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. The user account
+                                will be permanently removed.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={() => handleDeleteUser(u.id)}
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+          {/* Listings Tab */}
+          <TabsContent value="listings" className="mt-6">
+            <h2 className="text-xl font-bold mb-4">Manage Listings</h2>
+            <div className="space-y-4">
+              <div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    placeholder="Search listings..."
+                    className="pl-9"
+                    value={listingSearch}
+                    onChange={(e) => setListingSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+              {filteredListings.length === 0 ? (
+                <p className="text-muted-foreground p-4">
+                  {listingSearch
+                    ? "No listings match your search."
+                    : "No listings found."}
+                </p>
+              ) : (
+                filteredListings.map((l) => (
+                  <Card key={l.id}>
+                    <CardContent className="p-6 flex justify-between items-center">
+                      <div
+                        className="flex flex-col cursor-pointer"
+                        onClick={() => navigate(`/auction/${l.id}`)}
+                      >
+                        <span className="font-medium text-rose-600 hover:underline">
+                          {l.title}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          Seller: {l.sellerName}
+                        </span>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-rose-600"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" /> Remove
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Listing?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove the listing permanently from the
+                              platform.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={() => {
+                                deleteListing(l.id);
+                                toast({ title: "Listing Removed" });
+                              }}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                    </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+          {/* Categories Tab */}
+          <TabsContent value="categories" className="mt-6">
+            <h2 className="text-xl font-bold mb-4">Manage Categories</h2>
+            <div className="space-y-4">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <Input
+                      placeholder="New Category Name"
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Icon (emoji or text)"
+                      className="w-24 md:w-32"
+                      value={newCatIcon}
+                      onChange={(e) => setNewCatIcon(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Subcategories (seperate by comma)"
+                      value={newCatSubs}
+                      onChange={(e) => setNewCatSubs(e.target.value)}
+                    />
+                    <Button
+                      onClick={() => {
+                        const subs = newCatSubs
+                          .split(",")
+                          .map((Is) => Is.trim())
+                          .filter(Boolean);
+                        addCategory(
+                          newCatName,
+                          "Desc",
+                          newCatIcon || "📦",
+                          subs.map((s) => ({ id: "0", name: s }))
+                        );
+                        setNewCatName("");
+                        setNewCatSubs("");
+                        setNewCatIcon("");
+                        toast({ title: "Category Added" });
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Add
+                    </Button>
                   </div>
-                ))}
+                </CardContent>
+              </Card>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Search categories..."
+                  className="pl-9"
+                  value={catSearch}
+                  onChange={(e) => setCatSearch(e.target.value)}
+                />
               </div>
+              {filteredCategories.length === 0 ? (
+                <p className="text-muted-foreground p-4">
+                  {catSearch
+                    ? "No categories match your search."
+                    : "No categories found."}
+                </p>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {filteredCategories.map((cat) => (
+                    <Card key={cat.id}>
+                      <CardContent className="p-4 flex justify-between items-center">
+                        <div className="flex flex-col">
+                          <EditCategoryDialog
+                            category={cat}
+                            trigger={
+                              <span className="font-medium cursor-pointer hover:underline text-rose-600 w-fit">
+                                {cat.name}
+                              </span>
+                            }
+                          />
+                          {cat.subcategories &&
+                            cat.subcategories.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {cat.subcategories.map((sub) => (
+                                  <Badge
+                                    key={sub.id}
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    {sub.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                        </div>
+                        <div className="flex gap-2">
+                          <EditCategoryDialog category={cat} />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="w-4 h-4 text-slate-400" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              {listings.some(
+                                (l) =>
+                                  l.category === cat.name ||
+                                  l.categories.includes(cat.name)
+                              ) ? (
+                                <>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Cannot Delete Category
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This category contains active products.
+                                      Please remove the products first.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Close</AlertDialogCancel>
+                                  </AlertDialogFooter>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Delete Category?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete{" "}
+                                      <strong>{cat.name}</strong>?
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>
+                                      Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      onClick={() =>
+                                        handleDeleteCategory(cat.id, cat.name)
+                                      }
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </>
+                              )}
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

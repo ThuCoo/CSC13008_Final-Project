@@ -6,9 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function isNewProduct(createdAt: number): boolean {
-  // Considered new if created within the last 3 days
-  const threeDays = 3 * 24 * 60 * 60 * 1000;
-  return Date.now() - createdAt < threeDays;
+  // Considered new if created within the last 30 minutes
+  const thirtyMinutes = 30 * 60 * 1000;
+  return Date.now() - createdAt < thirtyMinutes;
 }
 
 export function formatAuctionTime(endsAt: number): string {
@@ -28,13 +28,13 @@ export function formatAuctionTime(endsAt: number): string {
 
 export function maskBidderName(name: string): string {
   if (!name || name.length <= 2) return name;
-  
-  let masked = '';
+
+  let masked = "";
   for (let i = 0; i < name.length; i++) {
     if (i % 2 === 0) {
       masked += name[i];
     } else {
-      masked += '*';
+      masked += "*";
     }
   }
   return masked;

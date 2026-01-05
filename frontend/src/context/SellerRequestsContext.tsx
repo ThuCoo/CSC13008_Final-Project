@@ -105,7 +105,7 @@ export function SellerRequestsProvider({
 
   const approveRequest = async (requestId: string) => {
     try {
-      await apiClient.put(`/seller-requests/${requestId}`, {
+      await apiClient.put(`/seller-requests/${Number(requestId)}`, {
         status: "approved",
       });
       setRequests((prev) =>
@@ -123,7 +123,7 @@ export function SellerRequestsProvider({
     reason: string
   ) => {
     try {
-      await apiClient.put(`/seller-requests/${requestId}`, {
+      await apiClient.put(`/seller-requests/${Number(requestId)}`, {
         status: "rejected",
         rejectionReason: reason,
       });

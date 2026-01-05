@@ -85,8 +85,8 @@ export function AutoBidsProvider({ children }: { children: React.ReactNode }) {
   ): Promise<AutoBid> => {
     try {
       const { data } = await apiClient.post("/auto-bids", {
-        listingId,
-        userId,
+        listingId: Number(listingId),
+        userId: Number(userId),
         maxBidAmount,
         incrementAmount,
       });
@@ -110,7 +110,7 @@ export function AutoBidsProvider({ children }: { children: React.ReactNode }) {
 
   const updateAutoBid = async (id: string, data: Partial<AutoBid>) => {
     try {
-      await apiClient.put(`/auto-bids/${id}`, data);
+      await apiClient.put(`/auto-bids/${Number(id)}`, data);
       setAutoBids((prev) =>
         prev.map((b) => (b.id === id ? { ...b, ...data } : b))
       );
@@ -122,7 +122,7 @@ export function AutoBidsProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAutoBid = async (id: string) => {
     try {
-      await apiClient.delete(`/auto-bids/${id}`);
+      await apiClient.delete(`/auto-bids/${Number(id)}`);
       setAutoBids((prev) => prev.filter((b) => b.id !== id));
     } catch (error) {
       console.error("Failed to delete auto bid", error);

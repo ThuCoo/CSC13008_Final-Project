@@ -51,8 +51,12 @@ export default function Browse() {
     }
 
     if (search) {
-      result = result.filter((l) =>
-        l.title.toLowerCase().includes(search.toLowerCase())
+      const searchLower = search.toLowerCase();
+      result = result.filter(
+        (l) =>
+          l.title.toLowerCase().includes(searchLower) ||
+          l.category.toLowerCase().includes(searchLower) ||
+          (l.subCategory && l.subCategory.toLowerCase().includes(searchLower))
       );
     }
 
@@ -192,10 +196,10 @@ export default function Browse() {
                       placeholder="Search..."
                       value={search}
                       onChange={(e) => handleSearchChange(e.target.value)}
-                      className="max-w-[200px]"
+                      className="max-w-50"
                     />
                     <Select value={sort} onValueChange={handleSortChange}>
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-45">
                         <SelectValue placeholder="Sort" />
                       </SelectTrigger>
                       <SelectContent>
@@ -257,7 +261,7 @@ export default function Browse() {
                               <p className="text-xs text-slate-500">
                                 Current Bid
                               </p>
-                              <p className="text-xl font-bold text-slate-900">
+                              <p className="text-xl font-bold text-primary">
                                 {l.currentBid.toLocaleString()}₫
                               </p>
                               {l.buyNowPrice && (
@@ -265,7 +269,7 @@ export default function Browse() {
                                   <p className="text-xs text-gray-500 mt-1">
                                     Buy Now
                                   </p>
-                                  <p className="text-sm font-semibold text-green-600">
+                                  <p className="text-sm font-semibold">
                                     {l.buyNowPrice.toLocaleString()}₫
                                   </p>
                                 </>

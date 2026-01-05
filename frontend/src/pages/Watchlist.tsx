@@ -1,10 +1,11 @@
-
+import { useState } from "react";
 import { useUser } from "../context/UserContext";
 import { useWatchlist } from "../context/WatchlistContext";
 import { useListings } from "../context/ListingsContext";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
-import { Heart, Trash2 } from "lucide-react";
+import { Input } from "../components/ui/input";
+import { Heart, Trash2, Search } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 
 export default function Watchlist() {
@@ -12,6 +13,7 @@ export default function Watchlist() {
   const { getUserWatchlist, removeFromWatchlist } = useWatchlist();
   const { getListingById } = useListings();
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
 
   if (!user) {
     return (
@@ -33,6 +35,11 @@ export default function Watchlist() {
     .map((id) => getListingById(id))
     .filter(Boolean);
 
+  const filteredItems = watchlistItems.filter(
+    (item) =>
+      item && item.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -40,9 +47,19 @@ export default function Watchlist() {
           <Heart className="text-red-500 fill-current" /> My Watchlist
         </h1>
 
+        <div className="mb-4 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Search watchlist..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
         <div className="space-y-4">
-          {watchlistItems.length > 0 ? (
-            watchlistItems.map(
+          {filteredItems.length > 0 ? (
+            filteredItems.map(
               (item) =>
                 item && (
                   <div
@@ -50,11 +67,15 @@ export default function Watchlist() {
                     className="bg-white p-4 rounded-lg border flex gap-4 items-center"
                   >
                     <div className="w-24 h-24 rounded-md bg-gray-200 overflow-hidden shrink-0">
-                       <img 
-                          src={item.images && item.images.length > 0 ? item.images[0] : "https://placehold.co/200?text=No+Image"} 
-                          alt={item.title}
-                          className="w-full h-full object-cover"
-                       />
+                      <img
+                        src={
+                          item.images && item.images.length > 0
+                            ? item.images[0]
+                            : "https://placehold.co/200?text=No+Image"
+                        }
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <div className="flex-1">
                       <Link
@@ -78,10 +99,14 @@ export default function Watchlist() {
                       <Trash2 className="w-5 h-5" />
                     </Button>
                   </div>
-                ),
+                )
             )
           ) : (
-            <div className="text-center py-12">Your watchlist is empty.</div>
+            <div className="text-center py-12">
+              {searchTerm
+                ? "No matching items found."
+                : "Your watchlist is empty."}
+            </div>
           )}
         </div>
       </div>

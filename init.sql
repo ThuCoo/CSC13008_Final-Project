@@ -607,6 +607,13 @@ VALUES
 ((SELECT user_id FROM users WHERE email='seller@example.com'), (SELECT user_id FROM users WHERE email='bidder2@example.com'), 1, 'seller', 'Product exactly as described. Highly recommended!'),
 ((SELECT user_id FROM users WHERE email='seller@example.com'), (SELECT user_id FROM users WHERE email='bidder3@example.com'), -1, 'seller', 'Item arrived damaged. Poor packaging.');
 
+-- Add ratings/reviews for Manual Bidder (bidder@example.com)
+INSERT INTO ratings (user_id, reviewer_id, rating, role, comment)
+VALUES
+((SELECT user_id FROM users WHERE email='bidder@example.com'), (SELECT user_id FROM users WHERE email='seller@example.com'), 1, 'bidder', 'Excellent bidder! Payment was prompt and communication was great.'),
+((SELECT user_id FROM users WHERE email='bidder@example.com'), (SELECT user_id FROM users WHERE email='seller1@example.com'), 1, 'bidder', 'Very professional and quick to pay. Would sell to again!'),
+((SELECT user_id FROM users WHERE email='bidder@example.com'), (SELECT user_id FROM users WHERE email='seller2@example.com'), 1, 'bidder', 'Smooth transaction. Highly recommended buyer!');
+
 -- Add questions for demo listings
 INSERT INTO questions (listing_id, questioner_id, question, answer, questioner_name)
 VALUES

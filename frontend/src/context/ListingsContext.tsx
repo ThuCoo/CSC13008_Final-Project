@@ -182,7 +182,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
 
   const updateListing = async (id: string, data: Partial<Listing>) => {
     try {
-      await apiClient.put(`/listings/${id}`, data);
+      await apiClient.put(`/listings/${Number(id)}`, data);
       setListings((prev) =>
         prev.map((l) => (l.id === id ? ({ ...l, ...data } as Listing) : l))
       );
@@ -193,7 +193,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
 
   const deleteListing = async (id: string) => {
     try {
-      await apiClient.delete(`/listings/${id}`);
+      await apiClient.delete(`/listings/${Number(id)}`);
       setListings((prev) => prev.filter((l) => l.id !== id));
     } catch (error) {
       console.error("Failed to delete listing", error);
@@ -214,8 +214,8 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   ) => {
     try {
       const { data } = await apiClient.post("/bids", {
-        listingId,
-        bidderId,
+        listingId: Number(listingId),
+        bidderId: Number(bidderId),
         amount,
         maxPrice,
       });
@@ -282,8 +282,12 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     userId: string
   ) => {
     try {
-      await apiClient.post("/questions", { listingId, userId, questionText });
-      void loadListings();
+      await apiClient.post("/questions", {
+        listingId: Number(listingId),
+        userId: Number(userId),
+        questionText,
+      });
+      await loadListings();
     } catch (e) {
       console.error(e);
     }
@@ -291,8 +295,10 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
 
   const answerQuestion = async (questionId: string, answer: string) => {
     try {
-      await apiClient.post(`/questions/${questionId}/answer`, { answer });
-      void loadListings();
+      await apiClient.post(`/questions/${Number(questionId)}/answer`, {
+        answer,
+      });
+      await loadListings();
     } catch (e) {
       console.error(e);
     }
@@ -301,7 +307,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const getSellerOrders = async (sellerId: string) => {
     try {
       const { data } = await apiClient.get(
-        `/orders/seller?sellerId=${sellerId}`
+        `/orders/seller?sellerId=${Number(sellerId)}`
       );
       return data;
     } catch (e) {
@@ -316,10 +322,13 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     proof?: string
   ) => {
     try {
-      const { data } = await apiClient.put(`/orders/${orderId}/status`, {
-        status,
-        proof,
-      });
+      const { data } = await apiClient.put(
+        `/orders/${Number(orderId)}/status`,
+        {
+          status,
+          proof,
+        }
+      );
       return data;
     } catch (e) {
       console.error(e);

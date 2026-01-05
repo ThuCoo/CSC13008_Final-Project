@@ -74,7 +74,8 @@ export default function Header() {
                   }
                   className="text-gray-600 hover:text-rose-700 font-medium text-sm flex items-center gap-1 hover:font-bold transition"
                 >
-                  <ShoppingBag className="w-4 h-4" /> Sell
+                  <ShoppingBag className="w-4 h-4" />{" "}
+                  {user && user.role === "seller" ? "Seller Dashboard" : "Sell"}
                 </Link>
 
                 {user && (

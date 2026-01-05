@@ -35,7 +35,7 @@ app.use("/bids", bidRoute);
 app.use("/watchlists", watchlistRoute); 
 
 // Auto Bid System
-// app.use("/auto-bids", autoBidRoute);
+app.use("/auto-bids", autoBidRoute);
 
 app.use("/seller-requests", sellerRequestRoute);
 app.use("/questions", questionRoute);

@@ -31,7 +31,7 @@ const controller = {
       const { listingId, bidderId, amount } = req.body;
 
       // Basic validations: listing exists, bidder exists
-      const listing = await listingService.listOne(listingId);
+      const listing = await listingService.listOne(listingId, null, bidderId);
       if (!listing)
         return res.status(404).json({ message: "Listing not found" });
       if (listing.status !== "active")
@@ -45,7 +45,9 @@ const controller = {
 
       // prevent self-bid
       if (bidderId === listing.sellerId)
-        return res.status(403).json({ message: "Cannot bid on your own listing" });
+        return res
+          .status(403)
+          .json({ message: "Cannot bid on your own listing" });
 
       // only bidders can bid
       if (bidder.role !== "bidder")
@@ -68,11 +70,9 @@ const controller = {
       if (summary.total > 0) {
         const ratio = summary.up / summary.total;
         if (ratio < minRatio) {
-          return res
-            .status(403)
-            .json({
-              message: `Bid denied: bidder rating too low (required >= ${minRatio})`,
-            });
+          return res.status(403).json({
+            message: `Bid denied: bidder rating too low (required >= ${minRatio})`,
+          });
         }
       }
 
@@ -91,13 +91,23 @@ const controller = {
       // auto-extend if bid is made within window
       const autoExtendEnabled = process.env.AUTO_EXTEND_ENABLED !== "false";
       const windowMin = parseInt(process.env.AUTO_EXTEND_WINDOW_MINUTES || "5");
-      const extMin = parseInt(process.env.AUTO_EXTEND_EXTENSION_MINUTES || "10");
+      const extMin = parseInt(
+        process.env.AUTO_EXTEND_EXTENSION_MINUTES || "10"
+      );
       const timeLeftMs = new Date(listing.endsAt) - new Date();
       let extended = false;
       if (autoExtendEnabled && timeLeftMs <= windowMin * 60 * 1000) {
-        const newEnds = new Date(new Date(listing.endsAt).getTime() + extMin * 60 * 1000);
-        const newAuto = Array.isArray(listing.autoExtendDates) ? [...listing.autoExtendDates, newEnds] : [newEnds];
-        await listingService.update({ listingId, endsAt: newEnds, autoExtendDates: newAuto });
+        const newEnds = new Date(
+          new Date(listing.endsAt).getTime() + extMin * 60 * 1000
+        );
+        const newAuto = Array.isArray(listing.autoExtendDates)
+          ? [...listing.autoExtendDates, newEnds]
+          : [newEnds];
+        await listingService.update({
+          listingId,
+          endsAt: newEnds,
+          autoExtendDates: newAuto,
+        });
         listing.endsAt = newEnds;
         extended = true;
       }
@@ -107,89 +117,134 @@ const controller = {
       const prevHighBid = bids.length > 0 ? bids[0] : null;
 
       const row = await bidService.create(req.body);
-      
+
       // notify current bidder of success
-      emailLib.sendBidSuccessEmail(bidder.email, listing.title, Number(amount)).catch(e => console.error("Email failed", e));
-      
+      emailLib
+        .sendBidSuccessEmail(bidder.email, listing.title, Number(amount))
+        .catch((e) => console.error("Email failed", e));
+
       // notify previous bidder they've been outbid
       if (prevHighBid && prevHighBid.bidderId !== bidderId) {
-          const prevUser = await userService.listOne(prevHighBid.bidderId);
-          if (prevUser) {
-              emailLib.sendOutbidEmail(prevUser.email, listing.title, Number(amount)).catch(e => console.error("Email failed", e));
-          }
+        const prevUser = await userService.listOne(prevHighBid.bidderId);
+        if (prevUser) {
+          emailLib
+            .sendOutbidEmail(prevUser.email, listing.title, Number(amount))
+            .catch((e) => console.error("Email failed", e));
+        }
       }
 
       // Handle Auto-Bidding (Max Price set by current bidder)
       if (req.body.maxPrice && Number(req.body.maxPrice) > Number(amount)) {
-          const existingAuto = await autoBidService.getByListingAndUser(listingId, bidderId);
-          if (existingAuto) {
-              await autoBidService.update(existingAuto.autoBidId, { maxBidAmount: req.body.maxPrice, isActive: true });
-          } else {
-              await autoBidService.create({
-                  listingId,
-                  userId: bidderId,
-                  maxBidAmount: req.body.maxPrice,
-                  incrementAmount: step || 10,
-                  currentBidAmount: amount
-              });
-          }
+        const existingAuto = await autoBidService.getByListingAndUser(
+          listingId,
+          bidderId
+        );
+        if (existingAuto) {
+          await autoBidService.update(existingAuto.autoBidId, {
+            maxBidAmount: req.body.maxPrice,
+            isActive: true,
+          });
+        } else {
+          await autoBidService.create({
+            listingId,
+            userId: bidderId,
+            maxBidAmount: req.body.maxPrice,
+            incrementAmount: step || 10,
+            currentBidAmount: amount,
+          });
+        }
       }
 
       const otherAutoBids = await autoBidService.listAll(null, listingId);
-      const competitorBids = otherAutoBids.filter(ab => 
-          ab.userId !== bidderId && 
-          ab.isActive && 
+      const competitorBids = otherAutoBids.filter(
+        (ab) =>
+          ab.userId !== bidderId &&
+          ab.isActive &&
           Number(ab.maxBidAmount) > Number(amount)
       );
-      
+
       let finalBidRow = row;
       let note = "";
 
       if (competitorBids.length > 0) {
-          competitorBids.sort((a, b) => Number(b.maxBidAmount) - Number(a.maxBidAmount));
-          const bestBot = competitorBids[0];
-          let counterBid = Number(amount) + Number(step);
-          if (counterBid <= Number(bestBot.maxBidAmount)) {
-               const botBid = await bidService.create({
-                   listingId,
-                   bidderId: bestBot.userId,
-                   amount: counterBid
-               });
-               await listingService.updateCurrentBid(listingId, counterBid);
-               
-               // notify user they were outbid by bot
-               emailLib.sendOutbidEmail(bidder.email, listing.title, counterBid).catch(e => console.error("Email failed", e));
-               
-               // notify bot owner they bid successfully
-               const botUser = await userService.listOne(bestBot.userId);
-               if (botUser) {
-                   emailLib.sendBidSuccessEmail(botUser.email, listing.title, counterBid).catch(e => console.error("Email failed", e));
-               }
+        competitorBids.sort(
+          (a, b) => Number(b.maxBidAmount) - Number(a.maxBidAmount)
+        );
+        const bestBot = competitorBids[0];
+        let counterBid = Number(amount) + Number(step);
+        if (counterBid <= Number(bestBot.maxBidAmount)) {
+          const botBid = await bidService.create({
+            listingId,
+            bidderId: bestBot.userId,
+            amount: counterBid,
+          });
+          await listingService.updateCurrentBid(
+            listingId,
+            counterBid,
+            bidderId
+          );
 
-               if (autoExtendEnabled && (new Date(listing.endsAt) - new Date()) <= windowMin * 60 * 1000) {
-                  const newEnds = new Date(new Date(listing.endsAt).getTime() + extMin * 60 * 1000);
-                  const newAuto = Array.isArray(listing.autoExtendDates) ? [...listing.autoExtendDates, newEnds] : [newEnds];
-                  await listingService.update({ listingId, endsAt: newEnds, autoExtendDates: newAuto });
-                  listing.endsAt = newEnds;
-                  extended = true;
-               }
+          // notify user they were outbid by bot
+          emailLib
+            .sendOutbidEmail(bidder.email, listing.title, counterBid)
+            .catch((e) => console.error("Email failed", e));
 
-               finalBidRow = botBid;
-               note = "You have been outbid by an automatic bid.";
+          // notify bot owner they bid successfully
+          const botUser = await userService.listOne(bestBot.userId);
+          if (botUser) {
+            emailLib
+              .sendBidSuccessEmail(botUser.email, listing.title, counterBid)
+              .catch((e) => console.error("Email failed", e));
           }
+
+          if (
+            autoExtendEnabled &&
+            new Date(listing.endsAt) - new Date() <= windowMin * 60 * 1000
+          ) {
+            const newEnds = new Date(
+              new Date(listing.endsAt).getTime() + extMin * 60 * 1000
+            );
+            const newAuto = Array.isArray(listing.autoExtendDates)
+              ? [...listing.autoExtendDates, newEnds]
+              : [newEnds];
+            await listingService.update({
+              listingId,
+              endsAt: newEnds,
+              autoExtendDates: newAuto,
+            });
+            listing.endsAt = newEnds;
+            extended = true;
+          }
+
+          finalBidRow = botBid;
+          note = "You have been outbid by an automatic bid.";
+        }
       } else {
-          await listingService.updateCurrentBid(listingId, amount);
+        await listingService.updateCurrentBid(listingId, amount, bidderId);
       }
 
-      if (listing.buyNowPrice && Number(amount) >= Number(listing.buyNowPrice)) {
+      if (
+        listing.buyNowPrice &&
+        Number(amount) >= Number(listing.buyNowPrice)
+      ) {
         const orderService = await import("../services/order.js");
-        await orderService.default.create({ listingId, bidderId: bidderId, sellerId: listing.sellerId, finalPrice: amount, shippingAddress: null });
-        const updated = await listingService.listOne(listingId);
-        return res.status(201).json({ bid: row, orderCreated: true, listing: updated });
+        await orderService.default.create({
+          listingId,
+          bidderId: bidderId,
+          sellerId: listing.sellerId,
+          finalPrice: amount,
+          shippingAddress: null,
+        });
+        const updated = await listingService.listOne(listingId, null, bidderId);
+        return res
+          .status(201)
+          .json({ bid: row, orderCreated: true, listing: updated });
       }
 
-      const updated = await listingService.listOne(listingId);
-      return res.status(201).json({ bid: finalBidRow, extended, listing: updated, note });
+      const updated = await listingService.listOne(listingId, null, bidderId);
+      return res
+        .status(201)
+        .json({ bid: finalBidRow, extended, listing: updated, note });
     } catch (err) {
       next(err);
     }

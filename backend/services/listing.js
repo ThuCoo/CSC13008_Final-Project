@@ -1,6 +1,13 @@
 import { eq, desc, sql } from "drizzle-orm";
 import db from "../db/index.js";
-import { listings, categories, subcategories, users, bids, questions } from "../db/schema.js";
+import {
+  listings,
+  categories,
+  subcategories,
+  users,
+  bids,
+  questions,
+} from "../db/schema.js";
 import bidService from "./bid.js";
 import questionService from "./question.js";
 import { maskName } from "../utils/mask.js";
@@ -31,33 +38,54 @@ const defaultSelection = {
 };
 
 // Helper function to enrich listing with related data
-async function enrichListing(listing) {
+async function enrichListing(listing, requesterId = null) {
   if (!listing) return null;
 
+  const isSeller =
+    requesterId && String(listing.sellerId) === String(requesterId);
+
   try {
-    let sellerName = 'Unknown';
+    let sellerName = "Unknown";
     try {
-      const seller = await db.select({ name: users.name }).from(users).where(eq(users.userId, listing.sellerId)).limit(1);
-      sellerName = seller[0]?.name || 'Unknown';
+      const seller = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.userId, listing.sellerId))
+        .limit(1);
+      sellerName = seller[0]?.name || "Unknown";
     } catch (err) {
       console.error(`Error fetching seller ${listing.sellerId}:`, err.message);
     }
 
-    let categoryName = 'Unknown';
+    let categoryName = "Unknown";
     try {
-      const category = await db.select({ name: categories.name }).from(categories).where(eq(categories.categoryId, listing.categoryId)).limit(1);
-      categoryName = category[0]?.name || 'Unknown';
+      const category = await db
+        .select({ name: categories.name })
+        .from(categories)
+        .where(eq(categories.categoryId, listing.categoryId))
+        .limit(1);
+      categoryName = category[0]?.name || "Unknown";
     } catch (err) {
-      console.error(`Error fetching category ${listing.categoryId}:`, err.message);
+      console.error(
+        `Error fetching category ${listing.categoryId}:`,
+        err.message
+      );
     }
 
     let subcategoryName = null;
     if (listing.subcategoryId) {
       try {
-        const subcategory = await db.select({ name: subcategories.name }).from(subcategories).where(eq(subcategories.subcategoryId, listing.subcategoryId)).limit(1);
+        const subcategory = await db
+          .select({ name: subcategories.name })
+          .from(subcategories)
+          .where(eq(subcategories.subcategoryId, listing.subcategoryId))
+          .limit(1);
         subcategoryName = subcategory[0]?.name || null;
       } catch (err) {
-        console.error(`Error fetching subcategory ${listing.subcategoryId}:`, err.message);
+        console.error(
+          `Error fetching subcategory ${listing.subcategoryId}:`,
+          err.message
+        );
       }
     }
 
@@ -65,66 +93,103 @@ async function enrichListing(listing) {
     try {
       const bidsData = await bidService.listAll(listing.listingId, null);
       const ratingService = (await import("./rating.js")).default;
-      
-      enrichedBids = await Promise.all(bidsData.map(async (bid) => {
-        try {
-          let bidderName = 'Unknown';
+
+      enrichedBids = await Promise.all(
+        bidsData.map(async (bid) => {
           try {
-            const bidder = await db.select({ name: users.name }).from(users).where(eq(users.userId, bid.bidderId)).limit(1);
-            bidderName = bidder[0]?.name || 'Unknown';
-          } catch (err) {
-            console.error(`Error fetching bidder ${bid.bidderId}:`, err.message);
-          }
-          
-          let bidderRating = undefined;
-          try {
-            const ratingSummary = await ratingService.summaryForUser(bid.bidderId);
-            if (ratingSummary.total > 0) {
-              bidderRating = Math.round((ratingSummary.up / ratingSummary.total) * 100);
+            let bidderName = "Unknown";
+            try {
+              const bidder = await db
+                .select({ name: users.name })
+                .from(users)
+                .where(eq(users.userId, bid.bidderId))
+                .limit(1);
+              bidderName = bidder[0]?.name || "Unknown";
+            } catch (err) {
+              console.error(
+                `Error fetching bidder ${bid.bidderId}:`,
+                err.message
+              );
             }
-          } catch (ratingErr) {
-            console.error(`Error fetching rating for bidder ${bid.bidderId}:`, ratingErr.message);
+
+            let bidderRating = undefined;
+            try {
+              const ratingSummary = await ratingService.summaryForUser(
+                bid.bidderId
+              );
+              if (ratingSummary.total > 0) {
+                bidderRating = Math.round(
+                  (ratingSummary.up / ratingSummary.total) * 100
+                );
+              }
+            } catch (ratingErr) {
+              console.error(
+                `Error fetching rating for bidder ${bid.bidderId}:`,
+                ratingErr.message
+              );
+            }
+
+            return {
+              id: String(bid.bidId),
+              bidderId: String(bid.bidderId),
+              bidderName: isSeller ? bidderName : maskName(bidderName),
+              amount: Number(bid.amount),
+              timestamp: bid.createdAt
+                ? new Date(bid.createdAt).getTime()
+                : Date.now(),
+              bidderRating,
+            };
+          } catch (err) {
+            console.error(`Error enriching bid ${bid.bidId}:`, err.message);
+            return null;
           }
-          
-          return {
-            id: String(bid.bidId),
-            bidderId: String(bid.bidderId),
-            bidderName: maskName(bidderName),
-            amount: Number(bid.amount),
-            timestamp: bid.createdAt ? new Date(bid.createdAt).getTime() : Date.now(),
-            bidderRating,
-          };
-        } catch (err) {
-          console.error(`Error enriching bid ${bid.bidId}:`, err.message);
-          return null;
-        }
-      }));
-      enrichedBids = enrichedBids.filter(b => b !== null);
+        })
+      );
+      enrichedBids = enrichedBids.filter((b) => b !== null);
     } catch (err) {
-      console.error(`Error fetching bids for listing ${listing.listingId}:`, err);
+      console.error(
+        `Error fetching bids for listing ${listing.listingId}:`,
+        err
+      );
     }
     let enrichedQuestions = [];
     try {
-      const questionsData = await questionService.listAll(listing.listingId, null);
-      enrichedQuestions = await Promise.all(questionsData.map(async (q) => {
-        try {
-          const user = await db.select({ name: users.name }).from(users).where(eq(users.userId, q.userId)).limit(1);
-          return {
-            id: String(q.questionId),
-            userId: String(q.userId),
-            userName: maskName(user[0]?.name || 'Unknown'),
-            question: q.questionText,
-            answer: q.answerText || undefined,
-            timestamp: q.createdAt ? new Date(q.createdAt).getTime() : Date.now(),
-          };
-        } catch (err) {
-          console.error(`Error enriching question ${q.questionId}:`, err);
-          return null;
-        }
-      }));
-      enrichedQuestions = enrichedQuestions.filter(q => q !== null);
+      const questionsData = await questionService.listAll(
+        listing.listingId,
+        null
+      );
+      enrichedQuestions = await Promise.all(
+        questionsData.map(async (q) => {
+          try {
+            const user = await db
+              .select({ name: users.name })
+              .from(users)
+              .where(eq(users.userId, q.userId))
+              .limit(1);
+            return {
+              id: String(q.questionId),
+              userId: String(q.userId),
+              userName: isSeller
+                ? user[0]?.name || "Unknown"
+                : maskName(user[0]?.name || "Unknown"),
+              question: q.questionText,
+              answer: q.answerText || undefined,
+              timestamp: q.createdAt
+                ? new Date(q.createdAt).getTime()
+                : Date.now(),
+            };
+          } catch (err) {
+            console.error(`Error enriching question ${q.questionId}:`, err);
+            return null;
+          }
+        })
+      );
+      enrichedQuestions = enrichedQuestions.filter((q) => q !== null);
     } catch (err) {
-      console.error(`Error fetching questions for listing ${listing.listingId}:`, err);
+      console.error(
+        `Error fetching questions for listing ${listing.listingId}:`,
+        err
+      );
     }
 
     return {
@@ -139,19 +204,23 @@ async function enrichListing(listing) {
       startingPrice: Number(listing.startingPrice),
       currentBid: Number(listing.currentBid),
       stepPrice: Number(listing.stepPrice),
-      buyNowPrice: listing.buyNowPrice ? Number(listing.buyNowPrice) : undefined,
+      buyNowPrice: listing.buyNowPrice
+        ? Number(listing.buyNowPrice)
+        : undefined,
       status: listing.status,
-      createdAt: listing.createdAt ? new Date(listing.createdAt).getTime() : Date.now(),
+      createdAt: listing.createdAt
+        ? new Date(listing.createdAt).getTime()
+        : Date.now(),
       endsAt: listing.endsAt ? new Date(listing.endsAt).getTime() : Date.now(),
       condition: listing.itemCondition,
       shippingCost: Number(listing.shippingCost),
       returns: listing.returnPolicy,
       images: Array.isArray(listing.images) ? listing.images : [],
-      autoExtendedDates: Array.isArray(listing.autoExtendDates) 
-        ? listing.autoExtendDates.map(d => new Date(d).getTime())
+      autoExtendedDates: Array.isArray(listing.autoExtendDates)
+        ? listing.autoExtendDates.map((d) => new Date(d).getTime())
         : [],
-      rejectedBidders: Array.isArray(listing.rejectedBidders) 
-        ? listing.rejectedBidders.map(id => String(id))
+      rejectedBidders: Array.isArray(listing.rejectedBidders)
+        ? listing.rejectedBidders.map((id) => String(id))
         : [],
       bids: enrichedBids.sort((a, b) => b.amount - a.amount), // Sort by amount descending
       questions: enrichedQuestions.sort((a, b) => a.timestamp - b.timestamp), // Sort by time ascending
@@ -162,18 +231,22 @@ async function enrichListing(listing) {
     return {
       id: String(listing.listingId),
       sellerId: String(listing.sellerId),
-      sellerName: 'Unknown',
+      sellerName: "Unknown",
       title: listing.title,
       description: listing.description,
-      category: 'Unknown',
+      category: "Unknown",
       subCategory: null,
-      categories: ['Unknown'],
+      categories: ["Unknown"],
       startingPrice: Number(listing.startingPrice),
       currentBid: Number(listing.currentBid),
       stepPrice: Number(listing.stepPrice),
-      buyNowPrice: listing.buyNowPrice ? Number(listing.buyNowPrice) : undefined,
+      buyNowPrice: listing.buyNowPrice
+        ? Number(listing.buyNowPrice)
+        : undefined,
       status: listing.status,
-      createdAt: listing.createdAt ? new Date(listing.createdAt).getTime() : Date.now(),
+      createdAt: listing.createdAt
+        ? new Date(listing.createdAt).getTime()
+        : Date.now(),
       endsAt: listing.endsAt ? new Date(listing.endsAt).getTime() : Date.now(),
       condition: listing.itemCondition,
       shippingCost: Number(listing.shippingCost),
@@ -188,7 +261,11 @@ async function enrichListing(listing) {
 }
 
 const service = {
-  listAll: async function ({ page = 1, limit = DEFAULT_LIMIT } = {}) {
+  listAll: async function ({
+    page = 1,
+    limit = DEFAULT_LIMIT,
+    requesterId = null,
+  } = {}) {
     limit = Math.min(Math.max(1, +limit), MAX_LIMIT);
     page = Math.max(1, +page);
     const offset = (page - 1) * limit;
@@ -200,13 +277,15 @@ const service = {
       .limit(limit)
       .offset(offset);
 
-    const enrichedData = await Promise.all(result.map(listing => enrichListing(listing)));
-    const validListings = enrichedData.filter(l => l !== null);
+    const enrichedData = await Promise.all(
+      result.map((listing) => enrichListing(listing, requesterId))
+    );
+    const validListings = enrichedData.filter((l) => l !== null);
 
     return { page, limit, data: validListings };
   },
 
-  listOne: async function (listingId = null, title = null) {
+  listOne: async function (listingId = null, title = null, requesterId = null) {
     let query = db.select(defaultSelection).from(listings).limit(1);
 
     if (listingId != null) {
@@ -218,7 +297,7 @@ const service = {
     const result = await query;
     const listing = result[0] || null;
     if (!listing) return null;
-    return await enrichListing(listing);
+    return await enrichListing(listing, requesterId);
   },
 
   // Full-text search across title, category name and subcategory name
@@ -226,6 +305,7 @@ const service = {
     query,
     page = 1,
     limit = DEFAULT_LIMIT,
+    requesterId = null,
   } = {}) {
     if (!query || String(query).trim().length === 0)
       return { page, limit: 0, data: [] };
@@ -253,13 +333,15 @@ const service = {
       .limit(limit)
       .offset(offset);
 
-    const enrichedData = await Promise.all(result.map(listing => enrichListing(listing)));
+    const enrichedData = await Promise.all(
+      result.map((listing) => enrichListing(listing, requesterId))
+    );
     return { page, limit, data: enrichedData };
   },
   create: async function (listing) {
     const result = await db.insert(listings).values(listing).returning();
     const newListing = result[0];
-    return await enrichListing(newListing);
+    return await enrichListing(newListing, newListing.sellerId);
   },
 
   update: async function (listing) {
@@ -267,17 +349,21 @@ const service = {
       .update(listings)
       .set(listing)
       .where(eq(listings.listingId, listing.listingId));
-    const updated = await db.select(defaultSelection).from(listings).where(eq(listings.listingId, listing.listingId)).limit(1);
-    return await enrichListing(updated[0]);
+    const updated = await db
+      .select(defaultSelection)
+      .from(listings)
+      .where(eq(listings.listingId, listing.listingId))
+      .limit(1);
+    return await enrichListing(updated[0], updated[0].sellerId);
   },
 
   // update current bid amount for a listing
-  updateCurrentBid: async function (listingId, amount) {
+  updateCurrentBid: async function (listingId, amount, requesterId = null) {
     await db
       .update(listings)
       .set({ currentBid: amount })
       .where(eq(listings.listingId, listingId));
-    return this.listOne(listingId);
+    return this.listOne(listingId, null, requesterId);
   },
 
   remove: async function (listingId) {

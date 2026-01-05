@@ -637,7 +637,7 @@ export default function CreateListing() {
             </div>
 
             <div
-              className={`grid grid-cols-3 gap-4 p-4 border-2 border-dashed rounded-lg bg-slate-50 min-h-[120px] ${
+              className={`grid grid-cols-3 gap-4 p-4 border-2 border-dashed rounded-lg bg-slate-50 min-h-30 ${
                 errors.images ? "border-red-500 bg-red-50/10" : ""
               }`}
             >

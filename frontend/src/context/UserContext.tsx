@@ -26,6 +26,7 @@ export interface UserContextType {
   getAllUsers: () => Promise<User[]>;
   banUser: (id: string) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
+  resetUserPassword: (id: string) => Promise<void>;
   getUserReviews: (userId: string) => Promise<
     Array<{
       rating: number;
@@ -61,7 +62,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       const { data } = await apiClient.get("/users/me");
-      setUser(data.user);
+      // Backend returns user directly (not wrapped), and userId is the primary key
+      const userData = data.userId ? data : data.user;
+      const mappedUser = {
+        ...userData,
+        id: String(userData.userId),
+        userId: userData.userId,
+      };
+      setUser(mappedUser);
     } catch (error) {
       console.error("Failed to load user", error);
       localStorage.removeItem("token");
@@ -81,7 +89,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         password: passwordInput,
       });
       localStorage.setItem("token", data.token);
-      setUser(data.user);
+      // Map userId to id for consistency
+      const mappedUser = {
+        ...data.user,
+        id: String(data.user.userId),
+        userId: data.user.userId,
+      };
+      setUser(mappedUser);
       return true;
     } catch (error) {
       console.error("Login failed", error);
@@ -144,7 +158,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const updateProfile = async (id: string, data: Partial<User>) => {
     if (!user || user.id !== id) return;
     try {
-      await apiClient.put(`/users/${id}`, data);
+      await apiClient.put(`/users/${Number(id)}`, data);
       setUser({ ...user, ...data } as Omit<User, "password">);
     } catch (error) {
       console.error("Update profile failed", error);
@@ -163,7 +177,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const banUser = async (id: string) => {
     try {
-      await apiClient.put(`/users/${id}`, { status: "banned" });
+      await apiClient.put(`/users/${Number(id)}`, { status: "banned" });
     } catch (e) {
       console.error(e);
     }
@@ -171,15 +185,24 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const deleteUser = async (id: string) => {
     try {
-      await apiClient.delete(`/users/${id}`);
+      await apiClient.delete(`/users/${Number(id)}`);
     } catch (e) {
       console.error(e);
     }
   };
 
+  const resetUserPassword = async (id: string) => {
+    try {
+      await apiClient.post(`/users/${Number(id)}/reset-password`);
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  };
+
   const getUserReviews = async (userId: string) => {
     try {
-      const { data } = await apiClient.get(`/ratings/${userId}`);
+      const { data } = await apiClient.get(`/ratings/${Number(userId)}`);
       return data;
     } catch (e) {
       console.error(e);
@@ -195,7 +218,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   ) => {
     try {
       await apiClient.post("/ratings", {
-        targetUserId: targetId,
+        targetUserId: Number(targetId),
+        raterUserId: user?.userId || Number(user?.id),
         rating,
         comment,
         role,
@@ -233,6 +257,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         getAllUsers,
         banUser,
         deleteUser,
+        resetUserPassword,
         getUserReviews,
         rateUser,
       }}

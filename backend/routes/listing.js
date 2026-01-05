@@ -1,5 +1,6 @@
 import { Router } from "express";
 import validateQuery from "../middlewares/validateQuery.js";
+import optionalJwtAuth from "../middlewares/optionalJwtAuth.js";
 import listingController from "../controllers/listing.js";
 import { paginationSchema, searchSchema, idParams } from "../schemas/common.js";
 
@@ -9,6 +10,9 @@ import {
 } from "../schemas/listing.js";
 
 const route = new Router();
+
+// Apply optional JWT auth to all routes to identify the requester
+route.use(optionalJwtAuth);
 
 route.get(
   "/",
@@ -32,6 +36,10 @@ route.put(
   validateQuery(updateListingSchema, "body"),
   listingController.update
 );
-route.delete("/:id", validateQuery(idParams, "params"), listingController.remove);
+route.delete(
+  "/:id",
+  validateQuery(idParams, "params"),
+  listingController.remove
+);
 
 export default route;

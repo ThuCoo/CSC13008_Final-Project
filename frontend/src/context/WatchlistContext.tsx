@@ -53,7 +53,10 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     await loadWatchlist();
     if (!isInWatchlist(listingId, userId)) {
       try {
-        await apiClient.post("/watchlists", { listingId, userId });
+        await apiClient.post("/watchlists", {
+          listingId: Number(listingId),
+          userId: Number(userId),
+        });
         const newItem: WatchlistItem = {
           listingId,
           userId,
@@ -68,7 +71,9 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
   const removeFromWatchlist = async (listingId: string, userId: string) => {
     try {
-      await apiClient.delete(`/watchlists/${userId}/${listingId}`);
+      await apiClient.delete(
+        `/watchlists/${Number(userId)}/${Number(listingId)}`
+      );
       setWatchlist((prev) =>
         prev.filter(
           (item) => !(item.listingId === listingId && item.userId === userId)

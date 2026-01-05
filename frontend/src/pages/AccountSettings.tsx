@@ -35,7 +35,7 @@ import {
   Star,
   ThumbsUp,
   ThumbsDown,
-  MessageSquare,
+  Search,
 } from "lucide-react";
 
 export interface User {
@@ -64,6 +64,10 @@ export default function AccountSettings() {
   const [currentPass, setCurrentPass] = useState("");
   const [newPass, setNewPass] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
+
+  // Search States
+  const [bidSearchTerm, setBidSearchTerm] = useState("");
+  const [wonSearchTerm, setWonSearchTerm] = useState("");
 
   // Review State
   const [reviewComment, setReviewComment] = useState("");
@@ -101,13 +105,25 @@ export default function AccountSettings() {
   }
 
   // Get items user is currently bidding on
-  const myActiveBids = getActiveBiddingListings(user?.id || "").filter(
+  const currentUserId = user?.userId ? String(user.userId) : user?.id || "";
+  const myActiveBids = getActiveBiddingListings(currentUserId).filter(
     (l) => l.status === "active"
   );
 
   const wonItems = listings.filter(
     (l) =>
-      l.status === "sold" && l.bids.length > 0 && l.bids[0].bidderId === user.id
+      l.status === "sold" &&
+      l.bids.length > 0 &&
+      l.bids[0].bidderId === currentUserId
+  );
+
+  // Filter by search terms
+  const filteredActiveBids = myActiveBids.filter((l) =>
+    l.title.toLowerCase().includes(bidSearchTerm.toLowerCase())
+  );
+
+  const filteredWonItems = wonItems.filter((l) =>
+    l.title.toLowerCase().includes(wonSearchTerm.toLowerCase())
   );
 
   const handleUpdateProfile = (e: React.FormEvent) => {
@@ -301,12 +317,26 @@ export default function AccountSettings() {
           <TabsContent value="bidding">
             <div className="space-y-4">
               <h2 className="text-xl font-bold mb-4">Active Biddings</h2>
-              {myActiveBids.length === 0 ? (
+
+              {/* Search Bar */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Search active bids..."
+                  value={bidSearchTerm}
+                  onChange={(e) => setBidSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {filteredActiveBids.length === 0 ? (
                 <p className="text-muted-foreground">
-                  You are not bidding on any active items.
+                  {bidSearchTerm
+                    ? "No active bids match your search."
+                    : "You are not bidding on any active items."}
                 </p>
               ) : (
-                myActiveBids.map((l) => (
+                filteredActiveBids.map((l) => (
                   <Card key={l.id}>
                     <CardContent className="p-4 flex justify-between items-center">
                       <div>
@@ -340,13 +370,27 @@ export default function AccountSettings() {
           </TabsContent>
           {/* 3. Won Items & Reviews */}
           <TabsContent value="won">
+            <h2 className="text-xl font-bold mb-4">Won Items</h2>
             <div className="space-y-4">
-              {wonItems.length === 0 ? (
+              {/* Search Bar */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Search won items..."
+                  value={wonSearchTerm}
+                  onChange={(e) => setWonSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {filteredWonItems.length === 0 ? (
                 <p className="text-muted-foreground p-4">
-                  No won auctions yet.
+                  {wonSearchTerm
+                    ? "No won items match your search."
+                    : "No won auctions yet."}
                 </p>
               ) : (
-                wonItems.map((l) => (
+                filteredWonItems.map((l) => (
                   <Card key={l.id}>
                     <CardContent className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                       <div>
@@ -411,58 +455,80 @@ export default function AccountSettings() {
 
           {/* 4. My Reviews */}
           <TabsContent value="reviews">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex gap-2">
-                  <MessageSquare className="w-5 h-5" /> My Reviews
-                </CardTitle>
-                <CardDescription>
-                  See what others have said about you.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {reviews.length === 0 ? (
-                    <p className="text-slate-500">No reviews yet.</p>
-                  ) : (
-                    reviews.map((rev, i) => (
-                      <div
-                        key={i}
-                        className="border-b pb-4 last:border-0 last:pb-0"
-                      >
-                        <div className="flex justify-between items-start mb-1">
-                          <div>
-                            <p className="font-bold text-sm">
-                              User #{rev.reviewerId}{" "}
-                              <span className="text-xs font-normal text-slate-500">
-                                ({rev.role})
-                              </span>
-                            </p>
-                            <p className="text-xs text-slate-400">
-                              {rev.createdAt
-                                ? new Date(rev.createdAt).toLocaleDateString()
-                                : "N/A"}
-                            </p>
-                          </div>
-                          {rev.rating === 1 ? (
-                            <span className="flex items-center text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">
-                              <ThumbsUp className="w-3 h-3 mr-1" /> Positive
-                            </span>
-                          ) : (
-                            <span className="flex items-center text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded">
-                              <ThumbsDown className="w-3 h-3 mr-1" /> Negative
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-slate-700 text-sm">
-                          "{rev.comment}"
+            <h2 className="text-xl font-bold mb-4">My Reviews</h2>
+            <div className="space-y-4">
+              {/* Rating Summary */}
+              {reviews.length > 0 && (
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="font-bold text-lg mb-4">Rating Summary</h3>
+                    <div className="flex items-center gap-4">
+                      <div className="text-4xl font-bold text-rose-600">
+                        {Math.round(
+                          (reviews.filter((r) => r.rating === 1).length /
+                            reviews.length) *
+                            100
+                        )}
+                        %
+                      </div>
+                      <div className="text-sm text-slate-600">
+                        <p>
+                          <span className="font-semibold">
+                            {reviews.filter((r) => r.rating === 1).length}
+                          </span>{" "}
+                          positive
+                        </p>
+                        <p>
+                          <span className="font-semibold">
+                            {reviews.filter((r) => r.rating === -1).length}
+                          </span>{" "}
+                          negative
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Total: {reviews.length} reviews
                         </p>
                       </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {reviews.length === 0 ? (
+                <p className="text-muted-foreground p-4">No reviews yet.</p>
+              ) : (
+                reviews.map((rev, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="font-bold text-lg">
+                            User #{rev.reviewerId}{" "}
+                            <span className="text-sm font-normal text-slate-500">
+                              ({rev.role})
+                            </span>
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {rev.createdAt
+                              ? new Date(rev.createdAt).toLocaleDateString()
+                              : "N/A"}
+                          </p>
+                        </div>
+                        {rev.rating === 1 ? (
+                          <span className="flex items-center text-green-600 text-sm font-bold bg-green-50 px-3 py-1.5 rounded">
+                            <ThumbsUp className="w-4 h-4 mr-1" /> Positive
+                          </span>
+                        ) : (
+                          <span className="flex items-center text-red-600 text-sm font-bold bg-red-50 px-3 py-1.5 rounded">
+                            <ThumbsDown className="w-4 h-4 mr-1" /> Negative
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-slate-700">"{rev.comment}"</p>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

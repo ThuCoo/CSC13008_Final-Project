@@ -10,9 +10,10 @@ import {
   ArrowLeft,
   Heart,
   Star,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { maskBidderName, formatAuctionTime } from "../lib/utils";
-import { Badge } from "../components/ui/badge";
 
 import AutoBidForm from "../components/AutoBidForm";
 
@@ -32,6 +33,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
 
 export default function AuctionDetail() {
   const { id } = useParams();
@@ -59,13 +67,38 @@ export default function AuctionDetail() {
   // Image Gallery State
   const [selectedImage, setSelectedImage] = useState("");
   const [bidderToReject, setBidderToReject] = useState<string | null>(null);
+  const [pendingBidAmount, setPendingBidAmount] = useState<number | null>(null);
 
   // Seller Rating State
   const [sellerRating, setSellerRating] = useState<number | null>(null);
+  const [sellerReviews, setSellerReviews] = useState<
+    Array<{
+      rating: number;
+      comment: string;
+      reviewerId?: number;
+      role?: string;
+      createdAt?: string;
+      [key: string]: unknown;
+    }>
+  >([]);
+  const [bidderReviews, setBidderReviews] = useState<
+    Record<
+      string,
+      Array<{
+        rating: number;
+        comment: string;
+        reviewerId?: number;
+        role?: string;
+        createdAt?: string;
+        [key: string]: unknown;
+      }>
+    >
+  >({});
 
   useEffect(() => {
     if (listing?.sellerId) {
       void getUserReviews(listing.sellerId).then((reviews) => {
+        setSellerReviews(reviews);
         if (reviews.length > 0) {
           const positive = reviews.filter(
             (r: { rating: number }) => r.rating === 1
@@ -117,16 +150,19 @@ export default function AuctionDetail() {
 
   const handleToggleWatchlist = () => {
     if (!user) return navigate("/login");
-    if (isInWatchlist(listing.id, user.id)) {
-      removeFromWatchlist(listing.id, user.id);
+    const userId = user.userId ? String(user.userId) : user.id;
+    if (isInWatchlist(listing.id, userId)) {
+      removeFromWatchlist(listing.id, userId);
       toast({ title: "Removed from watchlist" });
     } else {
-      addToWatchlist(listing.id, user.id);
+      addToWatchlist(listing.id, userId);
       toast({ title: "Added to watchlist" });
     }
   };
 
-  const isInWatchlistState = user ? isInWatchlist(listing.id, user.id) : false;
+  const isInWatchlistState = user
+    ? isInWatchlist(listing.id, user.userId ? String(user.userId) : user.id)
+    : false;
 
   const handlePlaceBid = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,10 +170,28 @@ export default function AuctionDetail() {
       navigate("/login");
       return;
     }
+    const amount = Number(bidAmount);
+    if (amount < listing.currentBid + listing.stepPrice) {
+      toast({
+        title: "Invalid bid amount",
+        description: `Minimum bid is ${(
+          listing.currentBid + listing.stepPrice
+        ).toLocaleString()}₫`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setPendingBidAmount(amount);
+  };
+
+  const confirmPlaceBid = async () => {
+    if (!user || !pendingBidAmount) return;
     try {
-      placeBid(listing.id, user.id, user.name, Number(bidAmount));
+      const userId = user.userId ? String(user.userId) : user.id;
+      await placeBid(listing.id, userId, user.name, pendingBidAmount);
       toast({ title: "Bid placed successfully!" });
       setBidAmount("");
+      setPendingBidAmount(null);
     } catch (error) {
       const message =
         error && typeof error === "object" && "message" in error
@@ -148,13 +202,15 @@ export default function AuctionDetail() {
         description: message,
         variant: "destructive",
       });
+      setPendingBidAmount(null);
     }
   };
 
   const handleAskQuestion = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return navigate("/login");
-    addQuestion(listing.id, questionText, user.id);
+    const userId = user.userId ? String(user.userId) : user.id;
+    addQuestion(listing.id, questionText, userId);
     setQuestionText("");
     toast({ title: "Question posted" });
   };
@@ -179,8 +235,17 @@ export default function AuctionDetail() {
     }
   };
 
+  const handleViewBidderRating = async (bidderId: string) => {
+    if (!bidderReviews[bidderId]) {
+      const reviews = await getUserReviews(bidderId);
+      setBidderReviews((prev) => ({ ...prev, [bidderId]: reviews }));
+    }
+  };
+
   const isHighBidder =
-    user && listing.bids.length > 0 && listing.bids[0].bidderId === user.id;
+    user &&
+    listing.bids.length > 0 &&
+    listing.bids[0].bidderId === (user.userId ? String(user.userId) : user.id);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -257,37 +322,127 @@ export default function AuctionDetail() {
               </div>
 
               {/* Seller Info */}
-              <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-lg">
-                <div className="w-10 h-10 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center font-bold">
-                  {listing.sellerName.slice(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <p className="font-medium text-sm">
-                    Seller:{" "}
-                    <span className="text-slate-900 font-bold">
-                      {listing.sellerName}
-                    </span>
-                  </p>
-                  <div className="flex items-center gap-1 text-xs text-slate-500">
-                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                    <span>
-                      {sellerRating !== null
-                        ? `${sellerRating}% Positive Feedback`
-                        : "No ratings yet"}
-                    </span>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition">
+                    <div className="w-10 h-10 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center font-bold">
+                      {listing.sellerName.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">
+                        Seller:{" "}
+                        <span className="text-slate-900 font-bold hover:text-rose-600 transition">
+                          {listing.sellerName}
+                        </span>
+                      </p>
+                      <div className="flex items-center gap-1 text-xs text-slate-500">
+                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                        <span>
+                          {sellerRating !== null
+                            ? `${sellerRating}% Positive Feedback`
+                            : "No ratings yet"}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Seller: {listing.sellerName}</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
+                    {/* Rating Summary */}
+                    {sellerReviews.length > 0 && (
+                      <div className="mb-6 p-4 bg-slate-50 rounded-lg border">
+                        <h3 className="font-bold text-lg mb-2">
+                          Rating Summary
+                        </h3>
+                        <div className="flex items-center gap-4">
+                          <div className="text-4xl font-bold text-rose-600">
+                            {sellerRating}%
+                          </div>
+                          <div className="text-sm text-slate-600">
+                            <p>
+                              <span className="font-semibold">
+                                {
+                                  sellerReviews.filter((r) => r.rating === 1)
+                                    .length
+                                }
+                              </span>{" "}
+                              positive
+                            </p>
+                            <p>
+                              <span className="font-semibold">
+                                {
+                                  sellerReviews.filter((r) => r.rating === -1)
+                                    .length
+                                }
+                              </span>{" "}
+                              negative
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1">
+                              Total: {sellerReviews.length} reviews
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-              <p className="text-slate-500 flex gap-2 items-center mb-6">
+                    {/* Reviews List */}
+                    <div className="space-y-3">
+                      <h3 className="font-bold text-md mb-3">Reviews:</h3>
+                      {sellerReviews.length === 0 ? (
+                        <p className="text-slate-500 text-sm">
+                          No reviews yet.
+                        </p>
+                      ) : (
+                        sellerReviews.map((rev, i) => (
+                          <div
+                            key={i}
+                            className="border rounded-lg p-3 bg-white"
+                          >
+                            <div className="flex justify-between items-start mb-1">
+                              <div>
+                                <p className="font-bold text-sm">
+                                  User #{rev.reviewerId}{" "}
+                                  <span className="text-xs font-normal text-slate-500">
+                                    ({rev.role})
+                                  </span>
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  {rev.createdAt
+                                    ? new Date(
+                                        rev.createdAt
+                                      ).toLocaleDateString()
+                                    : "N/A"}
+                                </p>
+                              </div>
+                              {rev.rating === 1 ? (
+                                <span className="flex items-center text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">
+                                  <ThumbsUp className="w-3 h-3 mr-1" /> Positive
+                                </span>
+                              ) : (
+                                <span className="flex items-center text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded">
+                                  <ThumbsDown className="w-3 h-3 mr-1" />{" "}
+                                  Negative
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-slate-700 text-sm">
+                              "{rev.comment}"
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <div className="text-slate-500 flex gap-2 items-center mb-6">
                 <Clock className="w-4 h-4" />{" "}
                 {formatAuctionTime(listing.endsAt)}
-                {isHighBidder && (
-                  <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 ml-2">
-                    You are the high bidder
-                  </Badge>
-                )}
-              </p>
+              </div>
               <div
                 className="prose"
                 dangerouslySetInnerHTML={{ __html: listing.description }}
@@ -316,7 +471,8 @@ export default function AuctionDetail() {
                 {(listing.questions || []).map((q) => (
                   <div key={q.id} className="bg-slate-50 p-4 rounded-lg">
                     <p className="font-semibold text-sm mb-1">
-                      {maskBidderName(q.userName)} asked:
+                      {isSeller ? q.userName : maskBidderName(q.userName)}{" "}
+                      asked:
                     </p>
                     <p className="text-slate-700 mb-2">{q.question}</p>
 
@@ -362,35 +518,44 @@ export default function AuctionDetail() {
 
               {!isSeller && user?.role !== "admin" && (
                 <div className="space-y-6">
-                  {/* Standard Bid */}
-                  <form onSubmit={handlePlaceBid}>
-                    <div className="flex gap-2 mb-2">
-                      <Input
-                        type="number"
-                        placeholder={`Min ${(
-                          listing.currentBid + listing.stepPrice
-                        ).toLocaleString()}₫`}
-                        value={bidAmount}
-                        onChange={(e) => setBidAmount(e.target.value)}
-                      />
+                  {isHighBidder ? (
+                    <div className="bg-primary border rounded-3xl p-4 text-center">
+                      <p className="text-sm text-white">
+                        You are currently the highest bidder on this item.
+                      </p>
                     </div>
-                    <Button className="w-full" type="submit">
-                      Place Direct Bid
-                    </Button>
-                  </form>
+                  ) : (
+                    <>
+                      {/* Standard Bid */}
+                      <form onSubmit={handlePlaceBid}>
+                        <div className="flex gap-2 mb-2">
+                          <Input
+                            type="number"
+                            placeholder={`Min ${(
+                              listing.currentBid + listing.stepPrice
+                            ).toLocaleString()}₫`}
+                            value={bidAmount}
+                            onChange={(e) => setBidAmount(e.target.value)}
+                          />
+                        </div>
+                        <Button className="w-full" type="submit">
+                          Place Direct Bid
+                        </Button>
+                      </form>
 
-                  {/* Auto Bid System */}
-                  <div className="border-t pt-6">
-                    <p className="font-bold mb-2 text-sm">Auto-Bidding</p>
-                    {user && (
-                      <AutoBidForm
-                        listingId={listing.id}
-                        userId={user.id}
-                        currentBid={listing.currentBid}
-                        minBid={listing.currentBid + listing.stepPrice}
-                      />
-                    )}
-                  </div>
+                      {/* Auto Bid System */}
+                      <div className="border-t pt-6">
+                        <p className="font-bold mb-2 text-sm">Auto-Bidding</p>
+                        {user && (
+                          <AutoBidForm
+                            listingId={listing.id}
+                            userId={user.userId ? String(user.userId) : user.id}
+                            minBid={listing.currentBid + listing.stepPrice}
+                          />
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -398,47 +563,195 @@ export default function AuctionDetail() {
               <div className="mt-8 border-t pt-4">
                 <h3 className="font-bold mb-4">Bid History</h3>
                 <div className="space-y-3">
-                  {listing.bids.map((bid) => (
-                    <div
-                      key={bid.id}
-                      className="flex justify-between items-center text-sm"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">
-                            {maskBidderName(bid.bidderName)}
+                  {listing.bids.map((bid) => {
+                    const currentUserId = user?.userId
+                      ? String(user.userId)
+                      : user?.id;
+                    const isOwnBid = currentUserId === bid.bidderId;
+
+                    return (
+                      <div
+                        key={bid.id}
+                        className="flex justify-between items-center text-sm"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            {isSeller ? (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <button
+                                    onClick={() =>
+                                      handleViewBidderRating(bid.bidderId)
+                                    }
+                                    className="font-medium hover:text-primary hover:font-bold cursor-pointer"
+                                  >
+                                    {isOwnBid ? user?.name : bid.bidderName}
+                                  </button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                  <DialogHeader>
+                                    <DialogTitle>
+                                      Bidder: {bid.bidderName}
+                                    </DialogTitle>
+                                  </DialogHeader>
+                                  <div className="py-4">
+                                    {bidderReviews[bid.bidderId] && (
+                                      <>
+                                        {bidderReviews[bid.bidderId].length >
+                                          0 && (
+                                          <div className="mb-6 p-4 bg-slate-50 rounded-lg border">
+                                            <h3 className="font-bold text-lg mb-2">
+                                              Rating Summary
+                                            </h3>
+                                            <div className="flex items-center gap-4">
+                                              <div className="text-4xl font-bold text-rose-600">
+                                                {Math.round(
+                                                  (bidderReviews[
+                                                    bid.bidderId
+                                                  ].filter(
+                                                    (r) => r.rating === 1
+                                                  ).length /
+                                                    bidderReviews[bid.bidderId]
+                                                      .length) *
+                                                    100
+                                                )}
+                                                %
+                                              </div>
+                                              <div className="text-sm text-slate-600">
+                                                <p>
+                                                  <span className="font-semibold">
+                                                    {
+                                                      bidderReviews[
+                                                        bid.bidderId
+                                                      ].filter(
+                                                        (r) => r.rating === 1
+                                                      ).length
+                                                    }
+                                                  </span>{" "}
+                                                  positive
+                                                </p>
+                                                <p>
+                                                  <span className="font-semibold">
+                                                    {
+                                                      bidderReviews[
+                                                        bid.bidderId
+                                                      ].filter(
+                                                        (r) => r.rating === -1
+                                                      ).length
+                                                    }
+                                                  </span>{" "}
+                                                  negative
+                                                </p>
+                                                <p className="text-xs text-slate-400 mt-1">
+                                                  Total:{" "}
+                                                  {
+                                                    bidderReviews[bid.bidderId]
+                                                      .length
+                                                  }{" "}
+                                                  reviews
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <div className="space-y-3">
+                                          <h3 className="font-bold text-md mb-3">
+                                            Reviews:
+                                          </h3>
+                                          {bidderReviews[bid.bidderId]
+                                            .length === 0 ? (
+                                            <p className="text-slate-500 text-sm">
+                                              No reviews yet.
+                                            </p>
+                                          ) : (
+                                            bidderReviews[bid.bidderId].map(
+                                              (rev, i) => (
+                                                <div
+                                                  key={i}
+                                                  className="border rounded-lg p-3 bg-white"
+                                                >
+                                                  <div className="flex justify-between items-start mb-1">
+                                                    <div>
+                                                      <p className="font-bold text-sm">
+                                                        User #{rev.reviewerId}{" "}
+                                                        <span className="text-xs font-normal text-slate-500">
+                                                          ({rev.role})
+                                                        </span>
+                                                      </p>
+                                                      <p className="text-xs text-slate-400">
+                                                        {rev.createdAt
+                                                          ? new Date(
+                                                              rev.createdAt
+                                                            ).toLocaleDateString()
+                                                          : "N/A"}
+                                                      </p>
+                                                    </div>
+                                                    {rev.rating === 1 ? (
+                                                      <span className="flex items-center text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">
+                                                        <ThumbsUp className="w-3 h-3 mr-1" />{" "}
+                                                        Positive
+                                                      </span>
+                                                    ) : (
+                                                      <span className="flex items-center text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded">
+                                                        <ThumbsDown className="w-3 h-3 mr-1" />{" "}
+                                                        Negative
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <p className="text-slate-700 text-sm">
+                                                    "{rev.comment}"
+                                                  </p>
+                                                </div>
+                                              )
+                                            )
+                                          )}
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            ) : (
+                              <p
+                                className={`font-medium ${
+                                  isOwnBid ? "text-primary" : ""
+                                }`}
+                              >
+                                {isOwnBid ? user?.name : bid.bidderName}
+                              </p>
+                            )}
+                            {bid.bidderRating !== undefined && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                                <span className="text-slate-600">
+                                  {bid.bidderRating}%
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            {new Date(bid.timestamp).toLocaleTimeString()}
                           </p>
-                          {bid.bidderRating !== undefined && (
-                            <div className="flex items-center gap-1 text-xs">
-                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                              <span className="text-slate-600">
-                                {bid.bidderRating}%
-                              </span>
-                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">
+                            {bid.amount.toLocaleString()}₫
+                          </span>
+                          {isSeller && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-red-500 hover:bg-red-50"
+                              onClick={() => handleRejectBidder(bid.bidderId)}
+                              title="Ban Bidder"
+                            >
+                              <Ban className="w-3 h-3" />
+                            </Button>
                           )}
                         </div>
-                        <p className="text-xs text-slate-500">
-                          {new Date(bid.timestamp).toLocaleTimeString()}
-                        </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold">
-                          {bid.amount.toLocaleString()}₫
-                        </span>
-                        {isSeller && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-red-500 hover:bg-red-50"
-                            onClick={() => handleRejectBidder(bid.bidderId)}
-                            title="Ban Bidder"
-                          >
-                            <Ban className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -535,6 +848,30 @@ export default function AuctionDetail() {
           </div>
         </div>
       </div>
+
+      <AlertDialog
+        open={!!pendingBidAmount}
+        onOpenChange={(open) => !open && setPendingBidAmount(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Your Bid</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to place a bid of{" "}
+              <span className="font-bold text-rose-600">
+                {pendingBidAmount?.toLocaleString()}₫
+              </span>{" "}
+              on "{listing.title}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmPlaceBid}>
+              Confirm Bid
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={!!bidderToReject}
