@@ -85,18 +85,20 @@ export function CategoriesProvider({
   const addCategory = async (
     name: string,
     description: string,
-    icon: string
+    icon: string,
+    subcategories?: Array<{ id: string; name: string }>
   ): Promise<Category> => {
     try {
       const { data } = await apiClient.post("/categories", {
         name,
         description,
         icon,
+        subcategories: subcategories?.map((s) => s.name) || [],
       });
       const newCat = {
         ...data,
         id: String(data.categoryId),
-        subcategories: [],
+        subcategories: data.subcategories || [],
       };
       setCategories((prev) => [...prev, newCat]);
       return newCat;

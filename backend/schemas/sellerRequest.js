@@ -7,7 +7,6 @@ export const createSellerRequestSchema = z.object({
 });
 
 export const updateSellerRequestSchema = z.object({
-  requestId: z.coerce.number().int().positive(),
   status: z.enum(["pending", "approved", "rejected"]).optional(),
   reviewedBy: z.coerce.number().int().positive().optional(),
   reviewedAt: z

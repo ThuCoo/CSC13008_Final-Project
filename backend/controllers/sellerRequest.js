@@ -1,4 +1,6 @@
 import sellerRequestService from "../services/sellerRequest.js";
+import userService from "../services/user.js";
+import emailLib from "../lib/email.js";
 
 const controller = {
   listAll: function (req, res, next) {
@@ -40,6 +42,29 @@ const controller = {
 
       const updates = { ...existing, ...req.body, requestId: id };
       const updated = await sellerRequestService.update(updates);
+
+      // Send email notification based on status change
+      if (req.body.status && req.body.status !== existing.status) {
+        try {
+          const user = await userService.listOne(existing.userId);
+          if (user && user.email) {
+            if (req.body.status === "approved") {
+              await emailLib.sendSellerApprovalEmail(user.email, user.name);
+            } else if (req.body.status === "rejected") {
+              const reason = req.body.rejectionReason || "No reason provided";
+              await emailLib.sendSellerRejectionEmail(
+                user.email,
+                user.name,
+                reason
+              );
+            }
+          }
+        } catch (emailErr) {
+          console.error("Failed to send email notification:", emailErr);
+          // Don't fail the request if email fails
+        }
+      }
+
       res.json(updated);
     } catch (err) {
       next(err);

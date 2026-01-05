@@ -50,11 +50,20 @@ export async function sendOutbidEmail(to, listingTitle, newCurrentBid) {
   return sendMail({ to, subject, text, html });
 }
 
-export async function sendAuctionEndedEmail(to, listingTitle, status, finalPrice) {
-  const subject = status === 'won' ? `You won the auction: ${listingTitle}` : `Auction ended: ${listingTitle}`;
-  const text = status === 'won' 
-    ? `Congratulations! You won the auction for "${listingTitle}" with a final price of ${finalPrice.toLocaleString()}₫. Please complete the payment soon.`
-    : `The auction for "${listingTitle}" has ended. Final price: ${finalPrice.toLocaleString()}₫.`;
+export async function sendAuctionEndedEmail(
+  to,
+  listingTitle,
+  status,
+  finalPrice
+) {
+  const subject =
+    status === "won"
+      ? `You won the auction: ${listingTitle}`
+      : `Auction ended: ${listingTitle}`;
+  const text =
+    status === "won"
+      ? `Congratulations! You won the auction for "${listingTitle}" with a final price of ${finalPrice.toLocaleString()}₫. Please complete the payment soon.`
+      : `The auction for "${listingTitle}" has ended. Final price: ${finalPrice.toLocaleString()}₫.`;
   const html = `<p>${text}</p>`;
   return sendMail({ to, subject, text, html });
 }
@@ -73,11 +82,51 @@ export async function sendPasswordResetAdminEmail(to, newPassword) {
   return sendMail({ to, subject, text, html });
 }
 
-export default { 
-  sendOtpEmail, 
-  sendBidSuccessEmail, 
-  sendOutbidEmail, 
+export async function sendSellerApprovalEmail(to, name) {
+  const subject = `Your seller request has been approved!`;
+  const text = `Congratulations ${name}! Your request to become a seller has been approved. You can now start listing items for auction. This approval is valid for 7 days.`;
+  const html = `<p>${text}</p>`;
+  return sendMail({ to, subject, text, html });
+}
+
+export async function sendSellerRejectionEmail(to, name, reason) {
+  const subject = `Your seller request has been rejected`;
+  const text = `Hello ${name}, unfortunately your request to become a seller has been rejected. Reason: ${reason}. You may submit a new request if you wish to try again.`;
+  const html = `<p>${text}</p>`;
+  return sendMail({ to, subject, text, html });
+}
+
+export async function sendUserBannedEmail(to, name) {
+  const subject = `Your account has been suspended`;
+  const text = `Hello ${name}, your account has been suspended by an administrator. If you believe this is an error, please contact support.`;
+  const html = `<p>${text}</p>`;
+  return sendMail({ to, subject, text, html });
+}
+
+export async function sendUserDeletedEmail(to, name) {
+  const subject = `Your account has been deleted`;
+  const text = `Hello ${name}, your account has been permanently deleted by an administrator. All your data has been removed from our system.`;
+  const html = `<p>${text}</p>`;
+  return sendMail({ to, subject, text, html });
+}
+
+export async function sendBidderRejectedEmail(to, name, listingTitle) {
+  const subject = `You have been removed from auction: ${listingTitle}`;
+  const text = `Hello ${name}, the seller has removed you from the auction "${listingTitle}". You will no longer be able to bid on this item.`;
+  const html = `<p>${text}</p>`;
+  return sendMail({ to, subject, text, html });
+}
+
+export default {
+  sendOtpEmail,
+  sendBidSuccessEmail,
+  sendOutbidEmail,
   sendAuctionEndedEmail,
   sendQuestionEmail,
-  sendPasswordResetAdminEmail
+  sendPasswordResetAdminEmail,
+  sendSellerApprovalEmail,
+  sendSellerRejectionEmail,
+  sendUserBannedEmail,
+  sendUserDeletedEmail,
+  sendBidderRejectedEmail,
 };

@@ -1,13 +1,16 @@
 import listingService from "../services/listing.js";
 import sellerRequestService from "../services/sellerRequest.js";
+import emailLib from "../lib/email.js";
+import userService from "../services/user.js";
 
 const controller = {
   listAll: function (req, res, next) {
     const page = req.query.page ? Number(req.query.page) : undefined;
     const limit = req.query.limit ? Number(req.query.limit) : undefined;
     const requesterId = req.user?.userId || null;
+    const requesterRole = req.user?.role || null;
     listingService
-      .listAll({ page, limit, requesterId })
+      .listAll({ page, limit, requesterId, requesterRole })
       .then((result) => {
         console.log(
           `Listings API: Returning ${result.data?.length || 0} listings`
@@ -23,8 +26,9 @@ const controller = {
   listOne: function (req, res, next) {
     const id = Number(req.params.id);
     const requesterId = req.user?.userId || null;
+    const requesterRole = req.user?.role || null;
     listingService
-      .listOne(id, null, requesterId)
+      .listOne(id, null, requesterId, requesterRole)
       .then((item) => {
         if (!item)
           return res.status(404).json({ message: "Listing not found" });
@@ -38,48 +42,58 @@ const controller = {
     const page = req.query.page ? Number(req.query.page) : undefined;
     const limit = req.query.limit ? Number(req.query.limit) : undefined;
     const requesterId = req.user?.userId || null;
+    const requesterRole = req.user?.role || null;
     listingService
-      .searchListings({ query: q, page, limit, requesterId })
+      .searchListings({ query: q, page, limit, requesterId, requesterRole })
       .then((result) => res.json(result))
       .catch(next);
   },
 
   create: async function (req, res, next) {
-    // Check Seller Expiry (7 days)
-    const requests = await sellerRequestService.listAll(req.body.sellerId);
-    const approved = requests.find((r) => r.status === "approved");
-    if (!approved) {
-      // Fallback: If user has role 'seller' but no request (e.g. seed data), allow?
-      // Strict mode: Block. Weak mode: Allow.
-      // Given req2.md is strict about "Asking for permission", let's assume all sellers need requests.
-      // However, seed data might bypass this. I'll allow if no request found BUT role is seller (legacy/seed).
-      // Actually, safer to check the date if request exists.
-    }
+    try {
+      const requests = await sellerRequestService.listAll(req.body.sellerId);
+      const approved = requests.find((r) => r.status === "approved");
 
-    if (approved && approved.reviewedAt) {
-      const validDays = 7;
-      const expireDate = new Date(
-        new Date(approved.reviewedAt).getTime() +
-          validDays * 24 * 60 * 60 * 1000
-      );
-      if (new Date() > expireDate) {
-        return res.status(403).json({
-          message: "Seller privileges expired. Please request renewal.",
-        });
+      // If no approved request found but user has seller role, allow (for seed data)
+      if (!approved) {
+        const user = req.user;
+        if (!user || user.role !== "seller") {
+          return res.status(403).json({
+            message:
+              "Seller privileges required. Please request seller approval.",
+          });
+        }
+      } else if (approved.reviewedAt) {
+        const validDays = 7;
+        const expireDate = new Date(
+          new Date(approved.reviewedAt).getTime() +
+            validDays * 24 * 60 * 60 * 1000
+        );
+        if (new Date() > expireDate) {
+          return res.status(403).json({
+            message: "Seller privileges expired. Please request renewal.",
+          });
+        }
       }
-    }
 
-    listingService
-      .create(req.body)
-      .then((row) => res.status(201).json(row))
-      .catch(next);
+      const created = await listingService.create(req.body);
+      res.status(201).json(created);
+    } catch (err) {
+      next(err);
+    }
   },
 
   update: async function (req, res, next) {
     try {
       const id = Number(req.params.id);
       const requesterId = req.user?.userId || null;
-      const existing = await listingService.listOne(id, null, requesterId);
+      const requesterRole = req.user?.role || null;
+      const existing = await listingService.listOne(
+        id,
+        null,
+        requesterId,
+        requesterRole
+      );
       if (!existing)
         return res.status(404).json({ message: "Listing not found" });
 
@@ -92,6 +106,33 @@ const controller = {
           return res.status(400).json({
             message: "Description cannot be edited, only appended to.",
           });
+        }
+      }
+
+      // Send email notification if bidders were rejected
+      if (req.body.rejectedBidders && Array.isArray(req.body.rejectedBidders)) {
+        const existingRejected = existing.rejectedBidders || [];
+        const newRejected = req.body.rejectedBidders.filter(
+          (bidderId) => !existingRejected.includes(bidderId)
+        );
+
+        // Send email to newly rejected bidders
+        for (const bidderId of newRejected) {
+          try {
+            const bidder = await userService.listOne(Number(bidderId));
+            if (bidder && bidder.email) {
+              await emailLib.sendBidderRejectedEmail(
+                bidder.email,
+                bidder.name,
+                existing.title
+              );
+            }
+          } catch (emailErr) {
+            console.error(
+              `Failed to send rejection email to bidder ${bidderId}:`,
+              emailErr
+            );
+          }
         }
       }
 
@@ -108,11 +149,17 @@ const controller = {
     try {
       const id = Number(req.params.id);
       const requesterId = req.user?.userId || null;
-      const existing = await listingService.listOne(id, null, requesterId);
+      const requesterRole = req.user?.role || null;
+      const existing = await listingService.listOne(
+        id,
+        null,
+        requesterId,
+        requesterRole
+      );
       if (!existing)
         return res.status(404).json({ message: "Listing not found" });
 
-      // Requirement: Seller cannot end early (delete) if bids exist
+      // Requirement: Seller cannot delete if bids exist
       if (existing.bids && existing.bids.length > 0) {
         return res
           .status(400)

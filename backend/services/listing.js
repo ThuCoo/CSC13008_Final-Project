@@ -38,11 +38,17 @@ const defaultSelection = {
 };
 
 // Helper function to enrich listing with related data
-async function enrichListing(listing, requesterId = null) {
+async function enrichListing(
+  listing,
+  requesterId = null,
+  requesterRole = null
+) {
   if (!listing) return null;
 
   const isSeller =
     requesterId && String(listing.sellerId) === String(requesterId);
+  const isAdmin = requesterRole === "admin";
+  const shouldUnmask = isSeller || isAdmin;
 
   try {
     let sellerName = "Unknown";
@@ -132,7 +138,7 @@ async function enrichListing(listing, requesterId = null) {
             return {
               id: String(bid.bidId),
               bidderId: String(bid.bidderId),
-              bidderName: isSeller ? bidderName : maskName(bidderName),
+              bidderName: shouldUnmask ? bidderName : maskName(bidderName),
               amount: Number(bid.amount),
               timestamp: bid.createdAt
                 ? new Date(bid.createdAt).getTime()
@@ -169,7 +175,7 @@ async function enrichListing(listing, requesterId = null) {
             return {
               id: String(q.questionId),
               userId: String(q.userId),
-              userName: isSeller
+              userName: shouldUnmask
                 ? user[0]?.name || "Unknown"
                 : maskName(user[0]?.name || "Unknown"),
               question: q.questionText,
@@ -265,6 +271,7 @@ const service = {
     page = 1,
     limit = DEFAULT_LIMIT,
     requesterId = null,
+    requesterRole = null,
   } = {}) {
     limit = Math.min(Math.max(1, +limit), MAX_LIMIT);
     page = Math.max(1, +page);
@@ -278,14 +285,21 @@ const service = {
       .offset(offset);
 
     const enrichedData = await Promise.all(
-      result.map((listing) => enrichListing(listing, requesterId))
+      result.map((listing) =>
+        enrichListing(listing, requesterId, requesterRole)
+      )
     );
     const validListings = enrichedData.filter((l) => l !== null);
 
     return { page, limit, data: validListings };
   },
 
-  listOne: async function (listingId = null, title = null, requesterId = null) {
+  listOne: async function (
+    listingId = null,
+    title = null,
+    requesterId = null,
+    requesterRole = null
+  ) {
     let query = db.select(defaultSelection).from(listings).limit(1);
 
     if (listingId != null) {
@@ -297,7 +311,7 @@ const service = {
     const result = await query;
     const listing = result[0] || null;
     if (!listing) return null;
-    return await enrichListing(listing, requesterId);
+    return await enrichListing(listing, requesterId, requesterRole);
   },
 
   // Full-text search across title, category name and subcategory name
@@ -306,6 +320,7 @@ const service = {
     page = 1,
     limit = DEFAULT_LIMIT,
     requesterId = null,
+    requesterRole = null,
   } = {}) {
     if (!query || String(query).trim().length === 0)
       return { page, limit: 0, data: [] };
@@ -334,14 +349,16 @@ const service = {
       .offset(offset);
 
     const enrichedData = await Promise.all(
-      result.map((listing) => enrichListing(listing, requesterId))
+      result.map((listing) =>
+        enrichListing(listing, requesterId, requesterRole)
+      )
     );
     return { page, limit, data: enrichedData };
   },
   create: async function (listing) {
     const result = await db.insert(listings).values(listing).returning();
     const newListing = result[0];
-    return await enrichListing(newListing, newListing.sellerId);
+    return await enrichListing(newListing, newListing.sellerId, "seller");
   },
 
   update: async function (listing) {
@@ -354,16 +371,21 @@ const service = {
       .from(listings)
       .where(eq(listings.listingId, listing.listingId))
       .limit(1);
-    return await enrichListing(updated[0], updated[0].sellerId);
+    return await enrichListing(updated[0], updated[0].sellerId, "seller");
   },
 
   // update current bid amount for a listing
-  updateCurrentBid: async function (listingId, amount, requesterId = null) {
+  updateCurrentBid: async function (
+    listingId,
+    amount,
+    requesterId = null,
+    requesterRole = null
+  ) {
     await db
       .update(listings)
       .set({ currentBid: amount })
       .where(eq(listings.listingId, listingId));
-    return this.listOne(listingId, null, requesterId);
+    return this.listOne(listingId, null, requesterId, requesterRole);
   },
 
   remove: async function (listingId) {

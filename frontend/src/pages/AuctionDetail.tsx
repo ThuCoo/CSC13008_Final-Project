@@ -300,25 +300,27 @@ export default function AuctionDetail() {
 
               <div className="flex justify-between items-start mb-2">
                 <h1 className="text-3xl font-bold">{listing.title}</h1>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="rounded-full shrink-0"
-                  onClick={handleToggleWatchlist}
-                  title={
-                    isInWatchlistState
-                      ? "Remove from watchlist"
-                      : "Add to watchlist"
-                  }
-                >
-                  <Heart
-                    className={`w-5 h-5 ${
+                {user?.role !== "admin" && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-full shrink-0"
+                    onClick={handleToggleWatchlist}
+                    title={
                       isInWatchlistState
-                        ? "fill-current text-red-500"
-                        : "text-slate-400"
-                    }`}
-                  />
-                </Button>
+                        ? "Remove from watchlist"
+                        : "Add to watchlist"
+                    }
+                  >
+                    <Heart
+                      className={`w-5 h-5 ${
+                        isInWatchlistState
+                          ? "fill-current text-red-500"
+                          : "text-slate-400"
+                      }`}
+                    />
+                  </Button>
+                )}
               </div>
 
               {/* Seller Info */}
@@ -455,7 +457,7 @@ export default function AuctionDetail() {
                 <MessageCircle className="w-5 h-5" /> Q&A History
               </h2>
 
-              {!isSeller && (
+              {!isSeller && user?.role !== "admin" && (
                 <form onSubmit={handleAskQuestion} className="flex gap-2 mb-6">
                   <Input
                     value={questionText}
@@ -471,7 +473,9 @@ export default function AuctionDetail() {
                 {(listing.questions || []).map((q) => (
                   <div key={q.id} className="bg-slate-50 p-4 rounded-lg">
                     <p className="font-semibold text-sm mb-1">
-                      {isSeller ? q.userName : maskBidderName(q.userName)}{" "}
+                      {isSeller || user?.role === "admin"
+                        ? q.userName
+                        : maskBidderName(q.userName)}{" "}
                       asked:
                     </p>
                     <p className="text-slate-700 mb-2">{q.question}</p>
@@ -576,7 +580,7 @@ export default function AuctionDetail() {
                       >
                         <div>
                           <div className="flex items-center gap-2">
-                            {isSeller ? (
+                            {isSeller || user?.role === "admin" ? (
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <button
@@ -737,7 +741,7 @@ export default function AuctionDetail() {
                           <span className="font-bold">
                             {bid.amount.toLocaleString()}₫
                           </span>
-                          {isSeller && (
+                          {(isSeller || user?.role === "admin") && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -833,7 +837,9 @@ export default function AuctionDetail() {
                           <p className="text-xs text-gray-500 pt-2 border-t mt-2">
                             Top Bidder:{" "}
                             <span className="font-medium text-gray-700">
-                              {maskBidderName(topBidder)}
+                              {user?.role === "admin"
+                                ? topBidder
+                                : maskBidderName(topBidder)}
                             </span>
                           </p>
                         )}

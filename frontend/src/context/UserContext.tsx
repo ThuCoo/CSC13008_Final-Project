@@ -25,6 +25,7 @@ export interface UserContextType {
   ) => Promise<void>;
   getAllUsers: () => Promise<User[]>;
   banUser: (id: string) => Promise<void>;
+  unbanUser: (id: string) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   resetUserPassword: (id: string) => Promise<void>;
   getUserReviews: (userId: string) => Promise<
@@ -183,6 +184,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const unbanUser = async (id: string) => {
+    try {
+      await apiClient.put(`/users/${Number(id)}`, { status: "active" });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const deleteUser = async (id: string) => {
     try {
       await apiClient.delete(`/users/${Number(id)}`);
@@ -256,6 +265,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         changePassword,
         getAllUsers,
         banUser,
+        unbanUser,
         deleteUser,
         resetUserPassword,
         getUserReviews,

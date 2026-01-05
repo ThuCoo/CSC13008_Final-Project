@@ -12,6 +12,7 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import { Clock, Zap, ChevronRight, ChevronLeft } from "lucide-react";
 import { useListings, Listing } from "../context/ListingsContext";
+import { useUser } from "../context/UserContext";
 import { isNewProduct, formatAuctionTime, maskBidderName } from "../lib/utils";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { useCategories } from "../context/CategoriesContext";
@@ -19,6 +20,7 @@ import { useCategories } from "../context/CategoriesContext";
 export default function Browse() {
   const { listings, isLoading, getListingsByCategory } = useListings();
   const { categories, loadCategories } = useCategories();
+  const { user } = useUser();
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
@@ -281,7 +283,10 @@ export default function Browse() {
                           </div>
                           {topBidder && (
                             <p className="text-xs text-gray-500 border-t pt-2">
-                              Holder: {maskBidderName(topBidder)}
+                              Holder:{" "}
+                              {user?.role === "admin"
+                                ? topBidder
+                                : maskBidderName(topBidder)}
                             </p>
                           )}
                         </div>

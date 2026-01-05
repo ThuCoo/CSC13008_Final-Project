@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useListings } from "../context/ListingsContext";
+import { useUser } from "../context/UserContext";
 import {
   Clock,
   TrendingUp,
@@ -32,7 +33,13 @@ const features = [
 ];
 
 // Component for a single listing card
-const ListingCard = ({ listing }: { listing: Listing }) => {
+const ListingCard = ({
+  listing,
+  user,
+}: {
+  listing: Listing;
+  user: { role?: string } | null;
+}) => {
   const topBidder =
     listing.bids && listing.bids.length > 0 ? listing.bids[0].bidderName : null;
   const createdTime = new Date(listing.createdAt).getTime();
@@ -94,7 +101,7 @@ const ListingCard = ({ listing }: { listing: Listing }) => {
           <p className="text-xs text-gray-500 pt-2 border-t mt-2">
             Top Bidder:{" "}
             <span className="font-medium text-gray-700">
-              {maskBidderName(topBidder)}
+              {user?.role === "admin" ? topBidder : maskBidderName(topBidder)}
             </span>
           </p>
         )}
@@ -111,6 +118,7 @@ export default function HomePage() {
     getTop5MostBids,
     getTop5HighestPrice,
   } = useListings();
+  const { user } = useUser();
   const closingSoon = getTop5ClosingSoon();
   const mostBids = getTop5MostBids();
   const highestPrice = getTop5HighestPrice();
@@ -200,7 +208,7 @@ export default function HomePage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {closingSoon.map((l) => (
-                  <ListingCard key={l.id} listing={l} />
+                  <ListingCard key={l.id} listing={l} user={user} />
                 ))}
               </div>
             </section>
@@ -215,7 +223,7 @@ export default function HomePage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {mostBids.map((l) => (
-                  <ListingCard key={l.id} listing={l} />
+                  <ListingCard key={l.id} listing={l} user={user} />
                 ))}
               </div>
             </section>
@@ -230,7 +238,7 @@ export default function HomePage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {highestPrice.map((l) => (
-                  <ListingCard key={l.id} listing={l} />
+                  <ListingCard key={l.id} listing={l} user={user} />
                 ))}
               </div>
             </section>

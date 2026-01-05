@@ -1,4 +1,5 @@
 import userService from "../services/user.js";
+import emailLib from "../lib/email.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -25,7 +26,8 @@ const controller = {
 
   me: async function (req, res, next) {
     try {
-      if (!req.user || !req.user.userId) return res.status(401).json({ message: "Unauthorized" });
+      if (!req.user || !req.user.userId)
+        return res.status(401).json({ message: "Unauthorized" });
       const user = await userService.listOne(req.user.userId);
       if (!user) return res.status(404).json({ message: "User not found" });
       delete user.passwordHash;
@@ -46,7 +48,8 @@ const controller = {
       const ok = await bcrypt.compare(password, user.passwordHash);
       if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-      if (!user.isVerified) return res.status(403).json({ message: "Email not verified" });
+      if (!user.isVerified)
+        return res.status(403).json({ message: "Email not verified" });
 
       const payload = { userId: user.userId, role: user.role };
       const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -95,43 +98,65 @@ const controller = {
 
       const updates = { ...existing, ...updatesBody, userId: id };
       const updated = await userService.update(updates);
+
+      // Send email notification if user is being banned
+      if (updatesBody.status === "banned" && existing.status !== "banned") {
+        try {
+          await emailLib.sendUserBannedEmail(existing.email, existing.name);
+        } catch (emailErr) {
+          console.error("Failed to send ban email:", emailErr);
+        }
+      }
+
       res.json(updated);
     } catch (err) {
       next(err);
     }
   },
 
-  remove: function (req, res, next) {
-    const id = Number(req.params.id);
-    userService
-      .remove(id)
-      .then(() => res.json({}))
-      .catch(next);
+  remove: async function (req, res, next) {
+    try {
+      const id = Number(req.params.id);
+      const user = await userService.listOne(id);
+      if (user) {
+        try {
+          await emailLib.sendUserDeletedEmail(user.email, user.name);
+        } catch (emailErr) {
+          console.error("Failed to send deletion email:", emailErr);
+        }
+      }
+      await userService.remove(id);
+      res.json({});
+    } catch (err) {
+      next(err);
+    }
   },
 
   adminResetPassword: async function (req, res, next) {
     try {
       if (req.user?.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden: Admin access only" });
+        return res
+          .status(403)
+          .json({ message: "Forbidden: Admin access only" });
       }
 
       const id = Number(req.params.id);
       const user = await userService.listOne(id);
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      const newPassword = Math.random().toString(36).slice(-8); 
+      const newPassword = Math.random().toString(36).slice(-8);
       const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
-      
+
       await userService.update({ ...user, passwordHash: hash, userId: id });
-      
+
       const emailLib = (await import("../lib/email.js")).default;
       await emailLib.sendPasswordResetAdminEmail(user.email, newPassword);
-      
+
       res.json({ message: "Password reset and email sent", newPassword });
     } catch (err) {
       next(err);
     }
-  }
+  },
 };
 
 export default controller;

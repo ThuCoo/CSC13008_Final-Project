@@ -57,8 +57,7 @@ import { Badge } from "../components/ui/badge";
 import { Category } from "../context/CategoriesContext";
 
 export default function AdminDashboard() {
-  const { user, getAllUsers, banUser, deleteUser, resetUserPassword } =
-    useUser();
+  const { user, getAllUsers, banUser, unbanUser, deleteUser } = useUser();
   const { requests, loadRequests, approveRequest, rejectRequest } =
     useSellerRequests();
   const { listings, deleteListing } = useListings();
@@ -180,6 +179,14 @@ export default function AdminDashboard() {
     toast({ title: "User Banned", description: "User access restricted" });
   };
 
+  const handleUnbanUser = async (userId: string) => {
+    await unbanUser(userId);
+    setUsers(
+      users.map((u) => (u.id === userId ? { ...u, status: "active" } : u))
+    );
+    toast({ title: "User Unbanned", description: "User access restored" });
+  };
+
   const handleDeleteUser = async (userId: string) => {
     await deleteUser(userId);
     setUsers(users.filter((u) => u.id !== userId));
@@ -187,23 +194,6 @@ export default function AdminDashboard() {
       title: "User Deleted",
       description: "Account removed permanently",
     });
-  };
-
-  const handleResetPassword = (id: string, userName: string) => {
-    resetUserPassword(id)
-      .then(() => {
-        toast({
-          title: "Password Reset",
-          description: `A new password has been sent to ${userName}'s email.`,
-        });
-      })
-      .catch(() => {
-        toast({
-          title: "Error",
-          description: "Failed to reset password.",
-          variant: "destructive",
-        });
-      });
   };
 
   const EditCategoryDialog = ({
@@ -377,20 +367,32 @@ export default function AdminDashboard() {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            className="bg-green-600"
-                            onClick={() => {
-                              approveRequest(req.id, user.id);
-                              toast({
-                                title: "Approved",
-                                description: "User is now a seller",
-                              });
+                            className="bg-green-600 hover:cursor-pointer"
+                            onClick={async () => {
+                              try {
+                                await approveRequest(req.id, user.id);
+                                toast({
+                                  title: "Approved",
+                                  description: "User is now a seller",
+                                });
+                              } catch {
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to approve request",
+                                  variant: "destructive",
+                                });
+                              }
                             }}
                           >
                             <Check className="w-4 h-4 mr-1" /> Approve
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="destructive">
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="hover:cursor-pointer"
+                              >
                                 <X className="w-4 h-4 mr-1" /> Reject
                               </Button>
                             </AlertDialogTrigger>
@@ -408,13 +410,27 @@ export default function AdminDashboard() {
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  onClick={() =>
-                                    rejectRequest(
-                                      req.id,
-                                      user.id,
-                                      "Admin Rejected"
-                                    )
-                                  }
+                                  onClick={async () => {
+                                    try {
+                                      await rejectRequest(
+                                        req.id,
+                                        user.id,
+                                        "Admin Rejected"
+                                      );
+                                      toast({
+                                        title: "Rejected",
+                                        description:
+                                          "Seller request has been rejected",
+                                        variant: "destructive",
+                                      });
+                                    } catch {
+                                      toast({
+                                        title: "Error",
+                                        description: "Failed to reject request",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }}
                                 >
                                   Reject
                                 </AlertDialogAction>
@@ -432,12 +448,12 @@ export default function AdminDashboard() {
           <TabsContent value="users" className="mt-6">
             <h2 className="text-xl font-bold mb-4">Manage Users</h2>
             <div className="space-y-4">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+              <div className="grid grid-cols-4 gap-2">
+                <div className="relative flex col-span-3">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
                     placeholder="Search users..."
-                    className="pl-9"
+                    className="pl-9 w-full"
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                   />
@@ -476,43 +492,35 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="hover:text-primary hover:bg-rose-50"
-                              title="Reset Password"
-                            >
-                              Reset Password
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Reset User Password?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                A new temporary password will be generated and
-                                sent to {u.name}'s email address. They will be
-                                notified to change it after logging in.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  handleResetPassword(u.id, u.name)
-                                }
-                              >
-                                Reset Password
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                         {u.status === "banned" ? (
-                          <span className="text-rose-600 font-bold text-sm mr-2">
-                            BANNED
-                          </span>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="bg-green-50 hover:bg-green-100 text-green-700"
+                                size="sm"
+                              >
+                                Unban
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Unban User?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will restore the user's access to the
+                                  platform.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleUnbanUser(u.id)}
+                                >
+                                  Unban User
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         ) : (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -623,7 +631,7 @@ export default function AdminDashboard() {
                             size="sm"
                             className="text-rose-600"
                           >
-                            <Trash2 className="w-4 h-4 mr-2" /> Remove
+                            <Trash2 className="w-4 h-4 mr-2" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
