@@ -107,6 +107,31 @@ const controller = {
             message: "Description cannot be edited, only appended to.",
           });
         }
+
+        // Send email to all current bidders about description update
+        if (existing.bids && existing.bids.length > 0) {
+          const bidService = await import("../services/bid.js");
+          const allBids = await bidService.default.listAll(id);
+          const uniqueBidders = [...new Set(allBids.map((b) => b.bidderId))];
+
+          for (const bidderId of uniqueBidders) {
+            try {
+              const bidder = await userService.listOne(Number(bidderId));
+              if (bidder && bidder.email) {
+                await emailLib.sendListingUpdatedEmail(
+                  bidder.email,
+                  existing.title,
+                  id
+                );
+              }
+            } catch (emailErr) {
+              console.error(
+                `Failed to send listing update email to bidder ${bidderId}:`,
+                emailErr
+              );
+            }
+          }
+        }
       }
 
       // Send email notification if bidders were rejected
@@ -168,6 +193,38 @@ const controller = {
 
       await listingService.remove(id);
       res.json({});
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  listParticipating: async function (req, res, next) {
+    try {
+      if (!req.user || !req.user.userId)
+        return res.status(401).json({ message: "Unauthorized" });
+
+      const requesterRole = req.user?.role || null;
+      const listings = await listingService.listParticipating(
+        req.user.userId,
+        requesterRole
+      );
+      res.json(listings);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  listWon: async function (req, res, next) {
+    try {
+      if (!req.user || !req.user.userId)
+        return res.status(401).json({ message: "Unauthorized" });
+
+      const requesterRole = req.user?.role || null;
+      const listings = await listingService.listWon(
+        req.user.userId,
+        requesterRole
+      );
+      res.json(listings);
     } catch (err) {
       next(err);
     }

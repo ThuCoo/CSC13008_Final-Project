@@ -63,7 +63,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       const { data } = await apiClient.get("/users/me");
-      // Backend returns user directly (not wrapped), and userId is the primary key
       const userData = data.userId ? data : data.user;
       const mappedUser = {
         ...userData,

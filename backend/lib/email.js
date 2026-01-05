@@ -36,17 +36,34 @@ export async function sendOtpEmail(to, code, purpose) {
   return sendMail({ to, subject, text, html });
 }
 
-export async function sendBidSuccessEmail(to, listingTitle, amount) {
+export async function sendBidSuccessEmail(to, listingTitle, amount, listingId) {
   const subject = `Your bid on "${listingTitle}" was successful!`;
-  const text = `Congratulations! Your bid of ${amount.toLocaleString()}₫ for "${listingTitle}" has been placed successfully.`;
-  const html = `<p>${text}</p>`;
+  const listingUrl = `${
+    process.env.FRONTEND_URL || "http://localhost:5173"
+  }/listings/${listingId}`;
+  const text = `Congratulations! Your bid of ${amount.toLocaleString()}₫ for "${listingTitle}" has been placed successfully.\n\nView listing: ${listingUrl}`;
+  const html = `<p>${text.replace(
+    /\n/g,
+    "<br>"
+  )}</p><p><a href="${listingUrl}">View Listing</a></p>`;
   return sendMail({ to, subject, text, html });
 }
 
-export async function sendOutbidEmail(to, listingTitle, newCurrentBid) {
+export async function sendOutbidEmail(
+  to,
+  listingTitle,
+  newCurrentBid,
+  listingId
+) {
   const subject = `You've been outbid on "${listingTitle}"`;
-  const text = `Someone just placed a higher bid on "${listingTitle}". The current bid is now ${newCurrentBid.toLocaleString()}₫. You might want to increase your bid!`;
-  const html = `<p>${text}</p>`;
+  const listingUrl = `${
+    process.env.FRONTEND_URL || "http://localhost:5173"
+  }/listings/${listingId}`;
+  const text = `Someone just placed a higher bid on "${listingTitle}". The current bid is now ${newCurrentBid.toLocaleString()}₫. You might want to increase your bid!\n\nView listing: ${listingUrl}`;
+  const html = `<p>${text.replace(
+    /\n/g,
+    "<br>"
+  )}</p><p><a href="${listingUrl}">Place a Higher Bid</a></p>`;
   return sendMail({ to, subject, text, html });
 }
 
@@ -117,6 +134,19 @@ export async function sendBidderRejectedEmail(to, name, listingTitle) {
   return sendMail({ to, subject, text, html });
 }
 
+export async function sendListingUpdatedEmail(to, listingTitle, listingId) {
+  const subject = `Listing "${listingTitle}" has been updated`;
+  const listingUrl = `${
+    process.env.FRONTEND_URL || "http://localhost:5173"
+  }/listings/${listingId}`;
+  const text = `The seller has updated the description of "${listingTitle}". You may want to check the changes.\n\nView listing: ${listingUrl}`;
+  const html = `<p>${text.replace(
+    /\n/g,
+    "<br>"
+  )}</p><p><a href="${listingUrl}">View Updated Listing</a></p>`;
+  return sendMail({ to, subject, text, html });
+}
+
 export default {
   sendOtpEmail,
   sendBidSuccessEmail,
@@ -129,4 +159,5 @@ export default {
   sendUserBannedEmail,
   sendUserDeletedEmail,
   sendBidderRejectedEmail,
+  sendListingUpdatedEmail,
 };

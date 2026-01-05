@@ -120,7 +120,12 @@ const controller = {
 
       // notify current bidder of success
       emailLib
-        .sendBidSuccessEmail(bidder.email, listing.title, Number(amount))
+        .sendBidSuccessEmail(
+          bidder.email,
+          listing.title,
+          Number(amount),
+          listingId
+        )
         .catch((e) => console.error("Email failed", e));
 
       // notify previous bidder they've been outbid
@@ -128,7 +133,12 @@ const controller = {
         const prevUser = await userService.listOne(prevHighBid.bidderId);
         if (prevUser) {
           emailLib
-            .sendOutbidEmail(prevUser.email, listing.title, Number(amount))
+            .sendOutbidEmail(
+              prevUser.email,
+              listing.title,
+              Number(amount),
+              listingId
+            )
             .catch((e) => console.error("Email failed", e));
         }
       }
@@ -186,14 +196,19 @@ const controller = {
 
           // notify user they were outbid by bot
           emailLib
-            .sendOutbidEmail(bidder.email, listing.title, counterBid)
+            .sendOutbidEmail(bidder.email, listing.title, counterBid, listingId)
             .catch((e) => console.error("Email failed", e));
 
           // notify bot owner they bid successfully
           const botUser = await userService.listOne(bestBot.userId);
           if (botUser) {
             emailLib
-              .sendBidSuccessEmail(botUser.email, listing.title, counterBid)
+              .sendBidSuccessEmail(
+                botUser.email,
+                listing.title,
+                counterBid,
+                listingId
+              )
               .catch((e) => console.error("Email failed", e));
           }
 

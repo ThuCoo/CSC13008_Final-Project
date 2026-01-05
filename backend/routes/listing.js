@@ -1,6 +1,7 @@
 import { Router } from "express";
 import validateQuery from "../middlewares/validateQuery.js";
 import optionalJwtAuth from "../middlewares/optionalJwtAuth.js";
+import jwtAuth from "../middlewares/jwtAuth.js";
 import listingController from "../controllers/listing.js";
 import { paginationSchema, searchSchema, idParams } from "../schemas/common.js";
 
@@ -24,6 +25,8 @@ route.get(
   validateQuery(searchSchema, "query"),
   listingController.search
 );
+route.get("/participating", jwtAuth, listingController.listParticipating);
+route.get("/won", jwtAuth, listingController.listWon);
 route.get("/:id", validateQuery(idParams, "params"), listingController.listOne);
 route.post(
   "/",

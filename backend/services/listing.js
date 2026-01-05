@@ -391,6 +391,63 @@ const service = {
   remove: async function (listingId) {
     await db.delete(listings).where(eq(listings.listingId, listingId));
   },
+
+  // Get listings where user has placed bids (participating auctions)
+  listParticipating: async function (bidderId, requesterRole = null) {
+    const bidService = (await import("./bid.js")).default;
+    const allBids = await bidService.listAll(null, bidderId);
+
+    // Get unique listing IDs
+    const listingIds = [...new Set(allBids.map((b) => b.listingId))];
+
+    if (listingIds.length === 0) return [];
+
+    // Fetch all listings
+    const result = await db
+      .select(defaultSelection)
+      .from(listings)
+      .where(
+        sql`${listings.listingId} IN (${sql.join(
+          listingIds.map((id) => sql`${id}`),
+          sql`, `
+        )})`
+      );
+
+    // Enrich and return
+    const enrichedData = await Promise.all(
+      result.map((listing) => enrichListing(listing, bidderId, requesterRole))
+    );
+
+    return enrichedData;
+  },
+
+  // Get listings where user won the auction
+  listWon: async function (bidderId, requesterRole = null) {
+    const orderService = (await import("./order.js")).default;
+    const orders = await orderService.listByBidder(bidderId);
+
+    if (orders.length === 0) return [];
+
+    const listingIds = orders.map((o) => o.listingId);
+
+    // Fetch all listings
+    const result = await db
+      .select(defaultSelection)
+      .from(listings)
+      .where(
+        sql`${listings.listingId} IN (${sql.join(
+          listingIds.map((id) => sql`${id}`),
+          sql`, `
+        )})`
+      );
+
+    // Enrich and return
+    const enrichedData = await Promise.all(
+      result.map((listing) => enrichListing(listing, bidderId, requesterRole))
+    );
+
+    return enrichedData;
+  },
 };
 
 export default service;
