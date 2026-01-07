@@ -299,6 +299,8 @@ const controller = {
 
           finalBidRow = botBid;
           note = "You have been outbid by an automatic bid.";
+        } else {
+          await listingService.updateCurrentBid(listingId, amount, bidderId);
         }
       } else {
         await listingService.updateCurrentBid(listingId, amount, bidderId);

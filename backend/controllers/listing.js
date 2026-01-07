@@ -54,9 +54,6 @@ const controller = {
       requesterRole,
     })
       .then((result) => {
-        console.log(
-          `Listings API: Returning ${result.data?.length || 0} listings`
-        );
         res.json(result);
       })
       .catch((err) => {

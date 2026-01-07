@@ -243,6 +243,13 @@ export default function AuctionDetail() {
   };
 
   const handleViewBidderRating = async (bidderId: string) => {
+    if (!listing) return;
+    const currentUserId = user?.userId ? String(user.userId) : user?.id;
+    const canViewBidderRating =
+      user?.role === "admin" ||
+      user?.id === listing.sellerId ||
+      (currentUserId && String(currentUserId) === String(bidderId));
+    if (!canViewBidderRating) return;
     if (!bidderReviews[bidderId]) {
       const reviews = await getUserReviews(bidderId);
       setBidderReviews((prev) => ({ ...prev, [bidderId]: reviews }));
@@ -588,7 +595,7 @@ export default function AuctionDetail() {
                       >
                         <div>
                           <div className="flex items-center gap-2">
-                            {isSeller || user?.role === "admin" ? (
+                            {isSeller || user?.role === "admin" || isOwnBid ? (
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <button
@@ -597,13 +604,18 @@ export default function AuctionDetail() {
                                     }
                                     className="font-medium hover:text-primary hover:font-bold cursor-pointer"
                                   >
-                                    {isOwnBid ? user?.name : bid.bidderName}
+                                    {isOwnBid
+                                      ? user?.name
+                                      : isSeller || user?.role === "admin"
+                                      ? bid.bidderName
+                                      : maskBidderName(bid.bidderName)}
                                   </button>
                                 </DialogTrigger>
                                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                                   <DialogHeader>
                                     <DialogTitle>
-                                      Bidder: {bid.bidderName}
+                                      Bidder:{" "}
+                                      {isOwnBid ? user?.name : bid.bidderName}
                                     </DialogTitle>
                                   </DialogHeader>
                                   <div className="py-4">
@@ -729,17 +741,20 @@ export default function AuctionDetail() {
                                   isOwnBid ? "text-primary" : ""
                                 }`}
                               >
-                                {isOwnBid ? user?.name : bid.bidderName}
+                                {isOwnBid
+                                  ? user?.name
+                                  : maskBidderName(bid.bidderName)}
                               </p>
                             )}
-                            {bid.bidderRating !== undefined && (
-                              <div className="flex items-center gap-1 text-xs">
-                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                <span className="text-slate-600">
-                                  {bid.bidderRating}%
-                                </span>
-                              </div>
-                            )}
+                            {(isSeller || user?.role === "admin" || isOwnBid) &&
+                              bid.bidderRating !== undefined && (
+                                <div className="flex items-center gap-1 text-xs">
+                                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                                  <span className="text-slate-600">
+                                    {bid.bidderRating}%
+                                  </span>
+                                </div>
+                              )}
                           </div>
                           <p className="text-xs text-slate-500">
                             {new Date(bid.timestamp).toLocaleTimeString()}
