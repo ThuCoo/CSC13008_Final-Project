@@ -24,7 +24,7 @@ const service = {
       })
       .from(sellerRequests)
       .leftJoin(users, eq(sellerRequests.userId, users.userId));
-      
+
     if (userId != null) {
       query = query.where(eq(sellerRequests.userId, userId));
     }
@@ -32,9 +32,9 @@ const service = {
       query = query.where(eq(sellerRequests.reviewedBy, reviewedBy));
     }
     const result = await query;
-    
+
     // flatten nested data
-    return result.map(row => ({
+    return result.map((row) => ({
       requestId: row.requestId,
       userId: row.userId,
       businessName: row.businessName,
@@ -61,10 +61,27 @@ const service = {
     return result[0];
   },
   update: async function (request) {
+    const existing = await this.listOne(request.requestId);
+
     await db
       .update(sellerRequests)
       .set(request)
       .where(eq(sellerRequests.requestId, request.requestId));
+
+    if (existing && request.status && request.status !== existing.status) {
+      if (request.status === "approved") {
+        await db
+          .update(users)
+          .set({ role: "seller", seller_approved: true })
+          .where(eq(users.userId, existing.userId));
+      } else if (request.status === "rejected") {
+        await db
+          .update(users)
+          .set({ seller_approved: false })
+          .where(eq(users.userId, existing.userId));
+      }
+    }
+
     return this.listOne(request.requestId);
   },
   remove: async function (requestId) {
