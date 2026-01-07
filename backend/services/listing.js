@@ -798,7 +798,16 @@ const service = {
     return { page, limit, totalItems, data: enrichedData };
   },
   create: async function (listing) {
-    const result = await db.insert(listings).values(listing).returning();
+    const toInsert = {
+      ...listing,
+      status: listing.status ?? "active",
+      createdAt: listing.createdAt ?? new Date(),
+      currentBid:
+        listing.currentBid != null ? listing.currentBid : listing.startingPrice,
+      autoExtendDates: listing.autoExtendDates ?? [],
+    };
+
+    const result = await db.insert(listings).values(toInsert).returning();
     const newListing = result[0];
     return await enrichListing(newListing, newListing.sellerId, "seller");
   },

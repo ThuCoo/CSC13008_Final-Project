@@ -1,6 +1,7 @@
 import express from "express";
 import morgan from "morgan";
 import cors from "cors";
+import dotenv from "dotenv";
 import authMiddleware from "./middlewares/auth.js";
 import notFound from "./middlewares/notFound.js";
 import errorHandler from "./middlewares/errorHandler.js";
@@ -17,6 +18,8 @@ import ratingRoute from "./routes/rating.js";
 import authRoute from "./routes/auth.js";
 import autoBidRoute from "./routes/autoBid.js";
 import orderRoute from "./routes/orders.js";
+
+dotenv.config();
 
 const app = express();
 
@@ -78,7 +81,10 @@ app.use(
   })
 );
 app.use(morgan("dev"));
-app.use(express.json());
+
+const requestBodyLimit = String(process.env.REQUEST_BODY_LIMIT || "5mb");
+app.use(express.json({ limit: requestBodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: requestBodyLimit }));
 app.use(authMiddleware);
 
 app.use("/categories", categoryRoute);
