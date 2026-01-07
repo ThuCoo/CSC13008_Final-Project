@@ -1,4 +1,6 @@
 export default function (req, res, next) {
+  if (req.method === "OPTIONS") return next();
+
   const apiKey = req.headers["apikey"];
   if (!apiKey) {
     return res.status(401).json({ message: "API Key is required" });
