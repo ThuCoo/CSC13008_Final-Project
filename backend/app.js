@@ -20,10 +20,21 @@ import orderRoute from "./routes/orders.js";
 
 const app = express();
 
-app.use(cors({
-  origin: "http://localhost:8080",
-  credentials: true
-}));
+const defaultDevOrigins = ["http://localhost:8080", "http://127.0.0.1:8080"];
+const configuredFrontendUrl = (process.env.FRONTEND_URL || "").trim();
+const allowedOrigins = new Set(
+  [...defaultDevOrigins, configuredFrontendUrl].filter(Boolean)
+);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+      return callback(null, allowedOrigins.has(origin));
+    },
+    credentials: true,
+  })
+);
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(authMiddleware);
@@ -32,7 +43,7 @@ app.use("/categories", categoryRoute);
 app.use("/listings", listingRoute);
 app.use("/subcategories", subcategoryRoute);
 app.use("/bids", bidRoute);
-app.use("/watchlists", watchlistRoute); 
+app.use("/watchlists", watchlistRoute);
 
 // Auto Bid System
 app.use("/auto-bids", autoBidRoute);
