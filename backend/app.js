@@ -21,17 +21,59 @@ import orderRoute from "./routes/orders.js";
 const app = express();
 
 const defaultDevOrigins = ["http://localhost:8080", "http://127.0.0.1:8080"];
-const configuredFrontendUrl = (process.env.FRONTEND_URL || "").trim();
+
+function normalizeOrigin(value) {
+  const s = String(value || "").trim();
+  if (!s) return "";
+  try {
+    const url = new URL(s);
+    return url.origin;
+  } catch {
+    return s.replace(/\/+$/, "");
+  }
+}
+
+const configuredFrontendUrlsRaw = String(process.env.FRONTEND_URL || "").trim();
+const configuredFrontendUrls = configuredFrontendUrlsRaw
+  ? configuredFrontendUrlsRaw
+      .split(",")
+      .map((s) => normalizeOrigin(s))
+      .filter(Boolean)
+  : [];
+
+const allowVercelAppOrigins =
+  String(process.env.ALLOW_VERCEL_APP_ORIGINS || "")
+    .trim()
+    .toLowerCase() === "true";
+
 const allowedOrigins = new Set(
-  [...defaultDevOrigins, configuredFrontendUrl].filter(Boolean)
+  [...defaultDevOrigins.map(normalizeOrigin), ...configuredFrontendUrls].filter(
+    Boolean
+  )
 );
+
+function isAllowedOrigin(origin) {
+  const normalized = normalizeOrigin(origin);
+  if (!normalized) return false;
+  if (allowedOrigins.has(normalized)) return true;
+  if (!allowVercelAppOrigins) return false;
+  try {
+    const url = new URL(normalized);
+    return url.protocol === "https:" && url.hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
 
 app.use(
   cors({
     origin(origin, callback) {
       if (!origin) return callback(null, true);
-      return callback(null, allowedOrigins.has(origin));
+      return callback(null, isAllowedOrigin(origin));
     },
+    allowedHeaders: ["Content-Type", "Authorization", "apikey"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    optionsSuccessStatus: 204,
     credentials: true,
   })
 );
