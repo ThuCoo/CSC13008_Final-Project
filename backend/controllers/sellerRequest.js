@@ -4,10 +4,16 @@ import emailLib from "../lib/email.js";
 
 const controller = {
   listAll: function (req, res, next) {
-    const userId = req.query.userId ? Number(req.query.userId) : null;
-    const reviewedBy = req.query.reviewedBy
+    const requester = req.user;
+    const isAdmin = requester?.role === "admin";
+
+    const userIdRaw = req.query.userId ? Number(req.query.userId) : null;
+    const reviewedByRaw = req.query.reviewedBy
       ? Number(req.query.reviewedBy)
       : null;
+
+    const userId = isAdmin ? userIdRaw : Number(requester?.userId);
+    const reviewedBy = isAdmin ? reviewedByRaw : null;
     sellerRequestService
       .listAll(userId, reviewedBy)
       .then((rows) => res.json(rows))
@@ -21,6 +27,13 @@ const controller = {
       .then((item) => {
         if (!item)
           return res.status(404).json({ message: "Seller request not found" });
+
+        const requester = req.user;
+        const isAdmin = requester?.role === "admin";
+        if (!isAdmin && Number(requester?.userId) !== Number(item.userId)) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+
         res.json(item);
       })
       .catch(next);
@@ -40,7 +53,19 @@ const controller = {
       if (!existing)
         return res.status(404).json({ message: "Seller request not found" });
 
+      if (req.user?.role !== "admin") {
+        return res.status(403).json({ message: "Admin privileges required" });
+      }
+
+      const nextStatus = req.body.status;
+      const statusChanged =
+        nextStatus && String(nextStatus) !== String(existing.status);
+
       const updates = { ...existing, ...req.body, requestId: id };
+      if (statusChanged) {
+        if (updates.reviewedBy == null) updates.reviewedBy = req.user.userId;
+        if (updates.reviewedAt == null) updates.reviewedAt = new Date();
+      }
       const updated = await sellerRequestService.update(updates);
 
       // Send email notification based on status change

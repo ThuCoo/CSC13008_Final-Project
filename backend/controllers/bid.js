@@ -5,6 +5,58 @@ import userService from "../services/user.js";
 import autoBidService from "../services/autoBid.js";
 import emailLib from "../lib/email.js";
 
+function toNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function pickBestCompetitor(autoBids, currentBidderId, nextMinAmount) {
+  const eligible = autoBids.filter(
+    (ab) =>
+      ab.isActive &&
+      Number(ab.userId) !== Number(currentBidderId) &&
+      toNumber(ab.maxBidAmount) >= nextMinAmount
+  );
+  if (eligible.length === 0) return null;
+  eligible.sort((a, b) => toNumber(b.maxBidAmount) - toNumber(a.maxBidAmount));
+  return eligible[0];
+}
+
+function computeProxyOutcome(participants, step, currentAmount) {
+  const sorted = [...participants].sort((a, b) => {
+    const byMax = toNumber(b.max) - toNumber(a.max);
+    if (byMax !== 0) return byMax;
+    return (
+      toNumber(a.tieBreaker, Number.MAX_SAFE_INTEGER) -
+      toNumber(b.tieBreaker, Number.MAX_SAFE_INTEGER)
+    );
+  });
+
+  const winner = sorted[0] || null;
+  const runnerUp = sorted[1] || null;
+  if (!winner || !runnerUp) return null;
+
+  const winnerMax = toNumber(winner.max);
+  const runnerUpMax = toNumber(runnerUp.max);
+
+  let finalPrice = 0;
+  if (winnerMax <= runnerUpMax) {
+    finalPrice = winnerMax;
+  } else {
+    finalPrice = Math.min(winnerMax, runnerUpMax + step);
+  }
+
+  finalPrice = Math.max(finalPrice, currentAmount);
+
+  return {
+    winnerId: Number(winner.userId),
+    winnerMax,
+    runnerUpId: Number(runnerUp.userId),
+    runnerUpMax,
+    finalPrice,
+  };
+}
+
 const controller = {
   listAll: function (req, res, next) {
     const listingId = req.query.listingId ? Number(req.query.listingId) : null;
@@ -98,8 +150,8 @@ const controller = {
 
       // enforce bid to be minimum.
       if (req.body.maxPrice != null) {
-        const maxPrice = Number(req.body.maxPrice);
-        if (!Number.isFinite(maxPrice) || maxPrice <= Number(amount)) {
+        const maxPrice = toNumber(req.body.maxPrice);
+        if (!Number.isFinite(maxPrice) || maxPrice <= toNumber(amount)) {
           return res
             .status(400)
             .json({ message: "maxPrice must be greater than bid amount" });
@@ -191,7 +243,7 @@ const controller = {
       }
 
       // Auto-Bidding
-      if (req.body.maxPrice && Number(req.body.maxPrice) > Number(amount)) {
+      if (req.body.maxPrice && toNumber(req.body.maxPrice) > toNumber(amount)) {
         const existingAuto = await autoBidService.getByListingAndUser(
           listingId,
           bidderId
@@ -212,98 +264,105 @@ const controller = {
         }
       }
 
-      const otherAutoBids = await autoBidService.listAll(null, listingId);
-      const competitorBids = otherAutoBids.filter(
-        (ab) =>
-          ab.userId !== bidderId &&
-          ab.isActive &&
-          Number(ab.maxBidAmount) > Number(amount)
-      );
+      // Resolve auto-bidding war: bots continue until one reaches max.
+      const autoBidsAll = (await autoBidService.listAll(null, listingId)) || [];
+      const activeAutoBids = autoBidsAll.filter((ab) => ab.isActive);
 
       let finalBidRow = row;
       let note = "";
+      let currentAmount = toNumber(amount);
+      let currentBidderId = bidderId;
 
-      if (competitorBids.length > 0) {
-        competitorBids.sort(
-          (a, b) => Number(b.maxBidAmount) - Number(a.maxBidAmount)
+      const nextMin = currentAmount + step;
+      const hasAnyCompetitor =
+        pickBestCompetitor(activeAutoBids, currentBidderId, nextMin) != null;
+
+      if (!hasAnyCompetitor) {
+        await listingService.updateCurrentBid(
+          listingId,
+          currentAmount,
+          bidderId
         );
-        const bestBot = competitorBids[0];
-        let counterBid = Number(amount) + Number(step);
-        if (counterBid <= Number(bestBot.maxBidAmount)) {
-          const botBid = await bidService.create({
-            listingId,
-            bidderId: bestBot.userId,
-            amount: counterBid,
+      } else {
+        const byUser = new Map();
+        for (const ab of activeAutoBids) {
+          const userId = Number(ab.userId);
+          const max = toNumber(ab.maxBidAmount);
+          if (!Number.isFinite(userId) || userId <= 0) continue;
+          if (!Number.isFinite(max) || max <= 0) continue;
+          const existing = byUser.get(userId);
+          const tieBreaker = toNumber(ab.autoBidId, Number.MAX_SAFE_INTEGER);
+          if (!existing || max > existing.max) {
+            byUser.set(userId, { userId, max, tieBreaker });
+          }
+        }
+
+        if (!byUser.has(Number(bidderId))) {
+          byUser.set(Number(bidderId), {
+            userId: Number(bidderId),
+            max: currentAmount,
+            tieBreaker: Number.MAX_SAFE_INTEGER,
           });
+        }
+
+        const outcome = computeProxyOutcome(
+          [...byUser.values()],
+          step,
+          currentAmount
+        );
+
+        if (!outcome) {
           await listingService.updateCurrentBid(
             listingId,
-            counterBid,
+            currentAmount,
             bidderId
           );
+        } else {
+          const { winnerId, runnerUpId, runnerUpMax, finalPrice } = outcome;
 
-          // notify seller of the auto-bid counter bid
-          try {
-            const seller = await userService.listOne(listing.sellerId);
-            const botUser = await userService.listOne(bestBot.userId);
-            if (seller?.email && botUser) {
-              emailLib
-                .sendSellerBidEmail(
-                  seller.email,
-                  listing.title,
-                  botUser.name,
-                  counterBid,
-                  listingId
-                )
-                .catch((e) => console.error("Email failed", e));
-            }
-          } catch (e) {
-            console.error("Failed to send seller bid email", e);
+          // Optional: record runner-up reaching max (one bid), then winner at final price.
+          const runnerUpBidAmount = Math.min(runnerUpMax, finalPrice - step);
+          if (
+            runnerUpBidAmount > currentAmount &&
+            runnerUpBidAmount >= currentAmount + step
+          ) {
+            finalBidRow = await bidService.create({
+              listingId,
+              bidderId: runnerUpId,
+              amount: runnerUpBidAmount,
+            });
+            currentAmount = runnerUpBidAmount;
+            currentBidderId = runnerUpId;
           }
 
-          // notify user they were outbid by bot
-          emailLib
-            .sendOutbidEmail(bidder.email, listing.title, counterBid, listingId)
-            .catch((e) => console.error("Email failed", e));
+          if (finalPrice > currentAmount) {
+            finalBidRow = await bidService.create({
+              listingId,
+              bidderId: winnerId,
+              amount: finalPrice,
+            });
+            currentAmount = finalPrice;
+            currentBidderId = winnerId;
+          }
 
-          // notify bot owner they bid successfully
-          const botUser = await userService.listOne(bestBot.userId);
-          if (botUser) {
+          await listingService.updateCurrentBid(
+            listingId,
+            currentAmount,
+            currentBidderId
+          );
+
+          if (Number(currentBidderId) !== Number(bidderId)) {
+            note = "You have been outbid by automatic bidding.";
             emailLib
-              .sendBidSuccessEmail(
-                botUser.email,
+              .sendOutbidEmail(
+                bidder.email,
                 listing.title,
-                counterBid,
+                currentAmount,
                 listingId
               )
               .catch((e) => console.error("Email failed", e));
           }
-
-          if (
-            autoExtendEnabled &&
-            new Date(listing.endsAt) - new Date() <= windowMin * 60 * 1000
-          ) {
-            const newEnds = new Date(
-              new Date(listing.endsAt).getTime() + extMin * 60 * 1000
-            );
-            const newAuto = Array.isArray(listing.autoExtendDates)
-              ? [...listing.autoExtendDates, newEnds]
-              : [newEnds];
-            await listingService.update({
-              listingId,
-              endsAt: newEnds,
-              autoExtendDates: newAuto,
-            });
-            listing.endsAt = newEnds;
-            extended = true;
-          }
-
-          finalBidRow = botBid;
-          note = "You have been outbid by an automatic bid.";
-        } else {
-          await listingService.updateCurrentBid(listingId, amount, bidderId);
         }
-      } else {
-        await listingService.updateCurrentBid(listingId, amount, bidderId);
       }
 
       if (

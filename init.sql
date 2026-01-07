@@ -29,7 +29,7 @@ CREATE TABLE users (
     name VARCHAR(255) NOT NULL,
     avatar_url TEXT NOT NULL,
     role user_role NOT NULL DEFAULT 'bidder',
-    seller_approved BOOLEAN DEFAULT FALSE,
+  seller_approved BOOLEAN NOT NULL DEFAULT FALSE,
     address TEXT NOT NULL,
     birthday VARCHAR(255),
     is_verified BOOLEAN DEFAULT FALSE NOT NULL,
