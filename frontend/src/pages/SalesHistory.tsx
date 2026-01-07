@@ -12,14 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import {
-  TrendingUp,
-  ThumbsUp,
-  ThumbsDown,
-  Star,
-  ArrowLeft,
-  RefreshCcw,
-} from "lucide-react";
+import { TrendingUp, ArrowLeft, RefreshCcw } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import {
   AlertDialog,
@@ -33,21 +26,14 @@ import {
   AlertDialogTrigger,
 } from "../components/ui/alert-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../components/ui/dialog";
-import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "../components/ui/sheet";
-import { Textarea } from "../components/ui/textarea";
 import OrderFulfillmentWizard from "../components/OrderFulfillment";
 import { formatOrderStatus } from "../lib/utils";
+import RateTransactionDialog from "../components/RateTransactionDialog";
 
 type SaleOrder = {
   id: string;
@@ -79,7 +65,6 @@ export default function SalesHistory() {
   const { toast } = useToast();
 
   const [orders, setOrders] = useState<SaleOrder[]>([]);
-  const [reviewComment, setReviewComment] = useState("");
 
   const [chatOpen, setChatOpen] = useState(false);
   const [chatOrder, setChatOrder] = useState<SaleOrder | null>(null);
@@ -192,19 +177,11 @@ export default function SalesHistory() {
   const handleRateBidder = async (
     orderId: string,
     rating: 1 | -1,
+    comment: string,
     bidderId?: string
   ) => {
-    if (!reviewComment) {
-      toast({
-        title: "Comment Required",
-        description: "Please write a review",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (bidderId) {
-      await rateUser(bidderId, rating, reviewComment, "bidder");
+      await rateUser(bidderId, rating, comment, "bidder");
     }
 
     await updateOrderStatus(orderId, "completed");
@@ -212,7 +189,6 @@ export default function SalesHistory() {
       prev.map((o) => (o.id === orderId ? { ...o, status: "completed" } : o))
     );
     toast({ title: "Bidder Rated", description: "Transaction completed." });
-    setReviewComment("");
   };
 
   return (
@@ -325,57 +301,25 @@ export default function SalesHistory() {
 
                       {currentStep !== -1 && currentStep < 4 && (
                         <div className="flex gap-3 justify-end mt-4">
-                          {currentStep === 2 && ( // Delivered -> Rate -> Completed
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button className="bg-rose-600 hover:bg-rose-700">
-                                  <Star className="w-4 h-4 mr-2" /> Rate Bidder
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>
-                                    Rate Bidder: {winner}
-                                  </DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                  <Textarea
-                                    placeholder="How was the transaction?"
-                                    value={reviewComment}
-                                    onChange={(e) =>
-                                      setReviewComment(e.target.value)
-                                    }
-                                  />
-                                  <div className="flex gap-2 justify-end">
-                                    <Button
-                                      variant="destructive"
-                                      onClick={() =>
-                                        handleRateBidder(
-                                          sale.id,
-                                          -1,
-                                          sale.bidderId
-                                        )
-                                      }
-                                    >
-                                      <ThumbsDown className="w-4 h-4 mr-2" /> -1
-                                    </Button>
-                                    <Button
-                                      className="bg-rose-600 hover:bg-rose-700"
-                                      onClick={() =>
-                                        handleRateBidder(
-                                          sale.id,
-                                          1,
-                                          sale.bidderId
-                                        )
-                                      }
-                                    >
-                                      <ThumbsUp className="w-4 h-4 mr-2" /> +1
-                                    </Button>
-                                  </div>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                          )}
+                          {["delivered", "completed"].includes(
+                            String(sale.status)
+                          ) &&
+                            sale.bidderId &&
+                            String(sale.status) !== "completed" && (
+                              <RateTransactionDialog
+                                triggerLabel="Rate Bidder"
+                                title="Rate Transaction"
+                                subjectName={winner}
+                                onSubmit={async ({ rating, comment }) => {
+                                  await handleRateBidder(
+                                    sale.id,
+                                    rating,
+                                    comment,
+                                    sale.bidderId
+                                  );
+                                }}
+                              />
+                            )}
 
                           <AlertDialog>
                             <AlertDialogTrigger asChild>

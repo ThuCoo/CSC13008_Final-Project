@@ -41,6 +41,7 @@ const service = {
     finalPrice,
     shippingAddress = null,
     status = "pending_payment",
+    sendEmails = true,
   }) {
     const result = await db
       .insert(orders)
@@ -60,41 +61,43 @@ const service = {
       endsAt: new Date(),
     });
 
-    // Send auction ended email to winner
-    try {
-      const listing = await listingService.listOne(listingId);
-      const winner = await db
-        .select({ email: users.email, name: users.name })
-        .from(users)
-        .where(eq(users.userId, bidderId))
-        .limit(1);
+    if (sendEmails) {
+      // Send auction ended email to winner
+      try {
+        const listing = await listingService.listOne(listingId);
+        const winner = await db
+          .select({ email: users.email, name: users.name })
+          .from(users)
+          .where(eq(users.userId, bidderId))
+          .limit(1);
 
-      const seller = await db
-        .select({ email: users.email, name: users.name })
-        .from(users)
-        .where(eq(users.userId, sellerId))
-        .limit(1);
+        const seller = await db
+          .select({ email: users.email, name: users.name })
+          .from(users)
+          .where(eq(users.userId, sellerId))
+          .limit(1);
 
-      if (winner[0] && listing) {
-        await emailLib.sendAuctionEndedEmail(
-          winner[0].email,
-          listing.title,
-          "won",
-          finalPrice
-        );
+        if (winner[0] && listing) {
+          await emailLib.sendAuctionEndedEmail(
+            winner[0].email,
+            listing.title,
+            "won",
+            finalPrice
+          );
+        }
+
+        if (seller[0] && listing && winner[0]) {
+          await emailLib.sendAuctionEndedSellerEmail(
+            seller[0].email,
+            listing.title,
+            "with_winner",
+            Number(finalPrice),
+            winner[0].name
+          );
+        }
+      } catch (emailErr) {
+        console.error("Failed to send auction ended email:", emailErr);
       }
-
-      if (seller[0] && listing && winner[0]) {
-        await emailLib.sendAuctionEndedSellerEmail(
-          seller[0].email,
-          listing.title,
-          "with_winner",
-          Number(finalPrice),
-          winner[0].name
-        );
-      }
-    } catch (emailErr) {
-      console.error("Failed to send auction ended email:", emailErr);
     }
 
     return result[0];

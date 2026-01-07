@@ -13,20 +13,12 @@ import {
   TabsTrigger,
 } from "../components/ui/tabs";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Textarea } from "../components/ui/textarea";
 import { useToast } from "../hooks/use-toast";
 import {
   Card,
@@ -48,12 +40,12 @@ import {
   Lock,
   Calendar,
   MapPin,
-  Star,
-  ThumbsUp,
-  ThumbsDown,
   Search,
   RefreshCcw,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
+import RateTransactionDialog from "../components/RateTransactionDialog";
 
 type ParticipatingListing = {
   id: string;
@@ -120,7 +112,6 @@ export default function AccountSettings() {
   const [bidWinFilter, setBidWinFilter] = useState<string>("all");
   const [wonSearchTerm, setWonSearchTerm] = useState("");
 
-  const [reviewComment, setReviewComment] = useState("");
   const [reviews, setReviews] = useState<
     Array<{
       rating: number;
@@ -310,23 +301,6 @@ export default function AccountSettings() {
         });
       }
     }
-  };
-
-  const handleRateSeller = async (sellerId: string, rating: 1 | -1) => {
-    if (!reviewComment) {
-      toast({
-        title: "Comment Required",
-        description: "Please write a short review.",
-        variant: "destructive",
-      });
-      return;
-    }
-    await rateUser(sellerId!, rating, reviewComment, "seller");
-    toast({
-      title: rating === 1 ? "Rated Positive (+1)" : "Rated Negative (-1)",
-      description: `Review submitted.`,
-    });
-    setReviewComment("");
   };
 
   return (
@@ -665,58 +639,26 @@ export default function AccountSettings() {
                             String(o.status)
                           ) &&
                             o.sellerId && (
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button variant="outline">
-                                    <Star className="w-4 h-4 mr-2" /> Rate
-                                    Seller
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Rate Transaction</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="space-y-4 py-4">
-                                    <p className="text-sm text-slate-600">
-                                      Please rate your experience with{" "}
-                                      <strong>{o.sellerName}</strong>.
-                                    </p>
-                                    <Textarea
-                                      placeholder="Write your review here (Required)..."
-                                      value={reviewComment}
-                                      onChange={(e) =>
-                                        setReviewComment(e.target.value)
-                                      }
-                                    />
-                                    <div className="flex gap-2 justify-end">
-                                      <Button
-                                        variant="destructive"
-                                        onClick={() =>
-                                          void handleRateSeller(
-                                            String(o.sellerId),
-                                            -1
-                                          )
-                                        }
-                                      >
-                                        <ThumbsDown className="w-4 h-4 mr-2" />
-                                        -1 Negative
-                                      </Button>
-                                      <Button
-                                        className="bg-green-600 hover:bg-green-700"
-                                        onClick={() =>
-                                          void handleRateSeller(
-                                            String(o.sellerId),
-                                            1
-                                          )
-                                        }
-                                      >
-                                        <ThumbsUp className="w-4 h-4 mr-2" />
-                                        +1 Positive
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
+                              <RateTransactionDialog
+                                triggerLabel="Rate Seller"
+                                title="Rate Transaction"
+                                subjectName={o.sellerName || "Seller"}
+                                onSubmit={async ({ rating, comment }) => {
+                                  await rateUser(
+                                    String(o.sellerId),
+                                    rating,
+                                    comment,
+                                    "seller"
+                                  );
+                                  toast({
+                                    title:
+                                      rating === 1
+                                        ? "Rated Positive (+1)"
+                                        : "Rated Negative (-1)",
+                                    description: "Review submitted.",
+                                  });
+                                }}
+                              />
                             )}
                         </div>
                       </div>

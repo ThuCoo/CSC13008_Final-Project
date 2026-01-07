@@ -927,6 +927,33 @@ const service = {
             .update(listings)
             .set({ status: "sold" })
             .where(eq(listings.listingId, listingId));
+
+          try {
+            const seller = await userService.listOne(sellerId);
+            const winner = await userService.listOne(
+              Number(existingOrder.bidderId)
+            );
+            if (winner?.email) {
+              await emailLib.sendAuctionEndedEmail(
+                winner.email,
+                row.title,
+                "won",
+                Number(existingOrder.finalPrice || 0)
+              );
+            }
+            if (seller?.email && winner) {
+              await emailLib.sendAuctionEndedSellerEmail(
+                seller.email,
+                row.title,
+                "with_winner",
+                Number(existingOrder.finalPrice || 0),
+                winner.name
+              );
+            }
+          } catch (emailErr) {
+            console.error("Auction sweep email backfill failed", emailErr);
+          }
+
           processed++;
           continue;
         }
@@ -963,7 +990,35 @@ const service = {
           finalPrice: Number(top.amount),
           shippingAddress: null,
           status: "paid",
+          sendEmails: false,
         });
+
+        // Send winner + seller emails
+        try {
+          const seller = await userService.listOne(sellerId);
+          const winner = await userService.listOne(Number(top.bidderId));
+
+          if (winner?.email) {
+            await emailLib.sendAuctionEndedEmail(
+              winner.email,
+              row.title,
+              "won",
+              Number(top.amount)
+            );
+          }
+
+          if (seller?.email && winner) {
+            await emailLib.sendAuctionEndedSellerEmail(
+              seller.email,
+              row.title,
+              "with_winner",
+              Number(top.amount),
+              winner.name
+            );
+          }
+        } catch (emailErr) {
+          console.error("Auction sweep winner email failed", emailErr);
+        }
 
         processed++;
       } catch (e) {
