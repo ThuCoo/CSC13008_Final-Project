@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS listings CASCADE;
 DROP TABLE IF EXISTS subcategories CASCADE;
 DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS order_messages CASCADE;
 
 DROP TYPE IF EXISTS request_status CASCADE;
 DROP TYPE IF EXISTS order_status CASCADE;
@@ -71,7 +72,9 @@ CREATE TABLE listings (
     shipping_cost DECIMAL(15, 2) NOT NULL,
     return_policy TEXT NOT NULL,
     images JSONB NOT NULL,
+    auto_extend_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     auto_extended_dates JSONB NOT NULL,
+    allow_unrated_bidders BOOLEAN NOT NULL DEFAULT TRUE,
     rejected_bidders JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     ends_at TIMESTAMP WITH TIME ZONE NOT NULL
@@ -103,7 +106,7 @@ CREATE TABLE auto_bids (
 );
 
 -- Orders
-CREATE TYPE order_status AS ENUM ('pending_payment', 'paid', 'shipped', 'delivered', 'cancelled');
+CREATE TYPE order_status AS ENUM ('pending_payment', 'paid', 'shipped', 'delivered', 'completed', 'cancelled');
 
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
@@ -116,6 +119,15 @@ CREATE TABLE orders (
     payment_proof TEXT,
     shipping_proof TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- Order chat messages
+CREATE TABLE order_messages (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  sender_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- Watchlists
@@ -521,27 +533,38 @@ VALUES
 
 
 -- Seed Data: Bids
-INSERT INTO bids (listing_id, bidder_id, amount)
-SELECT l.listing_id, b.user_id, (l.starting_price + (gs.increment * l.step_price))
-FROM listings l
-CROSS JOIN LATERAL (VALUES (1),(2),(3),(4),(5)) AS gs(increment)
-JOIN users b ON b.email = ('bidder' || ( ( (l.listing_id % 5) + 1 )::text) || '@example.com');
-
-WITH bid_calc AS (
-    SELECT
-        b.bid_id,
-        l.starting_price + (row_number() OVER (PARTITION BY l.listing_id ORDER BY b.bid_id ASC) * l.step_price) as proper_amount
-    FROM bids b
-    JOIN listings l ON b.listing_id = l.listing_id
+WITH bid_plan AS (
+  SELECT
+    l.listing_id,
+    l.title,
+    l.seller_id,
+    l.starting_price,
+    l.step_price,
+    CASE
+      WHEN l.title IN ('Seed Listing 1', 'Seed Listing 5', 'Seed Listing 12', 'Seed Listing 20') THEN 5
+      WHEN l.title IN ('Manual Test Phone', 'Seed Listing 2') THEN 4
+      ELSE (l.listing_id % 6)
+    END AS bid_count
+  FROM listings l
+),
+bid_rows AS (
+  SELECT
+    bp.listing_id,
+    bp.seller_id,
+    gs.i AS bid_index,
+    (bp.starting_price + (gs.i * bp.step_price)) AS amount,
+    ('bidder' || (((bp.listing_id + gs.i) % 5) + 1)::text || '@example.com') AS bidder_email
+  FROM bid_plan bp
+  JOIN LATERAL generate_series(1, bp.bid_count) gs(i) ON true
 )
-UPDATE bids
-SET amount = bid_calc.proper_amount
-FROM bid_calc
-WHERE bids.bid_id = bid_calc.bid_id;
-
-UPDATE listings SET current_bid = (
-  SELECT COALESCE(MAX(amount), listings.starting_price) FROM bids WHERE bids.listing_id = listings.listing_id
-);
+INSERT INTO bids (listing_id, bidder_id, amount)
+SELECT
+  br.listing_id,
+  u.user_id,
+  br.amount
+FROM bid_rows br
+JOIN users u ON u.email = br.bidder_email
+WHERE u.user_id <> br.seller_id;
 
 -- ==========================================
 -- ADDED MANUAL TESTING BID
@@ -550,7 +573,15 @@ INSERT INTO bids (listing_id, bidder_id, amount)
 VALUES (
     (SELECT listing_id FROM listings WHERE title='Manual Test Phone'),
     (SELECT user_id FROM users WHERE email='bidder@example.com'),
-    110000 -- Starting price (100k) + Step (10k)
+    110000
+);
+
+-- Update current_bid for all listings based on seeded bids
+UPDATE listings
+SET current_bid = (
+  SELECT COALESCE(MAX(amount), listings.starting_price)
+  FROM bids
+  WHERE bids.listing_id = listings.listing_id
 );
 
 -- Seed Data: AutoBids
@@ -663,38 +694,38 @@ VALUES
 ((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Vintage Camera', 'Beautiful vintage camera in excellent condition. Perfect for collectors or photography enthusiasts.', 
  (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Cameras' LIMIT 1),
  500000, 600000, 50000, 1200000, 'active', 'used', 50000, '7-day returns',
- '[\"https://loremflickr.com/500/500/camera?random=501\", \"https://loremflickr.com/500/500/vintage?random=502\", \"https://loremflickr.com/500/500/photography?random=503\"]'::jsonb,
+ '["https://loremflickr.com/500/500/camera?random=501", "https://loremflickr.com/500/500/vintage?random=502", "https://loremflickr.com/500/500/photography?random=503"]'::jsonb,
  '[]'::jsonb, NULL, now() + interval '5 days'),
 
 ((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Gaming Chair', 'Ergonomic gaming chair with lumbar support. Barely used, like new condition.', 
  (SELECT category_id FROM categories WHERE name='Home & Garden'), (SELECT subcategory_id FROM subcategories WHERE name='Furniture' LIMIT 1),
  800000, 800000, 100000, 1500000, 'active', 'used', 150000, 'no returns',
- '[\"https://loremflickr.com/500/500/chair?random=504\", \"https://loremflickr.com/500/500/gaming?random=505\", \"https://loremflickr.com/500/500/furniture?random=506\"]'::jsonb,
+ '["https://loremflickr.com/500/500/chair?random=504", "https://loremflickr.com/500/500/gaming?random=505", "https://loremflickr.com/500/500/furniture?random=506"]'::jsonb,
  '[]'::jsonb, NULL, now() + interval '3 days'),
 
 ((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Smartwatch', 'Latest model smartwatch with fitness tracking. Brand new in box.', 
  (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Accessories' LIMIT 1),
  400000, 500000, 50000, 900000, 'active', 'new', 25000, '30-day returns',
- '[\"https://loremflickr.com/500/500/smartwatch?random=507\", \"https://loremflickr.com/500/500/tech?random=508\", \"https://loremflickr.com/500/500/wearable?random=509\"]'::jsonb,
+ '["https://loremflickr.com/500/500/smartwatch?random=507", "https://loremflickr.com/500/500/tech?random=508", "https://loremflickr.com/500/500/wearable?random=509"]'::jsonb,
  '[]'::jsonb, NULL, now() + interval '7 days'),
 
 -- Unsold items for Manual Seller (ended auctions with no bids)
 ((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Laptop (UNSOLD)', 'High-performance laptop. Auction ended without bids.', 
  (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Computers' LIMIT 1),
  1500000, 1500000, 100000, NULL, 'ended', 'used', 100000, '30-day returns',
- '[\"https://loremflickr.com/500/500/laptop?random=513\", \"https://loremflickr.com/500/500/computer?random=514\", \"https://loremflickr.com/500/500/notebook?random=515\"]'::jsonb,
+ '["https://loremflickr.com/500/500/laptop?random=513", "https://loremflickr.com/500/500/computer?random=514", "https://loremflickr.com/500/500/notebook?random=515"]'::jsonb,
  '[]'::jsonb, NULL, now() - interval '2 days'),
 
 ((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Desk Lamp (UNSOLD)', 'Modern LED desk lamp. No bids received.', 
  (SELECT category_id FROM categories WHERE name='Home & Garden'), (SELECT subcategory_id FROM subcategories WHERE name='Furniture' LIMIT 1),
  250000, 250000, 25000, NULL, 'ended', 'new', 50000, 'no returns',
- '[\"https://loremflickr.com/500/500/lamp?random=516\", \"https://loremflickr.com/500/500/lighting?random=517\", \"https://loremflickr.com/500/500/desk?random=518\"]'::jsonb,
+ '["https://loremflickr.com/500/500/lamp?random=516", "https://loremflickr.com/500/500/lighting?random=517", "https://loremflickr.com/500/500/desk?random=518"]'::jsonb,
  '[]'::jsonb, NULL, now() - interval '5 days'),
 
 ((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Sneakers (UNSOLD)', 'Running shoes size 42. Auction ended without winner.', 
  (SELECT category_id FROM categories WHERE name='Clothing'), (SELECT subcategory_id FROM subcategories WHERE name='Shoes' LIMIT 1),
  600000, 600000, 50000, NULL, 'ended', 'new', 75000, '14-day returns',
- '[\"https://loremflickr.com/500/500/sneakers?random=519\", \"https://loremflickr.com/500/500/shoes?random=520\", \"https://loremflickr.com/500/500/running?random=521\"]'::jsonb,
+ '["https://loremflickr.com/500/500/sneakers?random=519", "https://loremflickr.com/500/500/shoes?random=520", "https://loremflickr.com/500/500/running?random=521"]'::jsonb,
  '[]'::jsonb, NULL, now() - interval '1 day');
 
 -- Add bids from Manual Bidder (bidder@example.com) on seller's listings
@@ -722,25 +753,25 @@ VALUES
 ((SELECT user_id FROM users WHERE email='bidder2@example.com'), 'Test Business Two', 'Another test business pending approval', 'pending');
 
 -- Add ratings/reviews for Manual Seller
-INSERT INTO ratings (user_id, reviewer_id, rating, role, comment)
+INSERT INTO ratings (target_user_id, rater_user_id, rating, role, comment)
 VALUES
 ((SELECT user_id FROM users WHERE email='seller@example.com'), (SELECT user_id FROM users WHERE email='bidder1@example.com'), 1, 'seller', 'Great seller! Fast shipping and excellent communication.'),
 ((SELECT user_id FROM users WHERE email='seller@example.com'), (SELECT user_id FROM users WHERE email='bidder2@example.com'), 1, 'seller', 'Product exactly as described. Highly recommended!'),
 ((SELECT user_id FROM users WHERE email='seller@example.com'), (SELECT user_id FROM users WHERE email='bidder3@example.com'), -1, 'seller', 'Item arrived damaged. Poor packaging.');
 
 -- Add ratings/reviews for Manual Bidder (bidder@example.com)
-INSERT INTO ratings (user_id, reviewer_id, rating, role, comment)
+INSERT INTO ratings (target_user_id, rater_user_id, rating, role, comment)
 VALUES
 ((SELECT user_id FROM users WHERE email='bidder@example.com'), (SELECT user_id FROM users WHERE email='seller@example.com'), 1, 'bidder', 'Excellent bidder! Payment was prompt and communication was great.'),
 ((SELECT user_id FROM users WHERE email='bidder@example.com'), (SELECT user_id FROM users WHERE email='seller1@example.com'), 1, 'bidder', 'Very professional and quick to pay. Would sell to again!'),
 ((SELECT user_id FROM users WHERE email='bidder@example.com'), (SELECT user_id FROM users WHERE email='seller2@example.com'), 1, 'bidder', 'Smooth transaction. Highly recommended buyer!');
 
 -- Add questions for demo listings
-INSERT INTO questions (listing_id, questioner_id, question, answer, questioner_name)
+INSERT INTO questions (listing_id, user_id, question_text, answer_text)
 VALUES
-((SELECT listing_id FROM listings WHERE title='Demo Vintage Camera' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder@example.com'), 'Does this camera come with a case?', 'Yes, it includes the original leather case!', 'Manual Bidder'),
-((SELECT listing_id FROM listings WHERE title='Demo Gaming Chair' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder2@example.com'), 'What is the weight capacity?', 'Up to 150kg', 'Bidder Two'),
-((SELECT listing_id FROM listings WHERE title='Demo Smartwatch' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder3@example.com'), 'Is it waterproof?', NULL, 'Bidder Three');
+((SELECT listing_id FROM listings WHERE title='Demo Vintage Camera' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder@example.com'), 'Does this camera come with a case?', 'Yes, it includes the original leather case!'),
+((SELECT listing_id FROM listings WHERE title='Demo Gaming Chair' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder2@example.com'), 'What is the weight capacity?', 'Up to 150kg'),
+((SELECT listing_id FROM listings WHERE title='Demo Smartwatch' LIMIT 1), (SELECT user_id FROM users WHERE email='bidder3@example.com'), 'Is it waterproof?', NULL);
 
 -- Add a completed/sold listing for Manual Seller with Manual Bidder as winner
 INSERT INTO listings (seller_id, title, description, category_id, subcategory_id, starting_price, current_bid, step_price, buy_now_price, status, item_condition, shipping_cost, return_policy, images, auto_extended_dates, rejected_bidders, ends_at)
@@ -748,32 +779,32 @@ VALUES
 ((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Headphones (SOLD)', 'Wireless noise-cancelling headphones. Auction ended.', 
  (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Audio' LIMIT 1),
  300000, 450000, 50000, NULL, 'sold', 'used', 30000, '14-day returns',
- '[\"https://loremflickr.com/500/500/headphones?random=510\", \"https://loremflickr.com/500/500/audio?random=511\", \"https://loremflickr.com/500/500/music?random=512\"]'::jsonb,
+ '["https://loremflickr.com/500/500/headphones?random=510", "https://loremflickr.com/500/500/audio?random=511", "https://loremflickr.com/500/500/music?random=512"]'::jsonb,
  '[]'::jsonb, NULL, now() - interval '1 day'),
 
 -- Order fulfillment testing items
 ((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Watch (PENDING PAYMENT)', 'Luxury wristwatch. Waiting for payment proof.', 
  (SELECT category_id FROM categories WHERE name='Clothing'), (SELECT subcategory_id FROM subcategories WHERE name='Accessories' LIMIT 1),
  800000, 950000, 50000, NULL, 'sold', 'new', 50000, '30-day returns',
- '[\"https://loremflickr.com/500/500/watch?random=522\", \"https://loremflickr.com/500/500/luxury?random=523\", \"https://loremflickr.com/500/500/timepiece?random=524\"]'::jsonb,
+ '["https://loremflickr.com/500/500/watch?random=522", "https://loremflickr.com/500/500/luxury?random=523", "https://loremflickr.com/500/500/timepiece?random=524"]'::jsonb,
  '[]'::jsonb, NULL, now() - interval '2 days'),
 
 ((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Backpack (PAID)', 'Travel backpack. Payment received, waiting for shipment.', 
  (SELECT category_id FROM categories WHERE name='Clothing'), (SELECT subcategory_id FROM subcategories WHERE name='Accessories' LIMIT 1),
  350000, 450000, 50000, NULL, 'sold', 'used', 40000, '14-day returns',
- '[\"https://loremflickr.com/500/500/backpack?random=525\", \"https://loremflickr.com/500/500/bag?random=526\", \"https://loremflickr.com/500/500/travel?random=527\"]'::jsonb,
+ '["https://loremflickr.com/500/500/backpack?random=525", "https://loremflickr.com/500/500/bag?random=526", "https://loremflickr.com/500/500/travel?random=527"]'::jsonb,
  '[]'::jsonb, NULL, now() - interval '3 days'),
 
 ((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Keyboard (SHIPPED)', 'Mechanical keyboard. Item has been shipped.', 
  (SELECT category_id FROM categories WHERE name='Electronics'), (SELECT subcategory_id FROM subcategories WHERE name='Accessories' LIMIT 1),
  600000, 750000, 50000, NULL, 'sold', 'new', 45000, '30-day returns',
- '[\"https://loremflickr.com/500/500/keyboard?random=528\", \"https://loremflickr.com/500/500/mechanical?random=529\", \"https://loremflickr.com/500/500/typing?random=530\"]'::jsonb,
+ '["https://loremflickr.com/500/500/keyboard?random=528", "https://loremflickr.com/500/500/mechanical?random=529", "https://loremflickr.com/500/500/typing?random=530"]'::jsonb,
  '[]'::jsonb, NULL, now() - interval '4 days'),
 
 ((SELECT user_id FROM users WHERE email='seller@example.com'), 'Demo Book Set (DELIVERED)', 'Classic literature collection. Order completed.', 
  (SELECT category_id FROM categories WHERE name='Books'), (SELECT subcategory_id FROM subcategories WHERE name='Fiction' LIMIT 1),
  400000, 550000, 50000, NULL, 'sold', 'used', 60000, '7-day returns',
- '[\"https://loremflickr.com/500/500/books?random=531\", \"https://loremflickr.com/500/500/literature?random=532\", \"https://loremflickr.com/500/500/reading?random=533\"]'::jsonb,
+ '["https://loremflickr.com/500/500/books?random=531", "https://loremflickr.com/500/500/literature?random=532", "https://loremflickr.com/500/500/reading?random=533"]'::jsonb,
  '[]'::jsonb, NULL, now() - interval '10 days');
 
 -- Add winning bid from Manual Bidder on sold listing

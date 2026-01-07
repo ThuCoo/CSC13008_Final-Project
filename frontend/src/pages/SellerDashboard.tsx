@@ -41,7 +41,8 @@ import { Input } from "../components/ui/input";
 
 export default function SellerDashboard() {
   const { user } = useUser();
-  const { getSellerListings, updateListing } = useListings();
+  const { getSellerListings, updateListing, fetchListingById, getListingById } =
+    useListings();
   const { getUserReviews } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -106,7 +107,7 @@ export default function SellerDashboard() {
   };
 
   const handleViewBids = async (listingId: string) => {
-    const listing = myListings.find((l) => l.id === listingId);
+    const listing = await fetchListingById(listingId);
     if (listing && listing.bids.length > 0) {
       // Fetch reviews for all bidders
       const reviews: Record<
@@ -192,197 +193,210 @@ export default function SellerDashboard() {
                   : "No active listings yet."}
               </p>
             ) : (
-              filteredActiveListings.map((l) => (
-                <div
-                  key={l.id}
-                  className="bg-white p-4 rounded-lg border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-                >
+              filteredActiveListings.map((l) => {
+                const fullListing = getListingById(l.id) ?? l;
+                const bidCount =
+                  typeof fullListing.bidCount === "number"
+                    ? fullListing.bidCount
+                    : fullListing.bids?.length || 0;
+
+                return (
                   <div
-                    className="flex gap-4 items-center flex-1 cursor-pointer group"
-                    onClick={() => navigate(`/auction/${l.id}`)}
+                    key={fullListing.id}
+                    className="bg-white p-4 rounded-lg border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
                   >
-                    <div className="w-16 h-16 bg-gray-100 rounded-md overflow-hidden">
-                      {l.images[0] && (
-                        <img
-                          src={l.images[0]}
-                          alt={l.title}
-                          className="object-cover w-full h-full group-hover:scale-105 transition"
-                        />
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg group-hover:text-rose-600 transition">
-                        {l.title}
-                      </h3>
-                      <div className="flex gap-4 text-sm text-slate-500">
-                        <span>
-                          Current Bid:{" "}
-                          <span className="text-primary font-semibold">
-                            {l.currentBid.toLocaleString()}₫
+                    <div
+                      className="flex gap-4 items-center flex-1 cursor-pointer group"
+                      onClick={() => navigate(`/auction/${fullListing.id}`)}
+                    >
+                      <div className="w-16 h-16 bg-gray-100 rounded-md overflow-hidden">
+                        {fullListing.images[0] && (
+                          <img
+                            src={fullListing.images[0]}
+                            alt={fullListing.title}
+                            className="object-cover w-full h-full group-hover:scale-105 transition"
+                          />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg group-hover:text-rose-600 transition">
+                          {fullListing.title}
+                        </h3>
+                        <div className="flex gap-4 text-sm text-slate-500">
+                          <span>
+                            Current Bid:{" "}
+                            <span className="text-primary font-semibold">
+                              {fullListing.currentBid.toLocaleString()}₫
+                            </span>
                           </span>
-                        </span>
-                        <span>Bids: {l.bids.length}</span>
+                          <span>Bids: {bidCount}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {l.bids.length > 0 && (
+
+                    <div className="flex gap-2">
+                      {bidCount > 0 && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleViewBids(fullListing.id);
+                              }}
+                            >
+                              <Users className="w-4 h-4 mr-2" /> View Bids (
+                              {bidCount})
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>
+                                Bidders for "{fullListing.title}"
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-3 py-4">
+                              {(fullListing.bids || []).map((bid, idx) => {
+                                const reviews =
+                                  bidderReviews[bid.bidderId] || [];
+                                const positiveCount = reviews.filter(
+                                  (r) => r.rating === 1
+                                ).length;
+                                const ratingPercentage =
+                                  reviews.length > 0
+                                    ? Math.round(
+                                        (positiveCount / reviews.length) * 100
+                                      )
+                                    : null;
+
+                                return (
+                                  <div
+                                    key={bid.id}
+                                    className="border rounded-lg p-4 bg-slate-50"
+                                  >
+                                    <div className="flex justify-between items-start mb-2">
+                                      <div>
+                                        <p className="font-bold text-lg">
+                                          {idx === 0 && (
+                                            <span className="text-green-600 mr-2">
+                                              🏆
+                                            </span>
+                                          )}
+                                          {bid.bidderName}
+                                        </p>
+                                        <p className="text-sm text-slate-500">
+                                          Bid:{" "}
+                                          <span className="font-semibold text-rose-600">
+                                            {bid.amount.toLocaleString()}₫
+                                          </span>
+                                        </p>
+                                        <p className="text-xs text-slate-400">
+                                          {new Date(
+                                            bid.timestamp
+                                          ).toLocaleString()}
+                                        </p>
+                                      </div>
+                                      <div className="text-right">
+                                        {ratingPercentage !== null ? (
+                                          <div className="flex items-center gap-1 text-sm">
+                                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                                            <span className="font-bold">
+                                              {ratingPercentage}%
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-xs text-slate-400">
+                                            No ratings
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Rating Details */}
+                                    {reviews.length > 0 && (
+                                      <div className="mt-3 pt-3 border-t">
+                                        <p className="text-xs font-semibold text-slate-600 mb-2">
+                                          Recent Reviews:
+                                        </p>
+                                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                                          {reviews
+                                            .slice(0, 3)
+                                            .map((review, ridx) => (
+                                              <div
+                                                key={ridx}
+                                                className="text-xs bg-white p-2 rounded"
+                                              >
+                                                <div className="flex items-center gap-1 mb-1">
+                                                  {review.rating === 1 ? (
+                                                    <ThumbsUp className="w-3 h-3 text-green-600" />
+                                                  ) : (
+                                                    <ThumbsDown className="w-3 h-3 text-red-600" />
+                                                  )}
+                                                  <span
+                                                    className={
+                                                      review.rating === 1
+                                                        ? "text-green-600"
+                                                        : "text-red-600"
+                                                    }
+                                                  >
+                                                    {review.rating === 1
+                                                      ? "Positive"
+                                                      : "Negative"}
+                                                  </span>
+                                                </div>
+                                                <p className="text-slate-600">
+                                                  "{review.comment}"
+                                                </p>
+                                              </div>
+                                            ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              void handleViewBids(l.id);
+                              setSelectedId(fullListing.id);
                             }}
                           >
-                            <Users className="w-4 h-4 mr-2" /> View Bids (
-                            {l.bids.length})
+                            <Edit className="w-4 h-4 mr-2" /> Append Desc
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                        <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Bidders for "{l.title}"</DialogTitle>
+                            <DialogTitle>Append Description</DialogTitle>
                           </DialogHeader>
-                          <div className="space-y-3 py-4">
-                            {l.bids.map((bid, idx) => {
-                              const reviews = bidderReviews[bid.bidderId] || [];
-                              const positiveCount = reviews.filter(
-                                (r) => r.rating === 1
-                              ).length;
-                              const ratingPercentage =
-                                reviews.length > 0
-                                  ? Math.round(
-                                      (positiveCount / reviews.length) * 100
-                                    )
-                                  : null;
-
-                              return (
-                                <div
-                                  key={bid.id}
-                                  className="border rounded-lg p-4 bg-slate-50"
-                                >
-                                  <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                      <p className="font-bold text-lg">
-                                        {idx === 0 && (
-                                          <span className="text-green-600 mr-2">
-                                            🏆
-                                          </span>
-                                        )}
-                                        {bid.bidderName}
-                                      </p>
-                                      <p className="text-sm text-slate-500">
-                                        Bid:{" "}
-                                        <span className="font-semibold text-rose-600">
-                                          {bid.amount.toLocaleString()}₫
-                                        </span>
-                                      </p>
-                                      <p className="text-xs text-slate-400">
-                                        {new Date(
-                                          bid.timestamp
-                                        ).toLocaleString()}
-                                      </p>
-                                    </div>
-                                    <div className="text-right">
-                                      {ratingPercentage !== null ? (
-                                        <div className="flex items-center gap-1 text-sm">
-                                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                                          <span className="font-bold">
-                                            {ratingPercentage}%
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <span className="text-xs text-slate-400">
-                                          No ratings
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Rating Details */}
-                                  {reviews.length > 0 && (
-                                    <div className="mt-3 pt-3 border-t">
-                                      <p className="text-xs font-semibold text-slate-600 mb-2">
-                                        Recent Reviews:
-                                      </p>
-                                      <div className="space-y-2 max-h-32 overflow-y-auto">
-                                        {reviews
-                                          .slice(0, 3)
-                                          .map((review, ridx) => (
-                                            <div
-                                              key={ridx}
-                                              className="text-xs bg-white p-2 rounded"
-                                            >
-                                              <div className="flex items-center gap-1 mb-1">
-                                                {review.rating === 1 ? (
-                                                  <ThumbsUp className="w-3 h-3 text-green-600" />
-                                                ) : (
-                                                  <ThumbsDown className="w-3 h-3 text-red-600" />
-                                                )}
-                                                <span
-                                                  className={
-                                                    review.rating === 1
-                                                      ? "text-green-600"
-                                                      : "text-red-600"
-                                                  }
-                                                >
-                                                  {review.rating === 1
-                                                    ? "Positive"
-                                                    : "Negative"}
-                                                </span>
-                                              </div>
-                                              <p className="text-slate-600">
-                                                "{review.comment}"
-                                              </p>
-                                            </div>
-                                          ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Add new details. Old description cannot be changed.
+                          </p>
+                          <Textarea
+                            value={appendDesc}
+                            onChange={(e) => setAppendDesc(e.target.value)}
+                            placeholder="Enter new details..."
+                          />
+                          <DialogFooter>
+                            <Button onClick={handleAppendDescription}>
+                              Save Update
+                            </Button>
+                          </DialogFooter>
                         </DialogContent>
                       </Dialog>
-                    )}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedId(l.id);
-                          }}
-                        >
-                          <Edit className="w-4 h-4 mr-2" /> Append Desc
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Append Description</DialogTitle>
-                        </DialogHeader>
-                        <p className="text-sm text-muted-foreground">
-                          Add new details. Old description cannot be changed.
-                        </p>
-                        <Textarea
-                          value={appendDesc}
-                          onChange={(e) => setAppendDesc(e.target.value)}
-                          placeholder="Enter new details..."
-                        />
-                        <DialogFooter>
-                          <Button onClick={handleAppendDescription}>
-                            Save Update
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </TabsContent>
         </Tabs>

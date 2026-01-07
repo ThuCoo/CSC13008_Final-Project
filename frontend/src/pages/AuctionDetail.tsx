@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import DOMPurify from "dompurify";
 
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -47,6 +48,7 @@ export default function AuctionDetail() {
   const { toast } = useToast();
   const {
     isLoading,
+    fetchListingById,
     getListingById,
     placeBid,
     getListingsByCategory,
@@ -58,18 +60,20 @@ export default function AuctionDetail() {
   const { user, getUserReviews } = useUser();
 
   const listing = getListingById(id || "");
+  const safeDescriptionHtml = useMemo(() => {
+    return DOMPurify.sanitize(listing?.description || "");
+  }, [listing?.description]);
+  const [detailLoading, setDetailLoading] = useState(true);
   const [bidAmount, setBidAmount] = useState(
     listing ? (listing.currentBid + listing.stepPrice).toString() : ""
   );
   const [questionText, setQuestionText] = useState("");
   const [answerText, setAnswerText] = useState("");
 
-  // Image Gallery State
   const [selectedImage, setSelectedImage] = useState("");
   const [bidderToReject, setBidderToReject] = useState<string | null>(null);
   const [pendingBidAmount, setPendingBidAmount] = useState<number | null>(null);
 
-  // Seller Rating State
   const [sellerRating, setSellerRating] = useState<number | null>(null);
   const [sellerReviews, setSellerReviews] = useState<
     Array<{
@@ -96,6 +100,12 @@ export default function AuctionDetail() {
   >({});
 
   useEffect(() => {
+    if (!id) return;
+    setDetailLoading(true);
+    void fetchListingById(id).finally(() => setDetailLoading(false));
+  }, [id, fetchListingById]);
+
+  useEffect(() => {
     if (listing?.sellerId) {
       void getUserReviews(listing.sellerId).then((reviews) => {
         setSellerReviews(reviews);
@@ -105,13 +115,12 @@ export default function AuctionDetail() {
           ).length;
           setSellerRating(Math.round((positive / reviews.length) * 100));
         } else {
-          setSellerRating(null); // No rating
+          setSellerRating(null);
         }
       });
     }
   }, [listing?.sellerId, getUserReviews]);
 
-  // Update state when listing changes
   if (
     listing &&
     listing.images.length > 0 &&
@@ -119,19 +128,17 @@ export default function AuctionDetail() {
   ) {
     setSelectedImage(listing.images[0]);
   }
-  // Reset when ID changes
   if (listing && selectedImage && !listing.images.includes(selectedImage)) {
     setSelectedImage(listing.images[0] || "");
   }
 
-  // Update input when current bid changes
   const [lastBidId, setLastBidId] = useState(listing?.currentBid || 0);
   if (listing && listing.currentBid !== lastBidId) {
     setLastBidId(listing.currentBid);
     setBidAmount((listing.currentBid + listing.stepPrice).toString());
   }
 
-  if (isLoading) {
+  if (isLoading || detailLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <LoadingSpinner text="Loading auction details..." size="lg" />
@@ -447,7 +454,7 @@ export default function AuctionDetail() {
               </div>
               <div
                 className="prose"
-                dangerouslySetInnerHTML={{ __html: listing.description }}
+                dangerouslySetInnerHTML={{ __html: safeDescriptionHtml }}
               />
             </div>
 
@@ -540,6 +547,7 @@ export default function AuctionDetail() {
                             ).toLocaleString()}₫`}
                             value={bidAmount}
                             onChange={(e) => setBidAmount(e.target.value)}
+                            step={1000}
                           />
                         </div>
                         <Button className="w-full" type="submit">
@@ -765,10 +773,15 @@ export default function AuctionDetail() {
             {relatedProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {relatedProducts.map((rel) => {
+                  const bidCount =
+                    typeof rel.bidCount === "number"
+                      ? rel.bidCount
+                      : rel.bids?.length || 0;
                   const topBidder =
-                    rel.bids && rel.bids.length > 0
+                    rel.topBidderName ||
+                    (rel.bids && rel.bids.length > 0
                       ? rel.bids[0].bidderName
-                      : null;
+                      : null);
                   const createdTime = new Date(rel.createdAt).getTime();
                   const thirtyMinutesAgo =
                     new Date().getTime() - 30 * 60 * 1000;
@@ -827,9 +840,7 @@ export default function AuctionDetail() {
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-gray-500">Bids</p>
-                            <p className="font-medium">
-                              {rel.bids?.length || 0}
-                            </p>
+                            <p className="font-medium">{bidCount}</p>
                           </div>
                         </div>
 

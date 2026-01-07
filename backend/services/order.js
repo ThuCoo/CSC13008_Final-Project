@@ -2,17 +2,45 @@ import { eq, desc } from "drizzle-orm";
 import db from "../db/index.js";
 import { orders, listings, users } from "../db/schema.js";
 import listingService from "./listing.js";
-import { maskName } from "../utils/mask.js";
 import emailLib from "../lib/email.js";
 
 const service = {
+  getById: async function (orderId) {
+    const rows = await db
+      .select({
+        id: orders.id,
+        status: orders.status,
+        sellerId: orders.sellerId,
+        bidderId: orders.bidderId,
+      })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+    return rows[0] || null;
+  },
+
+  getByListingId: async function (listingId) {
+    const rows = await db
+      .select({
+        id: orders.id,
+        status: orders.status,
+        sellerId: orders.sellerId,
+        bidderId: orders.bidderId,
+        finalPrice: orders.finalPrice,
+      })
+      .from(orders)
+      .where(eq(orders.listingId, listingId))
+      .limit(1);
+    return rows[0] || null;
+  },
+
   create: async function ({
     listingId,
     bidderId,
     sellerId,
     finalPrice,
     shippingAddress = null,
-    status = "paid",
+    status = "pending_payment",
   }) {
     const result = await db
       .insert(orders)
@@ -41,12 +69,28 @@ const service = {
         .where(eq(users.userId, bidderId))
         .limit(1);
 
+      const seller = await db
+        .select({ email: users.email, name: users.name })
+        .from(users)
+        .where(eq(users.userId, sellerId))
+        .limit(1);
+
       if (winner[0] && listing) {
         await emailLib.sendAuctionEndedEmail(
           winner[0].email,
           listing.title,
           "won",
           finalPrice
+        );
+      }
+
+      if (seller[0] && listing && winner[0]) {
+        await emailLib.sendAuctionEndedSellerEmail(
+          seller[0].email,
+          listing.title,
+          "with_winner",
+          Number(finalPrice),
+          winner[0].name
         );
       }
     } catch (emailErr) {
@@ -76,14 +120,9 @@ const service = {
       .leftJoin(users, eq(users.userId, orders.bidderId))
       .where(eq(orders.sellerId, sellerId))
       .orderBy(desc(orders.createdAt));
-
-    const isAdmin = requesterRole === "admin";
-    // Mask bidder name unless requester is admin
     return result.map((o) => ({
       ...o,
-      bidderName: isAdmin
-        ? o.bidderName || "Unknown"
-        : maskName(o.bidderName || "Unknown"),
+      bidderName: o.bidderName || "Unknown",
     }));
   },
 
@@ -107,8 +146,6 @@ const service = {
       .leftJoin(users, eq(users.userId, orders.sellerId))
       .where(eq(orders.bidderId, bidderId))
       .orderBy(desc(orders.createdAt));
-
-    // Bidders see seller names unmasked
     return result;
   },
 

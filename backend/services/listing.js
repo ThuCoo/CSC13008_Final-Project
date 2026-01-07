@@ -1,4 +1,4 @@
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, asc, and, sql } from "drizzle-orm";
 import db from "../db/index.js";
 import {
   listings,
@@ -14,6 +14,38 @@ import { maskName } from "../utils/mask.js";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
+
+function buildPrefixTsQuery(input) {
+  const tokens = String(input || "")
+    .toLowerCase()
+    .trim()
+    .match(/[a-z0-9]+/g);
+
+  if (!tokens || tokens.length === 0) return null;
+
+  return tokens.map((t) => `${t}:*`).join(" & ");
+}
+
+function buildListingOrderBy(sort) {
+  const key = String(sort || "").trim();
+  switch (key) {
+    case "ending_desc":
+    case "ending_soon":
+      return [
+        asc(sql`CASE WHEN ${listings.endsAt} < NOW() THEN 1 ELSE 0 END`),
+        asc(listings.endsAt),
+        desc(listings.listingId),
+      ];
+    case "price_asc":
+    case "price_low":
+      return [asc(listings.currentBid), desc(listings.listingId)];
+    case "price_high":
+      return [desc(listings.currentBid), desc(listings.listingId)];
+    case "created_desc":
+    default:
+      return [desc(listings.createdAt), desc(listings.listingId)];
+  }
+}
 
 const defaultSelection = {
   listingId: listings.listingId,
@@ -33,9 +65,63 @@ const defaultSelection = {
   shippingCost: listings.shippingCost,
   returnPolicy: listings.returnPolicy,
   images: listings.images,
+  autoExtendEnabled: listings.autoExtendEnabled,
   autoExtendDates: listings.autoExtendDates,
+  allowUnratedBidders: listings.allowUnratedBidders,
   rejectedBidders: listings.rejectedBidders,
 };
+
+function mapListingRowToSummary(row, requesterId = null, requesterRole = null) {
+  const isSeller = requesterId && String(row.sellerId) === String(requesterId);
+  const isAdmin = requesterRole === "admin";
+  const shouldUnmask = isSeller || isAdmin;
+
+  const categoryName = row.categoryName || "Unknown";
+  const subcategoryName = row.subcategoryName || null;
+  const topBidderNameRaw = row.topBidderName || null;
+
+  return {
+    id: String(row.listingId),
+    sellerId: String(row.sellerId),
+    sellerName: row.sellerName || "Unknown",
+    title: row.title,
+    description: row.description,
+    categoryId: Number(row.categoryId),
+    subcategoryId:
+      row.subcategoryId != null ? Number(row.subcategoryId) : undefined,
+    category: categoryName,
+    subCategory: subcategoryName,
+    categories: [categoryName],
+    startingPrice: Number(row.startingPrice),
+    currentBid: Number(row.currentBid),
+    stepPrice: Number(row.stepPrice),
+    buyNowPrice: row.buyNowPrice ? Number(row.buyNowPrice) : undefined,
+    status: row.status,
+    createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now(),
+    endsAt: row.endsAt ? new Date(row.endsAt).getTime() : Date.now(),
+    condition: row.itemCondition,
+    shippingCost: Number(row.shippingCost),
+    returns: row.returnPolicy,
+    images: Array.isArray(row.images) ? row.images : [],
+    autoExtendEnabled: row.autoExtendEnabled !== false,
+    autoExtendedDates: Array.isArray(row.autoExtendDates)
+      ? row.autoExtendDates.map((d) => new Date(d).getTime())
+      : [],
+    allowUnratedBidders: row.allowUnratedBidders !== false,
+    rejectedBidders: Array.isArray(row.rejectedBidders)
+      ? row.rejectedBidders.map((id) => String(id))
+      : [],
+    bids: [],
+    questions: [],
+    bidCount: Number(row.bidCount || 0),
+    topBidderName:
+      topBidderNameRaw == null
+        ? undefined
+        : shouldUnmask
+        ? String(topBidderNameRaw)
+        : maskName(String(topBidderNameRaw)),
+  };
+}
 
 // Helper function to enrich listing with related data
 async function enrichListing(
@@ -222,6 +308,7 @@ async function enrichListing(
       shippingCost: Number(listing.shippingCost),
       returns: listing.returnPolicy,
       images: Array.isArray(listing.images) ? listing.images : [],
+      autoExtendEnabled: listing.autoExtendEnabled !== false,
       autoExtendedDates: Array.isArray(listing.autoExtendDates)
         ? listing.autoExtendDates.map((d) => new Date(d).getTime())
         : [],
@@ -258,6 +345,7 @@ async function enrichListing(
       shippingCost: Number(listing.shippingCost),
       returns: listing.returnPolicy,
       images: Array.isArray(listing.images) ? listing.images : [],
+      autoExtendEnabled: listing.autoExtendEnabled !== false,
       autoExtendedDates: [],
       rejectedBidders: [],
       bids: [],
@@ -267,9 +355,168 @@ async function enrichListing(
 }
 
 const service = {
-  listAll: async function ({
+  top5ClosingSoonSummary: async function ({
+    limit = 5,
+    requesterId = null,
+    requesterRole = null,
+  } = {}) {
+    limit = Math.min(Math.max(1, +limit), 50);
+
+    const bidCountExpr = sql`(
+      SELECT count(*)
+      FROM ${bids}
+      WHERE ${bids.listingId} = ${listings.listingId}
+    )`.mapWith(Number);
+
+    const topBidderNameExpr = sql`(
+      SELECT ${users.name}
+      FROM ${bids}
+      JOIN ${users} ON ${users.userId} = ${bids.bidderId}
+      WHERE ${bids.listingId} = ${listings.listingId}
+      ORDER BY ${bids.amount} DESC, ${bids.bidId} DESC
+      LIMIT 1
+    )`;
+
+    const whereClause = and(
+      eq(listings.status, "active"),
+      sql`${listings.endsAt} > NOW()`
+    );
+
+    const result = await db
+      .select({
+        ...defaultSelection,
+        sellerName: users.name,
+        categoryName: categories.name,
+        subcategoryName: subcategories.name,
+        bidCount: bidCountExpr,
+        topBidderName: topBidderNameExpr,
+      })
+      .from(listings)
+      .leftJoin(users, eq(users.userId, listings.sellerId))
+      .leftJoin(categories, eq(categories.categoryId, listings.categoryId))
+      .leftJoin(
+        subcategories,
+        eq(subcategories.subcategoryId, listings.subcategoryId)
+      )
+      .where(whereClause)
+      .orderBy(asc(listings.endsAt), desc(listings.listingId))
+      .limit(limit);
+
+    return result.map((row) =>
+      mapListingRowToSummary(row, requesterId, requesterRole)
+    );
+  },
+
+  top5HighestPriceSummary: async function ({
+    limit = 5,
+    requesterId = null,
+    requesterRole = null,
+  } = {}) {
+    limit = Math.min(Math.max(1, +limit), 50);
+
+    const bidCountExpr = sql`(
+      SELECT count(*)
+      FROM ${bids}
+      WHERE ${bids.listingId} = ${listings.listingId}
+    )`.mapWith(Number);
+
+    const topBidderNameExpr = sql`(
+      SELECT ${users.name}
+      FROM ${bids}
+      JOIN ${users} ON ${users.userId} = ${bids.bidderId}
+      WHERE ${bids.listingId} = ${listings.listingId}
+      ORDER BY ${bids.amount} DESC, ${bids.bidId} DESC
+      LIMIT 1
+    )`;
+
+    const whereClause = and(
+      eq(listings.status, "active"),
+      sql`${listings.endsAt} > NOW()`
+    );
+
+    const result = await db
+      .select({
+        ...defaultSelection,
+        sellerName: users.name,
+        categoryName: categories.name,
+        subcategoryName: subcategories.name,
+        bidCount: bidCountExpr,
+        topBidderName: topBidderNameExpr,
+      })
+      .from(listings)
+      .leftJoin(users, eq(users.userId, listings.sellerId))
+      .leftJoin(categories, eq(categories.categoryId, listings.categoryId))
+      .leftJoin(
+        subcategories,
+        eq(subcategories.subcategoryId, listings.subcategoryId)
+      )
+      .where(whereClause)
+      .orderBy(desc(listings.currentBid), desc(listings.listingId))
+      .limit(limit);
+
+    return result.map((row) =>
+      mapListingRowToSummary(row, requesterId, requesterRole)
+    );
+  },
+
+  top5MostBidsSummary: async function ({
+    limit = 5,
+    requesterId = null,
+    requesterRole = null,
+  } = {}) {
+    limit = Math.min(Math.max(1, +limit), 50);
+
+    const bidCountExpr = sql`(
+      SELECT count(*)
+      FROM ${bids}
+      WHERE ${bids.listingId} = ${listings.listingId}
+    )`.mapWith(Number);
+
+    const topBidderNameExpr = sql`(
+      SELECT ${users.name}
+      FROM ${bids}
+      JOIN ${users} ON ${users.userId} = ${bids.bidderId}
+      WHERE ${bids.listingId} = ${listings.listingId}
+      ORDER BY ${bids.amount} DESC, ${bids.bidId} DESC
+      LIMIT 1
+    )`;
+
+    const whereClause = and(
+      eq(listings.status, "active"),
+      sql`${listings.endsAt} > NOW()`
+    );
+
+    const result = await db
+      .select({
+        ...defaultSelection,
+        sellerName: users.name,
+        categoryName: categories.name,
+        subcategoryName: subcategories.name,
+        bidCount: bidCountExpr,
+        topBidderName: topBidderNameExpr,
+      })
+      .from(listings)
+      .leftJoin(users, eq(users.userId, listings.sellerId))
+      .leftJoin(categories, eq(categories.categoryId, listings.categoryId))
+      .leftJoin(
+        subcategories,
+        eq(subcategories.subcategoryId, listings.subcategoryId)
+      )
+      .where(whereClause)
+      .orderBy(desc(bidCountExpr), desc(listings.listingId))
+      .limit(limit);
+
+    return result.map((row) =>
+      mapListingRowToSummary(row, requesterId, requesterRole)
+    );
+  },
+
+  listAllSummary: async function ({
     page = 1,
     limit = DEFAULT_LIMIT,
+    sort = undefined,
+    cat = undefined,
+    sub = undefined,
     requesterId = null,
     requesterRole = null,
   } = {}) {
@@ -277,10 +524,191 @@ const service = {
     page = Math.max(1, +page);
     const offset = (page - 1) * limit;
 
+    const orderBy = buildListingOrderBy(sort);
+
+    const whereParts = [];
+    if (cat && String(cat).trim() && String(cat).trim() !== "All") {
+      whereParts.push(eq(categories.name, String(cat).trim()));
+    }
+    if (sub && String(sub).trim()) {
+      whereParts.push(eq(subcategories.name, String(sub).trim()));
+    }
+    const whereClause = whereParts.length ? and(...whereParts) : undefined;
+
+    const countQuery = db
+      .select({ count: sql`count(*)`.mapWith(Number) })
+      .from(listings)
+      .leftJoin(categories, eq(categories.categoryId, listings.categoryId))
+      .leftJoin(
+        subcategories,
+        eq(subcategories.subcategoryId, listings.subcategoryId)
+      );
+    const countRows = whereClause
+      ? await countQuery.where(whereClause)
+      : await countQuery;
+    const totalItems = countRows?.[0]?.count ?? 0;
+
+    const bidCountExpr = sql`(
+      SELECT count(*)
+      FROM ${bids}
+      WHERE ${bids.listingId} = ${listings.listingId}
+    )`.mapWith(Number);
+
+    const topBidderNameExpr = sql`(
+      SELECT ${users.name}
+      FROM ${bids}
+      JOIN ${users} ON ${users.userId} = ${bids.bidderId}
+      WHERE ${bids.listingId} = ${listings.listingId}
+      ORDER BY ${bids.amount} DESC, ${bids.bidId} DESC
+      LIMIT 1
+    )`;
+
+    const result = await db
+      .select({
+        ...defaultSelection,
+        sellerName: users.name,
+        categoryName: categories.name,
+        subcategoryName: subcategories.name,
+        bidCount: bidCountExpr,
+        topBidderName: topBidderNameExpr,
+      })
+      .from(listings)
+      .leftJoin(users, eq(users.userId, listings.sellerId))
+      .leftJoin(categories, eq(categories.categoryId, listings.categoryId))
+      .leftJoin(
+        subcategories,
+        eq(subcategories.subcategoryId, listings.subcategoryId)
+      )
+      .where(whereClause)
+      .orderBy(...orderBy)
+      .limit(limit)
+      .offset(offset);
+
+    const data = result.map((row) =>
+      mapListingRowToSummary(row, requesterId, requesterRole)
+    );
+
+    return { page, limit, totalItems, data };
+  },
+
+  searchListingsSummary: async function ({
+    query,
+    page = 1,
+    limit = DEFAULT_LIMIT,
+    sort = undefined,
+    requesterId = null,
+    requesterRole = null,
+  } = {}) {
+    const tsQuery = buildPrefixTsQuery(query);
+    if (!tsQuery) return { page, limit, totalItems: 0, data: [] };
+
+    limit = Math.min(Math.max(1, +limit), MAX_LIMIT);
+    page = Math.max(1, +page);
+    const offset = (page - 1) * limit;
+
+    const orderBy = buildListingOrderBy(sort);
+    const searchWhere = sql`to_tsvector('english', ${listings.title} || ' ' || coalesce(${categories.name}, '') || ' ' || coalesce(${subcategories.name}, '')) @@ to_tsquery('english', ${tsQuery})`;
+
+    const countRows = await db
+      .select({ count: sql`count(*)`.mapWith(Number) })
+      .from(listings)
+      .leftJoin(categories, eq(categories.categoryId, listings.categoryId))
+      .leftJoin(
+        subcategories,
+        eq(subcategories.subcategoryId, listings.subcategoryId)
+      )
+      .where(searchWhere);
+    const totalItems = countRows?.[0]?.count ?? 0;
+
+    const bidCountExpr = sql`(
+      SELECT count(*)
+      FROM ${bids}
+      WHERE ${bids.listingId} = ${listings.listingId}
+    )`.mapWith(Number);
+
+    const topBidderNameExpr = sql`(
+      SELECT ${users.name}
+      FROM ${bids}
+      JOIN ${users} ON ${users.userId} = ${bids.bidderId}
+      WHERE ${bids.listingId} = ${listings.listingId}
+      ORDER BY ${bids.amount} DESC, ${bids.bidId} DESC
+      LIMIT 1
+    )`;
+
+    const result = await db
+      .select({
+        ...defaultSelection,
+        sellerName: users.name,
+        categoryName: categories.name,
+        subcategoryName: subcategories.name,
+        bidCount: bidCountExpr,
+        topBidderName: topBidderNameExpr,
+      })
+      .from(listings)
+      .leftJoin(users, eq(users.userId, listings.sellerId))
+      .leftJoin(categories, eq(categories.categoryId, listings.categoryId))
+      .leftJoin(
+        subcategories,
+        eq(subcategories.subcategoryId, listings.subcategoryId)
+      )
+      .where(searchWhere)
+      .orderBy(...orderBy)
+      .limit(limit)
+      .offset(offset);
+
+    const data = result.map((row) =>
+      mapListingRowToSummary(row, requesterId, requesterRole)
+    );
+    return { page, limit, totalItems, data };
+  },
+
+  listAll: async function ({
+    page = 1,
+    limit = DEFAULT_LIMIT,
+    sort = undefined,
+    cat = undefined,
+    sub = undefined,
+    requesterId = null,
+    requesterRole = null,
+  } = {}) {
+    limit = Math.min(Math.max(1, +limit), MAX_LIMIT);
+    page = Math.max(1, +page);
+    const offset = (page - 1) * limit;
+
+    const orderBy = buildListingOrderBy(sort);
+
+    const whereParts = [];
+    if (cat && String(cat).trim() && String(cat).trim() !== "All") {
+      whereParts.push(eq(categories.name, String(cat).trim()));
+    }
+    if (sub && String(sub).trim()) {
+      whereParts.push(eq(subcategories.name, String(sub).trim()));
+    }
+    const whereClause = whereParts.length ? and(...whereParts) : undefined;
+
+    const countQuery = db
+      .select({ count: sql`count(*)`.mapWith(Number) })
+      .from(listings)
+      .leftJoin(categories, eq(categories.categoryId, listings.categoryId))
+      .leftJoin(
+        subcategories,
+        eq(subcategories.subcategoryId, listings.subcategoryId)
+      );
+    const countRows = whereClause
+      ? await countQuery.where(whereClause)
+      : await countQuery;
+    const totalItems = countRows?.[0]?.count ?? 0;
+
     const result = await db
       .select(defaultSelection)
       .from(listings)
-      .orderBy(desc(listings.createdAt), desc(listings.listingId))
+      .leftJoin(categories, eq(categories.categoryId, listings.categoryId))
+      .leftJoin(
+        subcategories,
+        eq(subcategories.subcategoryId, listings.subcategoryId)
+      )
+      .where(whereClause)
+      .orderBy(...orderBy)
       .limit(limit)
       .offset(offset);
 
@@ -291,7 +719,7 @@ const service = {
     );
     const validListings = enrichedData.filter((l) => l !== null);
 
-    return { page, limit, data: validListings };
+    return { page, limit, totalItems, data: validListings };
   },
 
   listOne: async function (
@@ -319,15 +747,31 @@ const service = {
     query,
     page = 1,
     limit = DEFAULT_LIMIT,
+    sort = undefined,
     requesterId = null,
     requesterRole = null,
   } = {}) {
-    if (!query || String(query).trim().length === 0)
-      return { page, limit: 0, data: [] };
+    const tsQuery = buildPrefixTsQuery(query);
+    if (!tsQuery) return { page, limit, totalItems: 0, data: [] };
 
     limit = Math.min(Math.max(1, +limit), MAX_LIMIT);
     page = Math.max(1, +page);
     const offset = (page - 1) * limit;
+
+    const orderBy = buildListingOrderBy(sort);
+
+    const searchWhere = sql`to_tsvector('english', ${listings.title} || ' ' || coalesce(${categories.name}, '') || ' ' || coalesce(${subcategories.name}, '')) @@ to_tsquery('english', ${tsQuery})`;
+
+    const countRows = await db
+      .select({ count: sql`count(*)`.mapWith(Number) })
+      .from(listings)
+      .leftJoin(categories, eq(categories.categoryId, listings.categoryId))
+      .leftJoin(
+        subcategories,
+        eq(subcategories.subcategoryId, listings.subcategoryId)
+      )
+      .where(searchWhere);
+    const totalItems = countRows?.[0]?.count ?? 0;
 
     const result = await db
       .select({
@@ -341,10 +785,8 @@ const service = {
         subcategories,
         eq(subcategories.subcategoryId, listings.subcategoryId)
       )
-      .where(
-        sql`to_tsvector('english', ${listings.title} || ' ' || coalesce(${categories.name}, '') || ' ' || coalesce(${subcategories.name}, '')) @@ websearch_to_tsquery('english', ${query})`
-      )
-      .orderBy(desc(listings.createdAt), desc(listings.listingId))
+      .where(searchWhere)
+      .orderBy(...orderBy)
       .limit(limit)
       .offset(offset);
 
@@ -353,7 +795,7 @@ const service = {
         enrichListing(listing, requesterId, requesterRole)
       )
     );
-    return { page, limit, data: enrichedData };
+    return { page, limit, totalItems, data: enrichedData };
   },
   create: async function (listing) {
     const result = await db.insert(listings).values(listing).returning();
@@ -392,17 +834,14 @@ const service = {
     await db.delete(listings).where(eq(listings.listingId, listingId));
   },
 
-  // Get listings where user has placed bids (participating auctions)
   listParticipating: async function (bidderId, requesterRole = null) {
     const bidService = (await import("./bid.js")).default;
     const allBids = await bidService.listAll(null, bidderId);
 
-    // Get unique listing IDs
     const listingIds = [...new Set(allBids.map((b) => b.listingId))];
 
     if (listingIds.length === 0) return [];
 
-    // Fetch all listings
     const result = await db
       .select(defaultSelection)
       .from(listings)
@@ -413,7 +852,6 @@ const service = {
         )})`
       );
 
-    // Enrich and return
     const enrichedData = await Promise.all(
       result.map((listing) => enrichListing(listing, bidderId, requesterRole))
     );
@@ -421,7 +859,6 @@ const service = {
     return enrichedData;
   },
 
-  // Get listings where user won the auction
   listWon: async function (bidderId, requesterRole = null) {
     const orderService = (await import("./order.js")).default;
     const orders = await orderService.listByBidder(bidderId);
@@ -430,7 +867,6 @@ const service = {
 
     const listingIds = orders.map((o) => o.listingId);
 
-    // Fetch all listings
     const result = await db
       .select(defaultSelection)
       .from(listings)
@@ -441,12 +877,92 @@ const service = {
         )})`
       );
 
-    // Enrich and return
     const enrichedData = await Promise.all(
       result.map((listing) => enrichListing(listing, bidderId, requesterRole))
     );
 
     return enrichedData;
+  },
+
+  // Periodic sweep: close auctions that ended
+  sweepEndedAuctions: async function () {
+    const userService = (await import("./user.js")).default;
+    const orderService = (await import("./order.js")).default;
+    const emailLib = (await import("../lib/email.js")).default;
+
+    const endedRows = await db
+      .select({
+        listingId: listings.listingId,
+        sellerId: listings.sellerId,
+        title: listings.title,
+        startingPrice: listings.startingPrice,
+        status: listings.status,
+        endsAt: listings.endsAt,
+      })
+      .from(listings)
+      .where(
+        and(eq(listings.status, "active"), sql`${listings.endsAt} < NOW()`)
+      );
+
+    if (!endedRows || endedRows.length === 0) return { processed: 0 };
+
+    let processed = 0;
+    for (const row of endedRows) {
+      try {
+        const listingId = Number(row.listingId);
+        const sellerId = Number(row.sellerId);
+
+        const existingOrder = await orderService.getByListingId(listingId);
+        if (existingOrder) {
+          await db
+            .update(listings)
+            .set({ status: "sold" })
+            .where(eq(listings.listingId, listingId));
+          processed++;
+          continue;
+        }
+
+        const allBids = await bidService.listAll(listingId);
+        const top = allBids.length > 0 ? allBids[0] : null;
+
+        if (!top) {
+          // No winner
+          await db
+            .update(listings)
+            .set({ status: "ended" })
+            .where(eq(listings.listingId, listingId));
+
+          const seller = await userService.listOne(sellerId);
+          if (seller?.email) {
+            await emailLib.sendAuctionEndedSellerEmail(
+              seller.email,
+              row.title,
+              "no_winner",
+              Number(row.startingPrice || 0),
+              null
+            );
+          }
+          processed++;
+          continue;
+        }
+
+        // Winner exists: create order
+        await orderService.create({
+          listingId,
+          bidderId: Number(top.bidderId),
+          sellerId,
+          finalPrice: Number(top.amount),
+          shippingAddress: null,
+          status: "paid",
+        });
+
+        processed++;
+      } catch (e) {
+        console.error("Auction sweep item failed", e);
+      }
+    }
+
+    return { processed };
   },
 };
 

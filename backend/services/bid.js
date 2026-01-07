@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import db from "../db/index.js";
 import { bids } from "../db/schema.js";
 
@@ -19,6 +19,12 @@ const service = {
     if (bidderId != null) {
       query = query.where(eq(bids.bidderId, bidderId));
     }
+    query = query.orderBy(
+      desc(bids.amount),
+      asc(bids.createdAt),
+      asc(bids.bidId)
+    );
+
     const result = await query;
     return result;
   },
@@ -36,6 +42,12 @@ const service = {
   },
   remove: async function (bidId) {
     await db.delete(bids).where(eq(bids.bidId, bidId));
+  },
+
+  removeForListingBidder: async function (listingId, bidderId) {
+    await db
+      .delete(bids)
+      .where(and(eq(bids.listingId, listingId), eq(bids.bidderId, bidderId)));
   },
 };
 

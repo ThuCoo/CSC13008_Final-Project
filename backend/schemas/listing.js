@@ -29,6 +29,8 @@ const listingBaseSchema = z.object({
   shippingCost: z.coerce.number().nonnegative().optional(),
   returnPolicy: z.string().optional(),
   images: z.array(z.string()).optional(),
+  autoExtendEnabled: z.coerce.boolean().optional(),
+  allowUnratedBidders: z.coerce.boolean().optional(),
   autoExtendDates: z
     .array(
       z.preprocess(
@@ -51,13 +53,15 @@ export const createListingSchema = listingBaseSchema
     title: true,
     description: true,
     categoryId: true,
-    subcategoryId: true,  
+    subcategoryId: true,
     startingPrice: true,
     stepPrice: true,
     buyNowPrice: true,
     itemCondition: true,
     shippingCost: true,
     returnPolicy: true,
+    autoExtendEnabled: true,
+    allowUnratedBidders: true,
   })
   .extend({
     images: z.array(z.string()).min(3, "At least 3 images are required."),

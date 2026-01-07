@@ -89,6 +89,7 @@ export default function AdminDashboard() {
   // Search States
   const [userSearch, setUserSearch] = useState("");
   const [listingSearch, setListingSearch] = useState("");
+  const [listingStatusFilter, setListingStatusFilter] = useState("all");
   const [catSearch, setCatSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("requests");
@@ -132,11 +133,15 @@ export default function AdminDashboard() {
     return matchesSearch && matchesRole;
   });
 
-  const filteredListings = listings.filter(
-    (l) =>
-      l.title.toLowerCase().includes(listingSearch.toLowerCase()) ||
-      l.sellerName.toLowerCase().includes(listingSearch.toLowerCase())
-  );
+  const filteredListings = listings
+    .filter(
+      (l) =>
+        l.title.toLowerCase().includes(listingSearch.toLowerCase()) ||
+        l.sellerName.toLowerCase().includes(listingSearch.toLowerCase())
+    )
+    .filter(
+      (l) => listingStatusFilter === "all" || l.status === listingStatusFilter
+    );
 
   const filteredCategories = categories.filter(
     (c) =>
@@ -592,8 +597,8 @@ export default function AdminDashboard() {
           <TabsContent value="listings" className="mt-6">
             <h2 className="text-xl font-bold mb-4">Manage Listings</h2>
             <div className="space-y-4">
-              <div>
-                <div className="relative">
+              <div className="grid grid-cols-4 gap-2">
+                <div className="relative col-span-4 md:col-span-3">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
                     placeholder="Search listings..."
@@ -602,6 +607,20 @@ export default function AdminDashboard() {
                     onChange={(e) => setListingSearch(e.target.value)}
                   />
                 </div>
+                <Select
+                  value={listingStatusFilter}
+                  onValueChange={setListingStatusFilter}
+                >
+                  <SelectTrigger className="bg-white col-span-4 md:col-span-1">
+                    <SelectValue placeholder="Filter status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="ended">Ended</SelectItem>
+                    <SelectItem value="sold">Sold</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               {filteredListings.length === 0 ? (
                 <p className="text-muted-foreground p-4">
@@ -612,18 +631,42 @@ export default function AdminDashboard() {
               ) : (
                 filteredListings.map((l) => (
                   <Card key={l.id}>
-                    <CardContent className="p-6 flex justify-between items-center">
+                    <CardContent className="p-4 flex gap-4 items-center">
                       <div
-                        className="flex flex-col cursor-pointer"
+                        className="w-20 h-20 rounded-md bg-gray-200 overflow-hidden shrink-0 cursor-pointer"
                         onClick={() => navigate(`/auction/${l.id}`)}
                       >
-                        <span className="font-medium text-rose-600 hover:underline">
-                          {l.title}
-                        </span>
+                        <img
+                          src={
+                            l.images && l.images.length > 0
+                              ? l.images[0]
+                              : "https://placehold.co/200?text=No+Image"
+                          }
+                          alt={l.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      <div
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => navigate(`/auction/${l.id}`)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-rose-600 hover:underline">
+                            {l.title}
+                          </span>
+                          <Badge variant="secondary" className="capitalize">
+                            {l.status}
+                          </Badge>
+                        </div>
                         <span className="text-sm text-muted-foreground">
                           Seller: {l.sellerName}
                         </span>
+                        <div className="text-sm text-muted-foreground">
+                          Current: {Number(l.currentBid || 0).toLocaleString()}₫
+                        </div>
                       </div>
+
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button

@@ -227,7 +227,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       await apiClient.post("/ratings", {
         targetUserId: Number(targetId),
-        raterUserId: user?.userId || Number(user?.id),
         rating,
         comment,
         role,

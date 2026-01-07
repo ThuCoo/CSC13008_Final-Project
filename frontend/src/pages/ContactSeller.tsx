@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useParams, useNavigate } from "react-router-dom";
 import { useListings } from "../context/ListingsContext";
@@ -9,16 +9,22 @@ import { Mail } from "lucide-react";
 
 export default function ContactSeller() {
   const { id } = useParams();
-  const { getListingById } = useListings();
+  const { getListingById, fetchListingById } = useListings();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   const listing = getListingById(id || "");
 
+  useEffect(() => {
+    if (!id) return;
+    setIsLoading(true);
+    void fetchListingById(id).finally(() => setIsLoading(false));
+  }, [id, fetchListingById]);
+
   const handleSend = () => {
     if (!message) return;
-    // Simulate email with link
     toast({
       title: "Question Sent",
       description: `Email sent to ${listing?.sellerName} with a link to reply.`,
@@ -27,11 +33,11 @@ export default function ContactSeller() {
     setTimeout(() => navigate(-1), 1500);
   };
 
+  if (isLoading) return <div className="p-8">Loading...</div>;
   if (!listing) return <div className="p-8">Listing not found</div>;
 
   return (
     <div className="min-h-screen bg-slate-50">
-
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="bg-white p-8 rounded-xl border shadow-sm">
           <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">

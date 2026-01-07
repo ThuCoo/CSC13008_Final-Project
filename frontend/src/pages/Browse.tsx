@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -11,17 +11,23 @@ import {
 } from "../components/ui/select";
 import { Link, useSearchParams } from "react-router-dom";
 import { Clock, Zap, ChevronRight, ChevronLeft } from "lucide-react";
-import { useListings, Listing } from "../context/ListingsContext";
+import { Listing } from "../context/ListingsContext";
 import { useUser } from "../context/UserContext";
 import { isNewProduct, formatAuctionTime, maskBidderName } from "../lib/utils";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { useCategories } from "../context/CategoriesContext";
+import apiClient from "../lib/api-client";
 
 export default function Browse() {
-  const { listings, isLoading, getListingsByCategory } = useListings();
   const { categories, loadCategories } = useCategories();
   const { user } = useUser();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const ITEMS_PER_PAGE = 9;
+
+  const [serverListings, setServerListings] = useState<Listing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
     void loadCategories();
@@ -30,63 +36,71 @@ export default function Browse() {
   const initialCat = searchParams.get("cat") || "All";
   const initialSub = searchParams.get("sub") || "";
   const initialSearch = searchParams.get("q") || "";
-  const initialSort = searchParams.get("sort") || "ending_soon";
+  const initialSort = searchParams.get("sort") || "ending_desc";
   const page = parseInt(searchParams.get("page") || "1", 10);
 
   const [search, setSearch] = useState(initialSearch);
   const [sort, setSort] = useState(initialSort);
 
-  // Derive filtered listings
-  const filteredListings = useMemo(() => {
-    let result =
-      initialCat && initialCat !== "All"
-        ? getListingsByCategory(initialCat)
-        : listings;
+  useEffect(() => {
+    setSearch(initialSearch);
+  }, [initialSearch]);
 
-    // Filter by subcategory
-    if (initialSub && initialCat && initialCat !== "All") {
-      result = result.filter(
-        (l) => l.category === initialCat && l.subCategory === initialSub
-      );
-    } else if (initialSub) {
-      result = result.filter((l) => l.subCategory === initialSub);
-    }
+  useEffect(() => {
+    setSort(initialSort);
+  }, [initialSort]);
 
-    if (search) {
-      const searchLower = search.toLowerCase();
-      result = result.filter(
-        (l) =>
-          l.title.toLowerCase().includes(searchLower) ||
-          l.category.toLowerCase().includes(searchLower) ||
-          (l.subCategory && l.subCategory.toLowerCase().includes(searchLower))
-      );
-    }
+  // Server-side paging/sorting
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("page", String(page));
+        params.set("limit", String(ITEMS_PER_PAGE));
+        params.set("sort", initialSort);
+        params.set("mode", "summary");
 
-    // Sort logic
-    if (sort === "ending_soon") {
-      result = [...result].sort((a, b) => a.endsAt - b.endsAt);
-    } else if (sort === "price_low") {
-      result = [...result].sort((a, b) => a.currentBid - b.currentBid);
-    } else if (sort === "price_high") {
-      result = [...result].sort((a, b) => b.currentBid - a.currentBid);
-    }
+        if (initialSearch) {
+          params.set("q", initialSearch);
+          const { data } = await apiClient.get(`/listings/search?${params}`);
+          if (cancelled) return;
+          setServerListings(Array.isArray(data?.data) ? data.data : []);
+          setTotalItems(Number(data?.totalItems || 0));
+        } else {
+          if (initialCat && initialCat !== "All") params.set("cat", initialCat);
+          if (initialSub) params.set("sub", initialSub);
+          const { data } = await apiClient.get(`/listings?${params}`);
+          if (cancelled) return;
+          setServerListings(Array.isArray(data?.data) ? data.data : []);
+          setTotalItems(Number(data?.totalItems || 0));
+        }
+      } catch {
+        if (cancelled) return;
+        setServerListings([]);
+        setTotalItems(0);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
 
-    return result;
-  }, [listings, getListingsByCategory, initialCat, initialSub, search, sort]);
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialCat, initialSub, initialSearch, initialSort, page]);
 
-  // Pagination
-  const itemsPerPage = 6;
-  const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
-  const paginatedListings = filteredListings.slice(
-    (page - 1) * itemsPerPage,
-    page * itemsPerPage
-  );
+  const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+  const paginatedListings = serverListings;
 
   const handleSearchChange = (val: string) => {
     setSearch(val);
     const newParams = new URLSearchParams(searchParams);
     if (val) newParams.set("q", val);
     else newParams.delete("q");
+    newParams.delete("cat");
+    newParams.delete("sub");
     newParams.set("page", "1");
     setSearchParams(newParams);
   };
@@ -95,6 +109,7 @@ export default function Browse() {
     setSort(val);
     const newParams = new URLSearchParams(searchParams);
     newParams.set("sort", val);
+    newParams.set("page", "1"); // Reset to first page when sorting changes
     setSearchParams(newParams);
   };
 
@@ -102,6 +117,7 @@ export default function Browse() {
     const newParams = new URLSearchParams();
     newParams.set("cat", cat);
     if (sub) newParams.set("sub", sub);
+    newParams.delete("q");
     newParams.set("page", "1");
     setSearchParams(newParams);
     setSearch("");
@@ -184,146 +200,153 @@ export default function Browse() {
 
           {/* Right Side */}
           <div className="flex-1">
-            {isLoading ? (
-              <LoadingSpinner text="Loading products..." />
-            ) : (
-              <>
-                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                  <h1 className="text-2xl font-bold">
-                    {initialCat === "All" ? "All Products" : initialCat}{" "}
-                    {initialSub && `> ${initialSub}`}
-                  </h1>
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <Input
-                      placeholder="Search..."
-                      value={search}
-                      onChange={(e) => handleSearchChange(e.target.value)}
-                      className="max-w-50"
-                    />
-                    <Select value={sort} onValueChange={handleSortChange}>
-                      <SelectTrigger className="w-45">
-                        <SelectValue placeholder="Sort" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ending_desc">
-                          Time: Ending Soon
-                        </SelectItem>
-                        <SelectItem value="price_asc">
-                          Price: Low to High
-                        </SelectItem>
-                        <SelectItem value="price_high">
-                          Price: High to Low
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+              <h1 className="text-2xl font-bold">
+                {initialCat === "All" ? "All Products" : initialCat}{" "}
+                {initialSub && `> ${initialSub}`}
+              </h1>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Input
+                  placeholder="Search..."
+                  value={search}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="max-w-50"
+                />
+                <Select value={sort} onValueChange={handleSortChange}>
+                  <SelectTrigger className="w-45">
+                    <SelectValue placeholder="Sort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ending_desc">
+                      Time: Ending Soon
+                    </SelectItem>
+                    <SelectItem value="price_asc">
+                      Price: Low to High
+                    </SelectItem>
+                    <SelectItem value="price_high">
+                      Price: High to Low
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-                {/* Product Grid */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                  {paginatedListings.map((l: Listing) => {
-                    const isNew = isNewProduct(l.createdAt);
-                    const topBidder =
-                      l.bids && l.bids.length > 0 ? l.bids[0].bidderName : null;
+            {isLoading && (
+              <div className="mb-6">
+                <LoadingSpinner text="Loading products..." />
+              </div>
+            )}
 
-                    return (
-                      <Link
-                        key={l.id}
-                        to={`/auction/${l.id}`}
-                        className={`bg-white border rounded-xl overflow-hidden hover:shadow-lg transition group ${
-                          isNew ? "ring-2 ring-rose-400" : ""
-                        }`}
-                      >
-                        <div className="h-48 relative bg-gray-200">
-                          <img
-                            src={
-                              l.images && l.images.length > 0
-                                ? l.images[0]
-                                : "https://placehold.co/400x300?text=No+Image"
-                            }
-                            alt={l.title}
-                            className="w-full h-full object-cover"
-                          />
-                          {isNew && (
-                            <span className="absolute top-2 left-2 bg-rose-600 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
-                              <Zap className="w-3 h-3" /> NEW
-                            </span>
-                          )}
-                          <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                            <Clock className="w-3 h-3" />{" "}
-                            {formatAuctionTime(l.endsAt)}
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <h3 className="font-bold truncate mb-1 group-hover:text-rose-600">
-                            {l.title}
-                          </h3>
-                          <div className="flex justify-between items-end mb-2">
-                            <div>
-                              <p className="text-xs text-slate-500">
-                                Current Bid
+            {/* Product Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {paginatedListings.map((l: Listing) => {
+                const isNew = isNewProduct(l.createdAt);
+                const bidCount =
+                  typeof l.bidCount === "number"
+                    ? l.bidCount
+                    : l.bids?.length || 0;
+                const topBidder =
+                  l.topBidderName ||
+                  (l.bids && l.bids.length > 0 ? l.bids[0].bidderName : null);
+                const canSeeTopBidder =
+                  user?.role === "admin" ||
+                  (user?.role === "seller" &&
+                    String(l.sellerId) === String(user?.id));
+
+                return (
+                  <Link
+                    key={l.id}
+                    to={`/auction/${l.id}`}
+                    className={`bg-white border rounded-xl overflow-hidden hover:shadow-lg transition group ${
+                      isNew ? "ring-2 ring-rose-400" : ""
+                    }`}
+                  >
+                    <div className="h-48 relative bg-gray-200">
+                      <img
+                        src={
+                          l.images && l.images.length > 0
+                            ? l.images[0]
+                            : "https://placehold.co/400x300?text=No+Image"
+                        }
+                        alt={l.title}
+                        className="w-full h-full object-cover"
+                      />
+                      {isNew && (
+                        <span className="absolute top-2 left-2 bg-rose-600 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+                          <Zap className="w-3 h-3" /> NEW
+                        </span>
+                      )}
+                      <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                        <Clock className="w-3 h-3" />{" "}
+                        {formatAuctionTime(l.endsAt)}
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold truncate mb-1 group-hover:text-rose-600">
+                        {l.title}
+                      </h3>
+                      <div className="flex justify-between items-end mb-2">
+                        <div>
+                          <p className="text-xs text-slate-500">Current Bid</p>
+                          <p className="text-xl font-bold text-primary">
+                            {l.currentBid.toLocaleString()}₫
+                          </p>
+                          {l.buyNowPrice && (
+                            <>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Buy Now
                               </p>
-                              <p className="text-xl font-bold text-primary">
-                                {l.currentBid.toLocaleString()}₫
+                              <p className="text-sm font-semibold">
+                                {l.buyNowPrice.toLocaleString()}₫
                               </p>
-                              {l.buyNowPrice && (
-                                <>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    Buy Now
-                                  </p>
-                                  <p className="text-sm font-semibold">
-                                    {l.buyNowPrice.toLocaleString()}₫
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                            <p className="text-xs text-slate-500">
-                              {l.bids?.length || 0} bids
-                            </p>
-                          </div>
-                          {topBidder && (
-                            <p className="text-xs text-gray-500 border-t pt-2">
-                              Holder:{" "}
-                              {user?.role === "admin"
-                                ? topBidder
-                                : maskBidderName(topBidder)}
-                            </p>
+                            </>
                           )}
                         </div>
-                      </Link>
-                    );
-                  })}
-                </div>
+                        <p className="text-xs text-slate-500">
+                          {bidCount} bids
+                        </p>
+                      </div>
+                      {topBidder && (
+                        <p className="text-xs text-gray-500 border-t pt-2">
+                          Top Bidder:{" "}
+                          {canSeeTopBidder
+                            ? topBidder
+                            : maskBidderName(topBidder)}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
 
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div className="flex justify-center items-center gap-4 py-8">
-                    <Button
-                      variant="outline"
-                      onClick={() => handlePageChange(page - 1)}
-                      disabled={page === 1}
-                    >
-                      <ChevronLeft className="w-4 h-4 mr-2" /> Previous
-                    </Button>
-                    <span className="text-sm font-medium">
-                      Page {page} of {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      onClick={() => handlePageChange(page + 1)}
-                      disabled={page === totalPages}
-                    >
-                      Next <ChevronRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
-                )}
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-4 py-8">
+                <Button
+                  variant="outline"
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+                </Button>
+                <span className="text-sm font-medium">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page === totalPages}
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            )}
 
-                {paginatedListings.length === 0 && (
-                  <div className="text-center py-20 text-slate-500 bg-white rounded-lg border">
-                    No products found matching your criteria.
-                  </div>
-                )}
-              </>
+            {!isLoading && paginatedListings.length === 0 && (
+              <div className="text-center py-20 text-slate-500 bg-white rounded-lg border">
+                No products found matching your criteria.
+              </div>
             )}
           </div>
         </div>

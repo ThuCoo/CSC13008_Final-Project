@@ -52,8 +52,14 @@ export interface Listing {
   returnPolicy?: string;
   images: string[];
   autoExtendedDates: number[];
+  autoExtendEnabled?: boolean;
+  allowUnratedBidders?: boolean;
   rejectedBidders?: string[];
   questions: Question[];
+
+  // optimise
+  bidCount?: number;
+  topBidderName?: string;
 }
 
 type NewListingData = Omit<
@@ -71,6 +77,7 @@ type NewListingData = Omit<
 interface ListingsContextType {
   listings: Listing[];
   isLoading: boolean;
+  fetchListingById: (id: string) => Promise<Listing | undefined>;
   createListing: (data: NewListingData) => Promise<Listing>;
   updateListing: (id: string, data: Partial<Listing>) => void;
   deleteListing: (id: string) => void;
@@ -86,7 +93,6 @@ interface ListingsContextType {
   rejectBidder: (listingId: string, bidderId: string) => void;
   getListingById: (id: string) => Listing | undefined;
   getSellerListings: (sellerId: string) => Listing[];
-  getActiveBiddingListings: (bidderId: string) => Listing[];
   extendAuctionIfNoBids: () => boolean;
   getListingsByCategory: (category: string) => Listing[];
   getTop5ClosingSoon: () => Listing[];
@@ -101,14 +107,44 @@ interface ListingsContextType {
       [key: string]: unknown;
     }>
   >;
+  getBidderOrders: () => Promise<
+    Array<{
+      id: string;
+      status: string;
+      [key: string]: unknown;
+    }>
+  >;
   updateOrderStatus: (
     orderId: string,
     status: string,
-    proof?: string
+    proof?: string,
+    shippingAddress?: string
   ) => Promise<{
     id: string;
     status: string;
     [key: string]: unknown;
+  }>;
+
+  getOrderMessages: (orderId: string) => Promise<
+    Array<{
+      id: number;
+      orderId: number;
+      senderId: number;
+      senderName: string;
+      message: string;
+      createdAt: string;
+    }>
+  >;
+
+  sendOrderMessage: (
+    orderId: string,
+    message: string
+  ) => Promise<{
+    id: number;
+    orderId: number;
+    senderId: number;
+    message: string;
+    createdAt: string;
   }>;
 }
 
@@ -132,7 +168,10 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
 
     setIsLoading(true);
     try {
-      const { data } = await apiClient.get("/listings?limit=50&page=1");
+      // Preload
+      const { data } = await apiClient.get(
+        "/listings?limit=90&page=1&mode=summary"
+      );
       console.log("Listings API Response:", data);
       if (data && Array.isArray(data.data)) {
         console.log(`Loaded ${data.data.length} listings`);
@@ -168,6 +207,27 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void loadListings();
   }, [loadListings]);
+
+  const fetchListingById = useCallback(async (id: string) => {
+    if (!id) return undefined;
+    try {
+      const { data } = await apiClient.get(`/listings/${Number(id)}`);
+      if (!data) return undefined;
+      setListings((prev) => {
+        const existingIdx = prev.findIndex((l) => l.id === String(id));
+        if (existingIdx >= 0) {
+          const next = [...prev];
+          next[existingIdx] = data;
+          return next;
+        }
+        return [data, ...prev];
+      });
+      return data as Listing;
+    } catch (error) {
+      console.error("Failed to fetch listing by id", error);
+      return undefined;
+    }
+  }, []);
 
   const createListing = async (data: NewListingData) => {
     try {
@@ -249,8 +309,6 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const getListingById = (id: string) => listings.find((l) => l.id === id);
   const getSellerListings = (id: string) =>
     listings.filter((l) => l.sellerId === id);
-  const getActiveBiddingListings = (id: string) =>
-    listings.filter((l) => l.bids?.some((b) => b.bidderId === id));
   const extendAuctionIfNoBids = () => false;
   const getListingsByCategory = (cat: string) =>
     listings.filter((l) => l.category === cat);
@@ -265,7 +323,11 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const getTop5MostBids = () => {
     return listings
       .filter((l) => l.status === "active")
-      .sort((a, b) => (b.bids?.length || 0) - (a.bids?.length || 0))
+      .sort(
+        (a, b) =>
+          (typeof b.bidCount === "number" ? b.bidCount : b.bids?.length || 0) -
+          (typeof a.bidCount === "number" ? a.bidCount : a.bids?.length || 0)
+      )
       .slice(0, 5);
   };
 
@@ -316,10 +378,21 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const getBidderOrders = async () => {
+    try {
+      const { data } = await apiClient.get(`/orders/bidder`);
+      return data;
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  };
+
   const updateOrderStatus = async (
     orderId: string,
     status: string,
-    proof?: string
+    proof?: string,
+    shippingAddress?: string
   ) => {
     try {
       const { data } = await apiClient.put(
@@ -327,6 +400,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         {
           status,
           proof,
+          shippingAddress,
         }
       );
       return data;
@@ -336,11 +410,34 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const getOrderMessages = async (orderId: string) => {
+    try {
+      const { data } = await apiClient.get(
+        `/orders/${Number(orderId)}/messages`
+      );
+      return data;
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  };
+
+  const sendOrderMessage = async (orderId: string, message: string) => {
+    const { data } = await apiClient.post(
+      `/orders/${Number(orderId)}/messages`,
+      {
+        message,
+      }
+    );
+    return data;
+  };
+
   return (
     <ListingsContext.Provider
       value={{
         listings,
         isLoading,
+        fetchListingById,
         createListing,
         updateListing,
         deleteListing,
@@ -349,7 +446,6 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         rejectBidder,
         getListingById,
         getSellerListings,
-        getActiveBiddingListings,
         extendAuctionIfNoBids,
         getListingsByCategory,
         getTop5ClosingSoon,
@@ -358,7 +454,10 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         addQuestion,
         answerQuestion,
         getSellerOrders,
+        getBidderOrders,
         updateOrderStatus,
+        getOrderMessages,
+        sendOrderMessage,
       }}
     >
       {children}

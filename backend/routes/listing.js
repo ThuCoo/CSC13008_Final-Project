@@ -12,7 +12,6 @@ import {
 
 const route = new Router();
 
-// Apply optional JWT auth to all routes to identify the requester
 route.use(optionalJwtAuth);
 
 route.get(
@@ -25,22 +24,28 @@ route.get(
   validateQuery(searchSchema, "query"),
   listingController.search
 );
+route.get("/top5-closing-soon", listingController.getTop5ClosingSoon);
+route.get("/top5-most-bids", listingController.getTop5MostBids);
+route.get("/top5-highest-price", listingController.getTop5HighestPrice);
 route.get("/participating", jwtAuth, listingController.listParticipating);
 route.get("/won", jwtAuth, listingController.listWon);
 route.get("/:id", validateQuery(idParams, "params"), listingController.listOne);
 route.post(
   "/",
+  jwtAuth,
   validateQuery(createListingSchema, "body"),
   listingController.create
 );
 route.put(
   "/:id",
+  jwtAuth,
   validateQuery(idParams, "params"),
   validateQuery(updateListingSchema, "body"),
   listingController.update
 );
 route.delete(
   "/:id",
+  jwtAuth,
   validateQuery(idParams, "params"),
   listingController.remove
 );

@@ -8,4 +8,7 @@ route.get("/seller", jwtAuth, orderController.listForSeller);
 route.get("/bidder", jwtAuth, orderController.listForBidder);
 route.put("/:id/status", jwtAuth, orderController.updateStatus);
 
+route.get("/:id/messages", jwtAuth, orderController.listMessages);
+route.post("/:id/messages", jwtAuth, orderController.postMessage);
+
 export default route;

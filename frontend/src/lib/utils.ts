@@ -6,7 +6,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function isNewProduct(createdAt: number): boolean {
-  // Considered new if created within the last 30 minutes
   const thirtyMinutes = 30 * 60 * 1000;
   return Date.now() - createdAt < thirtyMinutes;
 }
@@ -38,4 +37,24 @@ export function maskBidderName(name: string): string {
     }
   }
   return masked;
+}
+
+export function formatOrderStatus(status: unknown): string {
+  const s = String(status || "");
+  switch (s) {
+    case "pending_payment":
+      return "Awaiting Payment";
+    case "paid":
+      return "Paid";
+    case "shipped":
+      return "Shipped";
+    case "delivered":
+      return "Delivered";
+    case "completed":
+      return "Completed";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return s ? s.replace(/_/g, " ") : "";
+  }
 }

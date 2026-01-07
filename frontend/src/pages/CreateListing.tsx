@@ -5,8 +5,8 @@ import { useListings } from "../context/ListingsContext";
 import { useCategories } from "../context/CategoriesContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Textarea } from "../components/ui/textarea";
 import { Label } from "../components/ui/label";
+import { DefaultEditor } from "react-simple-wysiwyg";
 import {
   Select,
   SelectContent,
@@ -52,11 +52,17 @@ export default function CreateListing() {
     duration: "3",
     condition: "New",
     autoExtend: true,
+    allowUnratedBidders: true,
   });
 
   const [images, setImages] = useState<string[]>([]);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const getPlainTextFromHtml = (html: string) => {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    return (doc.body.textContent ?? "").replace(/\s+/g, " ").trim();
+  };
 
   const hasAccess =
     user && user.role === "seller" && user.sellerApproved === true;
@@ -120,9 +126,10 @@ export default function CreateListing() {
       newErrors.title = "Title must be at least 10 characters";
     }
 
-    if (!formData.description.trim()) {
+    const descriptionText = getPlainTextFromHtml(formData.description);
+    if (!descriptionText) {
       newErrors.description = "Description is required";
-    } else if (formData.description.length < 50) {
+    } else if (descriptionText.length < 50) {
       newErrors.description = "Description must be at least 50 characters";
     }
 
@@ -163,7 +170,7 @@ export default function CreateListing() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -176,7 +183,7 @@ export default function CreateListing() {
     }
 
     try {
-      createListing({
+      await createListing({
         sellerId: user.id || "0",
         sellerName: user.name,
         title: formData.title,
@@ -199,6 +206,8 @@ export default function CreateListing() {
         buyNowPrice: formData.buyNowPrice
           ? parseFloat(formData.buyNowPrice)
           : undefined,
+        autoExtendEnabled: formData.autoExtend,
+        allowUnratedBidders: formData.allowUnratedBidders,
       });
 
       toast({
@@ -218,7 +227,7 @@ export default function CreateListing() {
   const handleBack = () => {
     const isDirty =
       formData.title ||
-      formData.description ||
+      getPlainTextFromHtml(formData.description) ||
       formData.startingPrice !== "0" ||
       images.length > 0;
 
@@ -522,6 +531,28 @@ export default function CreateListing() {
             </label>
           </div>
 
+          <div className="flex items-center space-x-2 border p-4 rounded-md bg-slate-50">
+            <Checkbox
+              id="allowUnratedBidders"
+              checked={formData.allowUnratedBidders}
+              onCheckedChange={(c) =>
+                setFormData({
+                  ...formData,
+                  allowUnratedBidders: c as boolean,
+                })
+              }
+            />
+            <label
+              htmlFor="allowUnratedBidders"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Allow unrated bidders?
+              <span className="block text-xs text-muted-foreground mt-1">
+                If disabled, bidders with no rating history cannot bid.
+              </span>
+            </label>
+          </div>
+
           <div className="space-y-2">
             <Label>Description</Label>
             <div
@@ -529,77 +560,7 @@ export default function CreateListing() {
                 errors.description ? "border-red-500" : ""
               }`}
             >
-              <div
-                className={`flex gap-2 p-2 border-b bg-slate-50 ${
-                  errors.description ? "border-red-500" : ""
-                }`}
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const ta = document.getElementById(
-                      "desc-ta"
-                    ) as HTMLTextAreaElement;
-                    const start = ta.selectionStart;
-                    const end = ta.selectionEnd;
-                    const sel = formData.description.substring(start, end);
-                    const next =
-                      formData.description.substring(0, start) +
-                      `<b>${sel}</b>` +
-                      formData.description.substring(end);
-                    setFormData({ ...formData, description: next });
-                  }}
-                >
-                  <b>B</b>
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const ta = document.getElementById(
-                      "desc-ta"
-                    ) as HTMLTextAreaElement;
-                    const start = ta.selectionStart;
-                    const end = ta.selectionEnd;
-                    const sel = formData.description.substring(start, end);
-                    const next =
-                      formData.description.substring(0, start) +
-                      `<i>${sel}</i>` +
-                      formData.description.substring(end);
-                    setFormData({ ...formData, description: next });
-                  }}
-                >
-                  <i>I</i>
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const ta = document.getElementById(
-                      "desc-ta"
-                    ) as HTMLTextAreaElement;
-                    const start = ta.selectionStart;
-                    const end = ta.selectionEnd;
-                    const sel = formData.description.substring(start, end);
-                    const next =
-                      formData.description.substring(0, start) +
-                      `<ul>\n  <li>${sel}</li>\n</ul>` +
-                      formData.description.substring(end);
-                    setFormData({ ...formData, description: next });
-                  }}
-                >
-                  List
-                </Button>
-              </div>
-              <Textarea
-                id="desc-ta"
-                className="h-40 border-0 focus-visible:ring-0"
-                placeholder="Detailed product description..."
-                required
+              <DefaultEditor
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })

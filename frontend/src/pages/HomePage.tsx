@@ -1,5 +1,5 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useListings } from "../context/ListingsContext";
 import { useUser } from "../context/UserContext";
 import {
   Clock,
@@ -13,6 +13,7 @@ import { Listing } from "../context/ListingsContext";
 import { formatAuctionTime, maskBidderName } from "../lib/utils";
 import { Button } from "../components/ui/button";
 import { LoadingSpinner } from "../components/LoadingSpinner";
+import apiClient from "../lib/api-client";
 
 const features = [
   {
@@ -38,20 +39,32 @@ const ListingCard = ({
   user,
 }: {
   listing: Listing;
-  user: { role?: string } | null;
+  user: { role?: string; id?: string } | null;
 }) => {
+  const bidCount =
+    typeof listing.bidCount === "number"
+      ? listing.bidCount
+      : listing.bids?.length || 0;
   const topBidder =
-    listing.bids && listing.bids.length > 0 ? listing.bids[0].bidderName : null;
+    listing.topBidderName ||
+    (listing.bids && listing.bids.length > 0
+      ? listing.bids[0].bidderName
+      : null);
   const createdTime = new Date(listing.createdAt).getTime();
   const thirtyMinutesAgo = new Date().getTime() - 30 * 60 * 1000;
   const isNew = createdTime > thirtyMinutesAgo;
+  const canSeeTopBidder =
+    user?.role === "admin" ||
+    (user?.role === "seller" && String(listing.sellerId) === String(user?.id));
 
   return (
     <Link
       to={`/auction/${listing.id}`}
-      className="bg-white border rounded-xl overflow-hidden hover:shadow-lg transition group"
+      className={`bg-white border rounded-xl overflow-hidden hover:shadow-lg transition group ${
+        isNew ? "ring-2 ring-rose-400" : ""
+      }`}
     >
-      <div className="h-40 relative bg-gray-200">
+      <div className="h-48 relative bg-gray-200">
         <img
           src={
             listing.images && listing.images.length > 0
@@ -62,9 +75,9 @@ const ListingCard = ({
           className="w-full h-full object-cover"
         />
         {isNew && (
-          <div className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
-            New
-          </div>
+          <span className="absolute top-2 left-2 bg-rose-600 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+            <Zap className="w-3 h-3" /> NEW
+          </span>
         )}
         <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
           <Clock className="w-3 h-3" /> {formatAuctionTime(listing.endsAt)}
@@ -74,12 +87,11 @@ const ListingCard = ({
         <h3 className="font-bold truncate mb-1 group-hover:text-rose-600">
           {listing.title}
         </h3>
-        <p className="text-xs text-gray-500 mb-2">{listing.category}</p>
 
         <div className="flex justify-between items-end mb-2">
           <div>
-            <p className="text-xs text-gray-500">Current Bid</p>
-            <p className="text-lg font-bold text-rose-900">
+            <p className="text-xs text-slate-500">Current Bid</p>
+            <p className="text-xl font-bold text-primary">
               {listing.currentBid.toLocaleString()}₫
             </p>
             {listing.buyNowPrice && (
@@ -91,18 +103,13 @@ const ListingCard = ({
               </>
             )}
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500">Bids</p>
-            <p className="font-medium">{listing.bids?.length || 0}</p>
-          </div>
+          <p className="text-xs text-slate-500">{bidCount} bids</p>
         </div>
 
         {topBidder && (
-          <p className="text-xs text-gray-500 pt-2 border-t mt-2">
+          <p className="text-xs text-gray-500 border-t pt-2">
             Top Bidder:{" "}
-            <span className="font-medium text-gray-700">
-              {user?.role === "admin" ? topBidder : maskBidderName(topBidder)}
-            </span>
+            {canSeeTopBidder ? topBidder : maskBidderName(topBidder)}
           </p>
         )}
       </div>
@@ -111,22 +118,42 @@ const ListingCard = ({
 };
 
 export default function HomePage() {
-  const {
-    listings,
-    isLoading,
-    getTop5ClosingSoon,
-    getTop5MostBids,
-    getTop5HighestPrice,
-  } = useListings();
   const { user } = useUser();
-  const closingSoon = getTop5ClosingSoon();
-  const mostBids = getTop5MostBids();
-  const highestPrice = getTop5HighestPrice();
 
-  console.log("HomePage - Total listings:", listings.length);
-  console.log("HomePage - Closing soon:", closingSoon.length);
-  console.log("HomePage - Most bids:", mostBids.length);
-  console.log("HomePage - Highest price:", highestPrice.length);
+  const [isLoading, setIsLoading] = useState(true);
+  const [closingSoon, setClosingSoon] = useState<Listing[]>([]);
+  const [mostBids, setMostBids] = useState<Listing[]>([]);
+  const [highestPrice, setHighestPrice] = useState<Listing[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      setIsLoading(true);
+      try {
+        const [cs, mb, hp] = await Promise.all([
+          apiClient.get("/listings/top5-closing-soon"),
+          apiClient.get("/listings/top5-most-bids"),
+          apiClient.get("/listings/top5-highest-price"),
+        ]);
+        if (cancelled) return;
+        setClosingSoon(Array.isArray(cs.data) ? cs.data : []);
+        setMostBids(Array.isArray(mb.data) ? mb.data : []);
+        setHighestPrice(Array.isArray(hp.data) ? hp.data : []);
+      } catch {
+        if (cancelled) return;
+        setClosingSoon([]);
+        setMostBids([]);
+        setHighestPrice([]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -198,7 +225,7 @@ export default function HomePage() {
           <LoadingSpinner text="Loading featured products..." size="lg" />
         ) : (
           <>
-            {/* Section 1: Closing Soon */}
+            {/* Closing Soon */}
             <section>
               <div className="flex items-center gap-2 mb-6">
                 <Clock className="w-6 h-6 text-rose-600" />
@@ -213,7 +240,7 @@ export default function HomePage() {
               </div>
             </section>
 
-            {/* Section 2: Most Bids */}
+            {/* Most Bids */}
             <section>
               <div className="flex items-center gap-2 mb-6">
                 <TrendingUp className="w-6 h-6 text-rose-600" />
@@ -228,7 +255,7 @@ export default function HomePage() {
               </div>
             </section>
 
-            {/* Section 3: Highest Price */}
+            {/* Highest Price */}
             <section>
               <div className="flex items-center gap-2 mb-6">
                 <DollarSign className="w-6 h-6 text-rose-600" />

@@ -1,11 +1,13 @@
 import { Router } from "express";
 import validateQuery from "../middlewares/validateQuery.js";
 import ratingController from "../controllers/rating.js";
+import jwtAuth from "../middlewares/jwtAuth.js";
 import { createRatingSchema, idParams } from "../schemas/rating.js";
 
 const route = new Router();
 route.post(
   "/",
+  jwtAuth,
   validateQuery(createRatingSchema, "body"),
   ratingController.createRating
 );

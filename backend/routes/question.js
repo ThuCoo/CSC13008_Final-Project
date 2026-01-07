@@ -1,6 +1,7 @@
 import { Router } from "express";
 import validateQuery from "../middlewares/validateQuery.js";
 import questionController from "../controllers/question.js";
+import jwtAuth from "../middlewares/jwtAuth.js";
 import {
   createQuestionSchema,
   updateQuestionSchema,
@@ -21,17 +22,20 @@ route.get(
 );
 route.post(
   "/",
+  jwtAuth,
   validateQuery(createQuestionSchema, "body"),
   questionController.create
 );
 route.put(
   "/:id",
+  jwtAuth,
   validateQuery(idParams, "params"),
   validateQuery(updateQuestionSchema, "body"),
   questionController.answer
 );
 route.delete(
   "/:id",
+  jwtAuth,
   validateQuery(idParams, "params"),
   questionController.remove
 );

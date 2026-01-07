@@ -61,7 +61,6 @@ const controller = {
           }
         } catch (emailErr) {
           console.error("Failed to send email notification:", emailErr);
-          // Don't fail the request if email fails
         }
       }
 

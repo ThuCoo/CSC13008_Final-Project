@@ -74,6 +74,14 @@ const controller = {
             message: `Bid denied: bidder rating too low (required >= ${minRatio})`,
           });
         }
+      } else {
+        const allowUnrated = listing.allowUnratedBidders !== false;
+        if (!allowUnrated) {
+          return res.status(403).json({
+            message:
+              "Bid denied: unrated bidders are not allowed for this listing",
+          });
+        }
       }
 
       // amount validation
@@ -88,6 +96,22 @@ const controller = {
           .json({ message: `Amount must be at least ${minAccept}` });
       }
 
+      // enforce bid to be minimum.
+      if (req.body.maxPrice != null) {
+        const maxPrice = Number(req.body.maxPrice);
+        if (!Number.isFinite(maxPrice) || maxPrice <= Number(amount)) {
+          return res
+            .status(400)
+            .json({ message: "maxPrice must be greater than bid amount" });
+        }
+        if (Number(amount) !== minAccept) {
+          return res.status(400).json({
+            message:
+              "When using auto-bid, the initial bid must equal the suggested minimum.",
+          });
+        }
+      }
+
       // auto-extend if bid is made within window
       const autoExtendEnabled = process.env.AUTO_EXTEND_ENABLED !== "false";
       const windowMin = parseInt(process.env.AUTO_EXTEND_WINDOW_MINUTES || "5");
@@ -96,7 +120,12 @@ const controller = {
       );
       const timeLeftMs = new Date(listing.endsAt) - new Date();
       let extended = false;
-      if (autoExtendEnabled && timeLeftMs <= windowMin * 60 * 1000) {
+      const listingAutoExtendEnabled = listing.autoExtendEnabled !== false;
+      if (
+        autoExtendEnabled &&
+        listingAutoExtendEnabled &&
+        timeLeftMs <= windowMin * 60 * 1000
+      ) {
         const newEnds = new Date(
           new Date(listing.endsAt).getTime() + extMin * 60 * 1000
         );
@@ -113,10 +142,28 @@ const controller = {
       }
 
       // identify previous high bidder
-      const bids = await bidService.listAll(listingId);
-      const prevHighBid = bids.length > 0 ? bids[0] : null;
+      const existingBids = await bidService.listAll(listingId);
+      const prevHighBid = existingBids.length > 0 ? existingBids[0] : null;
 
       const row = await bidService.create(req.body);
+
+      // notify seller of the new bid
+      try {
+        const seller = await userService.listOne(listing.sellerId);
+        if (seller?.email) {
+          emailLib
+            .sendSellerBidEmail(
+              seller.email,
+              listing.title,
+              bidder.name,
+              Number(amount),
+              listingId
+            )
+            .catch((e) => console.error("Email failed", e));
+        }
+      } catch (e) {
+        console.error("Failed to send seller bid email", e);
+      }
 
       // notify current bidder of success
       emailLib
@@ -143,7 +190,7 @@ const controller = {
         }
       }
 
-      // Handle Auto-Bidding (Max Price set by current bidder)
+      // Auto-Bidding
       if (req.body.maxPrice && Number(req.body.maxPrice) > Number(amount)) {
         const existingAuto = await autoBidService.getByListingAndUser(
           listingId,
@@ -193,6 +240,25 @@ const controller = {
             counterBid,
             bidderId
           );
+
+          // notify seller of the auto-bid counter bid
+          try {
+            const seller = await userService.listOne(listing.sellerId);
+            const botUser = await userService.listOne(bestBot.userId);
+            if (seller?.email && botUser) {
+              emailLib
+                .sendSellerBidEmail(
+                  seller.email,
+                  listing.title,
+                  botUser.name,
+                  counterBid,
+                  listingId
+                )
+                .catch((e) => console.error("Email failed", e));
+            }
+          } catch (e) {
+            console.error("Failed to send seller bid email", e);
+          }
 
           // notify user they were outbid by bot
           emailLib

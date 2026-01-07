@@ -4,7 +4,6 @@ import {
   varchar,
   text,
   boolean,
-  date,
   decimal,
   json,
   timestamp,
@@ -79,7 +78,9 @@ export const listings = pgTable("listings", {
   shippingCost: decimal("shipping_cost").notNull(),
   returnPolicy: text("return_policy").notNull(),
   images: json("images").notNull(),
+  autoExtendEnabled: boolean("auto_extend_enabled").default(true).notNull(),
   autoExtendDates: json("auto_extended_dates").notNull(),
+  allowUnratedBidders: boolean("allow_unrated_bidders").default(true).notNull(),
   rejectedBidders: json("rejected_bidders"),
 });
 
@@ -147,13 +148,31 @@ export const ratings = pgTable("ratings", {
 
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
-  listingId: integer("listing_id").notNull().references(() => listings.listingId),
-  bidderId: integer("bidder_id").notNull().references(() => users.userId),
-  sellerId: integer("seller_id").notNull().references(() => users.userId),
+  listingId: integer("listing_id")
+    .notNull()
+    .references(() => listings.listingId),
+  bidderId: integer("bidder_id")
+    .notNull()
+    .references(() => users.userId),
+  sellerId: integer("seller_id")
+    .notNull()
+    .references(() => users.userId),
   finalPrice: decimal("final_price").notNull(),
   status: varchar("status").notNull(),
   shippingAddress: text("shipping_address"),
   paymentProof: text("payment_proof"),
   shippingProof: text("shipping_proof"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const orderMessages = pgTable("order_messages", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id")
+    .notNull()
+    .references(() => orders.id),
+  senderId: integer("sender_id")
+    .notNull()
+    .references(() => users.userId),
+  message: text("message").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

@@ -1,7 +1,7 @@
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, User, Chrome, Facebook, MapPin } from "lucide-react";
+import { Mail, Lock, User, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useUser } from "../context/UserContext";
 import { useToast } from "../hooks/use-toast";
@@ -167,34 +167,6 @@ export default function SignUp() {
 
           {!showOtp ? (
             <>
-              <div className="mb-6">
-                <Button
-                  variant="outline"
-                  className="w-full mb-3 flex items-center justify-center gap-2"
-                >
-                  <Chrome className="w-4 h-4" />
-                  Sign up with Google
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full flex items-center justify-center gap-2"
-                >
-                  <Facebook className="w-4 h-4" />
-                  Sign up with Facebook
-                </Button>
-              </div>
-
-              <div className="relative mb-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-muted-foreground">
-                    Or create with email
-                  </span>
-                </div>
-              </div>
-
               <form className="space-y-4 mb-6" onSubmit={handleInitialSubmit}>
                 <div>
                   <label className="block text-sm font-medium mb-2">

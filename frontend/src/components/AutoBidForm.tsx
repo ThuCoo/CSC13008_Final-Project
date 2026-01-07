@@ -103,6 +103,7 @@ export default function AutoBidForm({
                   setMaxBid(e.target.value)
                 }
                 min={minBid}
+                step={1000}
                 required={enabled}
               />
               <Button type="submit" variant="secondary">

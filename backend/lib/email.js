@@ -40,8 +40,27 @@ export async function sendBidSuccessEmail(to, listingTitle, amount, listingId) {
   const subject = `Your bid on "${listingTitle}" was successful!`;
   const listingUrl = `${
     process.env.FRONTEND_URL || "http://localhost:5173"
-  }/listings/${listingId}`;
+  }/auction/${listingId}`;
   const text = `Congratulations! Your bid of ${amount.toLocaleString()}₫ for "${listingTitle}" has been placed successfully.\n\nView listing: ${listingUrl}`;
+  const html = `<p>${text.replace(
+    /\n/g,
+    "<br>"
+  )}</p><p><a href="${listingUrl}">View Listing</a></p>`;
+  return sendMail({ to, subject, text, html });
+}
+
+export async function sendSellerBidEmail(
+  to,
+  listingTitle,
+  bidderName,
+  amount,
+  listingId
+) {
+  const subject = `New bid on your listing: ${listingTitle}`;
+  const listingUrl = `$
+    {process.env.FRONTEND_URL || "http://localhost:5173"}
+  }/auction/${listingId}`;
+  const text = `${bidderName} placed a bid of ${amount.toLocaleString()}₫ on "${listingTitle}".\n\nView listing: ${listingUrl}`;
   const html = `<p>${text.replace(
     /\n/g,
     "<br>"
@@ -58,7 +77,7 @@ export async function sendOutbidEmail(
   const subject = `You've been outbid on "${listingTitle}"`;
   const listingUrl = `${
     process.env.FRONTEND_URL || "http://localhost:5173"
-  }/listings/${listingId}`;
+  }/auction/${listingId}`;
   const text = `Someone just placed a higher bid on "${listingTitle}". The current bid is now ${newCurrentBid.toLocaleString()}₫. You might want to increase your bid!\n\nView listing: ${listingUrl}`;
   const html = `<p>${text.replace(
     /\n/g,
@@ -85,10 +104,48 @@ export async function sendAuctionEndedEmail(
   return sendMail({ to, subject, text, html });
 }
 
+export async function sendAuctionEndedSellerEmail(
+  to,
+  listingTitle,
+  status,
+  finalPrice,
+  winnerName
+) {
+  const subject =
+    status === "no_winner"
+      ? `Auction ended (no winner): ${listingTitle}`
+      : `Auction ended (winner): ${listingTitle}`;
+  const text =
+    status === "no_winner"
+      ? `Your auction for "${listingTitle}" has ended with no winner.`
+      : `Your auction for "${listingTitle}" ended with a winner (${winnerName}). Final price: ${finalPrice.toLocaleString()}₫.`;
+  const html = `<p>${text}</p>`;
+  return sendMail({ to, subject, text, html });
+}
+
 export async function sendQuestionEmail(to, listingTitle, questionText) {
   const subject = `New question on your listing: ${listingTitle}`;
   const text = `Someone asked a question on "${listingTitle}":\n\n"${questionText}"\n\nPlease log in to answer it.`;
   const html = `<p>${text}</p>`;
+  return sendMail({ to, subject, text, html });
+}
+
+export async function sendQuestionAnsweredEmail(
+  to,
+  listingTitle,
+  questionText,
+  answerText,
+  listingId
+) {
+  const subject = `Question answered: ${listingTitle}`;
+  const listingUrl = `$
+    {process.env.FRONTEND_URL || "http://localhost:5173"}
+  }/auction/${listingId}`;
+  const text = `A question on "${listingTitle}" has been answered.\n\nQ: ${questionText}\nA: ${answerText}\n\nView listing: ${listingUrl}`;
+  const html = `<p>${text.replace(
+    /\n/g,
+    "<br>"
+  )}</p><p><a href="${listingUrl}">View Listing</a></p>`;
   return sendMail({ to, subject, text, html });
 }
 
@@ -138,7 +195,7 @@ export async function sendListingUpdatedEmail(to, listingTitle, listingId) {
   const subject = `Listing "${listingTitle}" has been updated`;
   const listingUrl = `${
     process.env.FRONTEND_URL || "http://localhost:5173"
-  }/listings/${listingId}`;
+  }/auction/${listingId}`;
   const text = `The seller has updated the description of "${listingTitle}". You may want to check the changes.\n\nView listing: ${listingUrl}`;
   const html = `<p>${text.replace(
     /\n/g,
@@ -150,9 +207,12 @@ export async function sendListingUpdatedEmail(to, listingTitle, listingId) {
 export default {
   sendOtpEmail,
   sendBidSuccessEmail,
+  sendSellerBidEmail,
   sendOutbidEmail,
   sendAuctionEndedEmail,
+  sendAuctionEndedSellerEmail,
   sendQuestionEmail,
+  sendQuestionAnsweredEmail,
   sendPasswordResetAdminEmail,
   sendSellerApprovalEmail,
   sendSellerRejectionEmail,
